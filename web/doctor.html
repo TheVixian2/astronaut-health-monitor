@@ -6,51 +6,75 @@
   <title>Ship's doctor · AHM</title>
   <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css">
+  <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body class="doctor">
+<body class="doctor selfcheck">
+  <!-- The ship's doctor's profile: their own data (same data-only console as
+       the crew) plus the Medications tab for the whole crew. Hidden inside demo.html. -->
   <nav class="appnav area-onboard" aria-label="Ship's doctor">
     <a class="brand" data-href="index.html" href="index.html" title="Home">AHM</a>
     <span class="area-tag">Ship's doctor</span>
-    <div class="menu"><a data-href="doctor.html" href="doctor.html" aria-current="page">Medications</a></div>
+    <div class="menu">
+      <a href="#health" data-tab-link="health">My health</a>
+      <a href="#checkin" data-tab-link="checkin">Check-in</a>
+      <a href="#sleep" data-tab-link="sleep">Sleep &amp; light</a>
+      <a href="#meds" data-tab-link="meds">Medications <span id="medsCount" class="count" hidden></span></a>
+    </div>
     <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
   <header class="bar">
     <div>
-      <h1>Medications</h1>
-      <div class="muted">Doses to give out to the crew today · station time (UTC) <strong id="clock">--:--</strong></div>
+      <h1>Ship's doctor</h1>
+      <div class="who"><strong id="name">…</strong> <span class="muted" id="role"></span></div>
     </div>
     <div class="status" aria-live="polite">
       <span id="conn" class="pill pill-wait">connecting…</span>
       <span><strong>Live</strong> · on board</span>
+      <span id="mission"></span>
+      <span>Your data: <strong id="age">—</strong></span>
     </div>
   </header>
 
-  <section class="sample-note small">
-    <strong>Sample medication plan.</strong> Illustrative demo data, not medical guidance.
-    "Given" marks are kept in this browser only.
+  <!-- The doctor's own cards: consoleMarkup() in self-check.js. -->
+  <main id="console" class="sc-grid" data-crew-role="Crew Medical Officer" data-aid="a3" data-poll></main>
+
+  <section class="meds-tab" data-tab="meds">
+    <div class="tab-head">
+      <h2>Medications</h2>
+      <span class="muted">Doses to give out to the crew today · station time (UTC) <strong id="clock">--:--</strong></span>
+      <span id="medsConn" class="pill pill-wait">connecting…</span>
+    </div>
+
+    <div class="sample-note small">
+      <strong>Sample medication plan.</strong> Illustrative demo data, not medical guidance.
+      "Given" marks are kept in this browser only.
+    </div>
+
+    <div class="doc-grid">
+      <section class="card">
+        <h2>Needs attention <span id="attnCount" class="count" hidden></span></h2>
+        <ul id="attention" class="warns"><li class="muted">Nothing due right now.</li></ul>
+      </section>
+      <section class="card">
+        <h2>Today's schedule</h2>
+        <div class="table-wrap">
+          <table id="schedule">
+            <thead><tr><th>Time</th><th>Crew member</th><th>Medication</th><th>Dose</th><th>For</th><th>Status</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </section>
 
-  <main class="doc-grid">
-    <section class="card">
-      <h2>Needs attention <span id="attnCount" class="count" hidden></span></h2>
-      <ul id="attention" class="warns"><li class="muted">Nothing due right now.</li></ul>
-    </section>
-    <section class="card">
-      <h2>Today's schedule</h2>
-      <div class="table-wrap">
-        <table id="schedule">
-          <thead><tr><th>Time</th><th>Crew member</th><th>Medication</th><th>Dose</th><th>For</th><th>Status</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <footer class="foot muted small">Decision support only. Every dose is the Crew Medical Officer's decision.</footer>
+  <footer class="foot muted small">Your own tabs show your data against your own baseline.
+    Medications are decision support only: every dose is the Crew Medical Officer's decision.</footer>
 
   <script src="mock.js"></script>
   <script src="common.js"></script>
+  <script src="self-check.js"></script>
   <script src="meds.js"></script>
   <script src="doctor.js"></script>
 </body>

@@ -1,4 +1,5 @@
-// Ship's doctor view: medication warnings for the whole crew.
+// Ship's doctor, "Medications" tab: medication warnings for the whole crew.
+// The page's other tabs are the doctor's own data (self-check.js).
 // - Scheduled doses from the SAMPLE plan in meds.js: due now, overdue, upcoming.
 // - Alert-linked suggestions: when a live alert arrives (view=crew, on board),
 //   meds.js `onAlert` says what the CMO might consider.
@@ -48,12 +49,12 @@
           suggestions.set(k, { alert: a, med });
           render();
         },
-        onConn: (text, cls) => { $("conn").textContent = text; $("conn").className = `pill ${cls}`; },
+        onConn: (text, cls) => { $("medsConn").textContent = text; $("medsConn").className = `pill ${cls}`; },
       });
       for (const c of list) names.set(c.id, c.name);
     } catch (err) {
-      $("conn").textContent = "offline";
-      $("conn").className = "pill pill-off";
+      $("medsConn").textContent = "offline";
+      $("medsConn").className = "pill pill-off";
     }
     render();
     setInterval(render, 30000);   // statuses move with the clock
@@ -93,8 +94,8 @@
     ];
     const sugg = [...suggestions.values()].filter(s => !marks()[`prn|${s.alert.id}`]);
     const n = attn.length + sugg.length;
-    $("attnCount").textContent = n;
-    $("attnCount").hidden = !n;
+    // Same count on the menu tab, so it shows from the doctor's own tabs too.
+    for (const id of ["attnCount", "medsCount"]) { $(id).textContent = n; $(id).hidden = !n; }
 
     const doseItem = ({ sev, d }) => `<li class="warn sev-${sev}">
       <div class="head"><span class="sev">${d.status === "overdue" ? "overdue" : "due now"}</span>

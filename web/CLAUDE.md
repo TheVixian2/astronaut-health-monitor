@@ -52,8 +52,16 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   - **Astronaut console** (`self-check.html`): *My health · Check-in · Sleep &
     light*. Tabs inside one page, chosen by the URL hash (`#health`,
     `#checkin`, `#sleep`); sections carry `data-tab`.
-  - **Commander** (`captain.html` / `captain.js`): *Crew wellbeing*.
-  - **Ship's doctor** (`doctor.html` / `doctor.js`): *Medications*.
+  - **Commander** (`captain.html` / `captain.js`): *My health · Check-in ·
+    Sleep & light · Crew wellbeing* (`#crew`, with a warning count).
+  - **Ship's doctor** (`doctor.html` / `doctor.js`): *My health · Check-in ·
+    Sleep & light · Medications* (`#meds`, with a count).
+  - The Commander and the doctor are crew too (decided by NotKaemy
+    2026-11-14): their first three tabs are **their own data**, the same
+    data-only console as the crew, and the crew-facing work is a separate tab.
+    Whose data it is comes from `GET /crew` by role (`data-crew-role` on
+    `<main id="console">`: "Commander" = a1, "Crew Medical Officer" = a3;
+    `data-aid` is the fallback).
   - **Ground** (`ground.html`, `stream-check.html`): *Crew overview · Raw
     stream (debug)*.
   - Inside `demo.html` the menus are hidden (`html.embedded`).
@@ -61,7 +69,9 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   alerts) and **psychological** ones (`sleep_debt` / hazard `isolation`
   alerts, mood ≤ 2/5, short sleep, the circadian irregular-sleep card), each
   with pre-written "How you can help" advice (`ADVICE` in `captain.js`).
-  The Commander sees everything for everyone (decided 2026-11-14).
+  The Commander sees everything for everyone (decided 2026-11-14), their own
+  warnings included: that panel is tagged "you" and its advice says to see the
+  Crew Medical Officer (`SELF_ADVICE`).
 - **The astronaut console is DATA ONLY — no warnings** (decided by NotKaemy
   2026-11-14: "the crew members should not know what happened to them").
   It shows the person's own numbers against their own baseline, the chart,
@@ -78,14 +88,20 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   "Consider: …" suggestions from `meds.js` `onAlert`, always the CMO's
   decision. No medication data exists in the backend or spec yet.
 - **Commander and doctor poll** `GET /vitals` + `GET /alerts` every 3 s
-  (`AHM.watchCrew`) instead of 4 SSE streams each: browsers allow ~6
-  connections per host and the console + Ground already use 5 on one machine.
-  In `?mock` mode they use in-page mock streams.
+  (`AHM.watchCrew`) instead of 4 SSE streams each, and their own-data tabs
+  poll their own `GET /vitals` (`data-poll`): browsers allow ~6 connections
+  per host and the console + Ground already use 5 on one machine. In `?mock`
+  mode they use in-page mock streams.
 - `self-check.html` / `self-check.js` — the astronaut console (data only):
   body figure, vitals tiles vs baseline, Chart.js trend, check-in form
-  (`share_with_ground` off by default), sleep & light log.
-- `demo.html` left pane is the **Commander** (who learns first on board now
-  that crew consoles show no warnings); right pane is Ground.
+  (`share_with_ground` off by default), sleep & light log. **Its cards are
+  markup in `consoleMarkup()` at the end of `self-check.js`**, injected into
+  `<main id="console">` on `self-check.html`, `captain.html` and
+  `doctor.html`; edit them there. The tab list is the page's
+  `[data-tab-link]` entries.
+- `demo.html` left pane is the **Commander's Crew wellbeing tab**
+  (`captain.html#crew`; the Commander learns first on board now that crew
+  consoles show no warnings); right pane is Ground.
 - **Circadian (PROVISIONAL in the spec):** Self-check's Light & sleep card
   reads `GET /circadian?view=crew` — lighting chip, `card` text, 7-night
   bedtime chart, `recommendation` + source, and the share toggle

@@ -6,40 +6,65 @@
   <title>Commander · AHM</title>
   <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css">
+  <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body class="captain">
+<body class="captain selfcheck">
+  <!-- The Commander's profile: their own data (same data-only console as the
+       crew, no warnings about themselves on these tabs) plus the Crew
+       wellbeing tab with everyone's warnings. Hidden inside demo.html. -->
   <nav class="appnav area-onboard" aria-label="Commander">
     <a class="brand" data-href="index.html" href="index.html" title="Home">AHM</a>
     <span class="area-tag">Commander</span>
-    <div class="menu"><a data-href="captain.html" href="captain.html" aria-current="page">Crew wellbeing</a></div>
+    <div class="menu">
+      <a href="#health" data-tab-link="health">My health</a>
+      <a href="#checkin" data-tab-link="checkin">Check-in</a>
+      <a href="#sleep" data-tab-link="sleep">Sleep &amp; light</a>
+      <a href="#crew" data-tab-link="crew">Crew wellbeing <span id="crewCount" class="count" hidden></span></a>
+    </div>
     <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
   <header class="bar">
     <div>
-      <h1>Crew wellbeing</h1>
-      <div class="muted">Physical and psychological warnings for every crew member, with how you can help</div>
+      <h1>Commander</h1>
+      <div class="who"><strong id="name">…</strong> <span class="muted" id="role"></span></div>
     </div>
     <div class="status" aria-live="polite">
       <span id="conn" class="pill pill-wait">connecting…</span>
       <span><strong>Live</strong> · on board</span>
+      <span id="mission"></span>
+      <span>Your data: <strong id="age">—</strong></span>
     </div>
   </header>
 
-  <section class="captain-note">
-    <strong>Crew members don't see these warnings.</strong>
-    Their own console shows only their data, so whether and how to raise
-    anything is up to you: in person, in private. Medical questions go to the
-    Crew Medical Officer.
+  <!-- The Commander's own cards: consoleMarkup() in self-check.js. -->
+  <main id="console" class="sc-grid" data-crew-role="Commander" data-aid="a1" data-poll></main>
+
+  <section class="crew-tab" data-tab="crew">
+    <div class="tab-head">
+      <h2>Crew wellbeing</h2>
+      <span class="muted">Physical and psychological warnings for every crew member, with how you can help</span>
+      <span id="crewConn" class="pill pill-wait">connecting…</span>
+    </div>
+
+    <div class="captain-note">
+      <strong>Crew members don't see these warnings.</strong>
+      Their own console shows only their data, so whether and how to raise
+      anything is up to you: in person, in private. Medical questions go to the
+      Crew Medical Officer.
+    </div>
+
+    <div id="crewPanels" class="captain-grid"><p class="muted">Loading crew…</p></div>
   </section>
 
-  <main id="crewPanels" class="captain-grid"><p class="muted">Loading crew…</p></main>
-
-  <footer class="foot muted small">Decision support only — not a diagnosis. Keep psychological
-    information confidential and discuss it in private. Medical questions go to the Crew Medical Officer.</footer>
+  <footer class="foot muted small">Your own tabs show your data against your own baseline. Crew warnings
+    are decision support only, not a diagnosis: keep psychological information confidential and
+    discuss it in private. Medical questions go to the Crew Medical Officer.</footer>
 
   <script src="mock.js"></script>
   <script src="common.js"></script>
+  <script src="self-check.js"></script>
   <script src="captain.js"></script>
 </body>
 </html>
