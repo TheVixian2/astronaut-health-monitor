@@ -310,6 +310,13 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **App renamed to `dr.galactic`** (NotKaemy, 2026-11-14; lowercase, with the
+  dot). Done in the web on `web` (not merged yet): page titles, menu brand,
+  login / presenter / demo headings. **Luca / @stefanalbu2010-byte / @dbm711:**
+  `README.md`, root `CLAUDE.md`, the backend's FastAPI title and the slides
+  still say "Astronaut Health Monitor" — yours to rename. The repo name and
+  internal names (`window.AHM`, `ahm-session`) stay.
+
 - **Done — Self-check view (merged to `main`):** `web/self-check.html`. Alert
   banner with the verdict + one-line `onboard_action` + insight behind a
   toggle; clickable body figure (regions take their alert's severity colour);
