@@ -79,8 +79,16 @@ profile also stores `onboard_action` (one line for the watch) and `body_region`
    `git pull` and `git log --oneline -15`. Update your own section of
    `STATUS.md` whenever you merge or get blocked — it is the only place a cold
    session learns what the other two have been doing.
-3. One branch per feature, small PRs, merge to `main` every 2-3 hours.
-   **`main` must always run.**
+3. **One long-lived branch per lane** — `watch` (Luca), `backend` (S1eevee),
+   `web` (NotKaemy). Work on yours, push to it freely, never commit to `main`.
+   **Luca merges to `main`**, roughly every 2-3 hours. **`main` must always run.**
+   Because rule 1 keeps each lane inside its own folder, the branches touch
+   disjoint files and merges stay trivial.
+3b. **Shared files are edited on `main` directly, never on a lane branch** —
+   `CLAUDE.md`, `STATUS.md`, `docs/`, `presentation/`. These are the only files
+   all three of us touch, so keeping them off the branches is what stops merge
+   conflicts. `git checkout main`, pull, make the small commit, push, then
+   `git checkout <your lane>` again.
 4. Never edit `docs/api-spec.md` unless the owner asks.
 5. This file holds stable decisions only — not progress. Progress lives in the
    team's plan doc checklist.

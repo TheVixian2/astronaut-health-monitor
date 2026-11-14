@@ -25,11 +25,15 @@ Anything that changed in `docs/api-spec.md`, newest at the top.
 
 ## Watch — Luca
 
+Branch: `watch`
+
 - **Working:** Xcode project created (Watch-only, watchOS 27.2), builds clean.
 - **Next:** `VitalsSource` / `SimulatedSource` / `APIClient` / `ContentView`.
 - **Blocked on:** nothing.
 
 ## Backend — S1eevee (+ Luca later)
+
+Branch: `backend`
 
 - **Working:** nothing yet — Phase 2 not started.
 - **Next:** mock `main.py` returning canned data for every endpoint in the spec,
@@ -38,6 +42,8 @@ Anything that changed in `docs/api-spec.md`, newest at the top.
 - **Blocked on:** nothing.
 
 ## Web — NotKaemy
+
+Branch: `web`
 
 - **Working:** nothing yet — Phase 2 not started.
 - **Next:** `index.html` connecting to `/astronauts/a1/stream?view=crew` and
