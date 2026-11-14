@@ -58,8 +58,6 @@
 
   --body: #2b303b;                     /* body silhouette */
   --body-line: #3a3f4c;
-  --avatar-fg: #7d8494;                /* crew avatar: the silhouette, lighter for small sizes */
-  --avatar-bg: #1f2229;
   --lungs: #22325f;                    /* palette blue, darkened */
   --heart: var(--mars-dark);
   --region-hover: #2f3f6e;
@@ -112,8 +110,6 @@ html[data-light="pre_sleep"], html[data-light="off"] {
 
   --body: #2E211E;
   --body-line: #4E3A35;
-  --avatar-fg: #94776E;
-  --avatar-bg: #261B18;
   --lungs: #3B2723;
   --heart: var(--mars-dark);
   --region-hover: #4D2F28;
@@ -674,15 +670,41 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 .light-note { color: var(--onboard-fg); font-weight: 600; }
 
 /* ---- Commander + Crew Medical Officer ---------------------------------------- */
-/* Crew avatars (common.js AHM.avatar): the My health silhouette, head and shoulders. */
-.avatar { width: 48px; height: 48px; flex: none; border-radius: 50%; display: block;
-  background: var(--avatar-bg); color: var(--avatar-fg); fill: currentColor; stroke: currentColor; stroke-width: 1.2; }
-.avatar-sm { width: 24px; height: 24px; }
-.cc-who { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.person { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
+/* Whole-body crew avatars (common.js AHM.bodyFigure): the My health silhouette
+   and organs, the affected parts filled in their level's colour. */
+.body-fig { display: block; flex: none; width: 72px; height: auto; overflow: visible; }
+.body-fig .bf-part { fill: var(--body); stroke: var(--body); stroke-width: 1.2; }
+.body-fig .bf-heart > * { fill: var(--heart); stroke: var(--body-line); stroke-width: 1.2; }
+.body-fig .bf-lungs > * { fill: var(--lungs); stroke: var(--body-line); stroke-width: 1.2; }
+.body-fig .lv-info, .body-fig .lv-info > * { fill: var(--accent); stroke: var(--accent); }
+.body-fig .lv-watch, .body-fig .lv-watch > * { fill: var(--sev-watch); stroke: var(--sev-watch); }
+.body-fig .lv-alert, .body-fig .lv-alert > * { fill: var(--sev-alert); stroke: var(--sev-alert); }
+.body-fig .lv-critical, .body-fig .lv-critical > * { fill: var(--sev-critical); stroke: var(--sev-critical); }
+/* Whole body: an outline round the figure, as on My health. */
+.body-fig.whole-watch { filter: drop-shadow(1.5px 0 0 var(--sev-watch)) drop-shadow(-1.5px 0 0 var(--sev-watch)) drop-shadow(0 1.5px 0 var(--sev-watch)) drop-shadow(0 -1.5px 0 var(--sev-watch)); }
+.body-fig.whole-alert { filter: drop-shadow(1.5px 0 0 var(--sev-alert)) drop-shadow(-1.5px 0 0 var(--sev-alert)) drop-shadow(0 1.5px 0 var(--sev-alert)) drop-shadow(0 -1.5px 0 var(--sev-alert)); }
+.body-fig.whole-critical { filter: drop-shadow(1.5px 0 0 var(--sev-critical)) drop-shadow(-1.5px 0 0 var(--sev-critical)) drop-shadow(0 1.5px 0 var(--sev-critical)) drop-shadow(0 -1.5px 0 var(--sev-critical)); }
+/* Crew wellbeing card: the figure on the left, everything else beside it. */
+.cp-layout { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 20px; flex: 1; }
+.cp-fig { padding-top: 4px; }
+.cp-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .warn .head.head-person { align-items: center; }
 .warn .med-line { margin: 4px 0 2px; }
-#schedule .person { align-items: flex-start; }   /* avatar beside the first line when the name wraps */
+/* Medications: the crew in a row, whole body, what each medicine is for. */
+.med-crew { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 16px; }
+@media (max-width: 1100px) { .med-crew { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .med-crew { grid-template-columns: minmax(0, 1fr); } }
+.mc-card { display: flex; gap: 14px; align-items: flex-start; padding: 14px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--r-plate); }
+.mc-card .body-fig { width: 56px; }
+.mc-text { min-width: 0; }
+.mc-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: var(--t-sm); }
+.mc-list .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--line-strong); }
+.mc-list .lv-info .dot { background: var(--accent); }
+.mc-list .lv-watch .dot { background: var(--sev-watch); }
+.mc-list .lv-alert .dot { background: var(--sev-alert); }
+.mc-list .lv-critical .dot { background: var(--sev-critical); }
+.mc-list .lv-none { color: var(--muted); }
 /* Crew wellbeing: the four crew members 2 x 2, cards in a row the same height. */
 .captain-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 @media (max-width: 900px) { .captain-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -123,14 +123,11 @@
     addEventListener("DOMContentLoaded", applyZoom);   // Chart.js may load after this script
   }
 
-  // ---- the console follows the module's lighting (style.css, html[data-light]) ----
-  // self-check.js sets the mode from GET /circadian; here we only restore the
-  // last known mode on console pages (no silver flash in Pre-sleep), or take
-  // ?light=pre_sleep for a demo on any page.
+  // ---- colour scheme (style.css, html[data-light]) ----------------------------
+  // Always the dark theme (owner, 2026-11-14). Only ?light=pre_sleep (or off)
+  // shows the warm set, for a demo, on any page.
   {
-    const consolePage = ["self-check.html", "captain.html", "doctor.html"].includes(page);
-    let light = new URLSearchParams(location.search).get("light");
-    if (!light && consolePage) { try { light = sessionStorage.getItem("ahm-light"); } catch { /* none */ } }
+    const light = new URLSearchParams(location.search).get("light");
     if (light) document.documentElement.dataset.light = light;
   }
 

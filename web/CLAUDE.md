@@ -221,10 +221,20 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   (localStorage per astronaut, `ahm-body-sex`), else a `sex` field on
   `GET /crew` if the backend adds one, else the demo default `DEFAULT_SEX`
   (a1 Elena, a3 Sara female; a2 Mihai, a4 Jonas male).
-- **Crew avatars** (owner, 2026-11-14): every crew member on the Commander's
-  Crew wellbeing cards and on the Medical Officer's Medications tab (both lists)
-  gets `AHM.avatar(member)`: the same silhouette, head and shoulders in a
-  circle, male or female by `sexOf`, so it always matches their My health card.
+- **Crew avatars are whole-body figures with the affected parts lit up**
+  (owner, 2026-11-14; "whole body avatars on which the affected body parts get
+  highlighted", not head-and-shoulders). `AHM.bodyFigure(member, hits)`: the
+  My health silhouette and organs, male or female by `sexOf`; `hits` maps a
+  part (head, heart, lungs, skin = arms and legs, torso, whole_body = outline)
+  to watch / alert / critical, or info (blue: on treatment, nothing due).
+  `AHM.addHit` keeps the most urgent level per part.
+  - Commander's Crew wellbeing: a figure on the left of every card. Alerts
+    light their `body_region`; low mood, short sleep, irregular sleep timing
+    and a wellbeing check above steady light the head.
+  - Medications: a row of the four crew above the lists, each with what their
+    medicines are for (`region` / `area` per entry in `meds.js`): overdue
+    orange, due now yellow, later today blue, given goes back to normal; alert
+    suggestions light the alert's body part. The lists themselves show names.
 - **Bone density and muscle mass** (owner, 2026-11-14: the crew has a
   portable X-ray machine; replaced "skeletal mass" the same day). From a
   weekly DXA scan: `bone_density_g_cm2` (whole-body bone mineral density,
@@ -276,10 +286,10 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   Sentence case everywhere: no ALL-CAPS labels, no "A · B · C" strings, no
   "→" on links. The six vitals are **one instrument strip** (cells divided by
   rules, charted one marked with a Mars-red top bar), not six cards.
-  **The console follows the module's lighting:** in Pre-sleep or lights off
-  (`GET /circadian` → `lighting.mode`) `html[data-light]` switches to a
-  warm, blue-free set, with "Pre-sleep light: screen dimmed" in the header.
-  Add `?light=pre_sleep` to any URL to show it in a demo.
+  **Always this dark theme** (owner, 2026-11-14): the console used to switch to
+  a warm, blue-free set when the module's lighting went to Pre-sleep or off;
+  that automatic switch is gone (the owner saw it as the colours changing).
+  The warm set still exists for a demo: add `?light=pre_sleep` to any URL.
 - The long Claude explanation (`insight.why` / `trend` / `recommended_action`)
   is shown **here only** — the watch gets just the one-line `onboard_action`.
 - `insight` can be `null`; render the alert without it rather than waiting.

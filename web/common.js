@@ -458,14 +458,38 @@
     return storedSex(id) || normSex(member && member.sex) || DEFAULT_SEX[id] || "male";
   }
 
-  // A crew member's avatar: the same silhouette as on My health, cropped to head
-  // and shoulders in a circle (style.css .avatar). Decorative: the name is
-  // always next to it.
-  const AVATAR_PARTS = ["armL", "armR", "torso", "earL", "earR", "head"];   // paint order; legs are out of frame
-  function avatar(member, cls = "") {
+  // Heart and lungs, drawn over the torso (the My health body card uses these too).
+  const BODY_ORGANS = {
+    heart: `<rect x="96.3" y="88.3" width="3.7" height="17.2" rx="1.6"/> <rect x="101.3" y="82.6" width="2" height="7.4" rx="1"/> <rect x="104.1" y="80.9" width="2" height="8.2" rx="1"/> <rect x="107.1" y="82.6" width="2" height="6.6" rx="1"/> <path d="M 100.4 104.7 L 100.4 94.9 C 100.4 86.7 111.5 86.7 111.5 94.1 L 111.5 100.6 L 107.8 100.6 L 107.8 94.5 C 107.8 90.8 104.1 90.8 104.1 94.9 L 104.1 104.7 Z"/> <path d="M 95.9 103.1 C 92.6 108.8 92.6 117 96.7 122.8 C 101.6 127.7 111.5 128.5 119.7 126 C 123 124.4 123 121.1 122.1 117.8 C 120.5 112.1 117.2 105.5 112.3 102.3 C 107.4 99.8 100.8 100.6 95.9 103.1 Z"/>`,
+    lungs: `<path d="M 86.9 67.8 C 78.7 71.1 72.1 87.5 71.3 108 C 70.5 118.7 71.3 125.2 73.8 128.5 Q 84.4 118.7 95.1 125.2 C 96.7 112.1 95.9 87.5 94.3 74.4 C 92.6 69.5 90.2 67 86.9 67.8 Z"/> <path d="M 113.1 67.8 C 121.3 71.1 127.9 87.5 128.7 108 C 129.5 118.7 128.7 125.2 126.2 128.5 Q 121.3 121.9 117.2 126.9 C 120.5 120.3 122.1 109.6 115.6 103.1 C 109.8 98.2 105.7 90.8 105.7 74.4 C 107.4 69.5 109.8 67 113.1 67.8 Z"/>`,
+  };
+
+  // A crew member's whole-body avatar (owner, 2026-11-14): the My health
+  // silhouette, male or female by sexOf, with the affected parts filled in
+  // their severity colour (style.css .body-fig).
+  //   hits: { part: level }, part one of head, heart, lungs, skin (arms and
+  //   legs, as on My health), torso, whole_body (outlines the whole figure);
+  //   level watch | alert | critical, or info (on treatment, nothing due).
+  // Decorative: the text next to it says the same, so it is aria-hidden.
+  const FIGURE_LIMBS = ["armL", "armR", "legL", "legR"];
+  function bodyFigure(member, hits = {}, cls = "") {
     const sex = sexOf(member), s = BODY_SHAPES[sex];
-    return `<svg class="avatar ${cls}" data-sex="${sex}" viewBox="50 2 100 100" aria-hidden="true" focusable="false">` +
-      AVATAR_PARTS.map(p => `<path d="${s[p]}"/>`).join("") + "</svg>";
+    const lv = part => (hits[part] ? ` lv-${hits[part]}` : "");
+    const paths = list => list.map(p => `<path d="${s[p]}"/>`).join("");
+    const whole = hits.whole_body ? ` whole-${hits.whole_body}` : "";
+    return `<svg class="body-fig${whole} ${cls}" data-sex="${sex}" viewBox="20 2 160 392" aria-hidden="true" focusable="false">` +
+      `<g class="bf-part${lv("skin")}" data-part="skin">${paths(FIGURE_LIMBS)}</g>` +
+      `<g class="bf-part${lv("torso")}" data-part="torso">${paths(["torso"])}</g>` +
+      `<g class="bf-heart${lv("heart")}" data-part="heart">${BODY_ORGANS.heart}</g>` +
+      `<g class="bf-lungs${lv("lungs")}" data-part="lungs">${BODY_ORGANS.lungs}</g>` +
+      `<g class="bf-part${lv("head")}" data-part="head">${paths(["earL", "earR", "head"])}</g></svg>`;
+  }
+  // Most urgent level per part, for bodyFigure: add(hits, part, level).
+  const LEVEL_RANK = { info: 0, watch: 1, alert: 2, critical: 3 };
+  function addHit(hits, part, level) {
+    if (!part || !level) return hits;
+    if (!(part in hits) || LEVEL_RANK[level] > LEVEL_RANK[hits[part]]) hits[part] = level;
+    return hits;
   }
 
   window.AHM = {
@@ -475,7 +499,7 @@
     verdict, deltaPct, dur, fmt, esc, profileName,
     withStress, stressBand, withScan, thresholdLevel,
     withCycle, cycleFor, cycleAt, setCycle, CYCLE_SHIFT,
-    BODY_SHAPES, normSex, rememberSex, sexOf, avatar,
+    BODY_SHAPES, BODY_ORGANS, normSex, rememberSex, sexOf, bodyFigure, addHit,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 

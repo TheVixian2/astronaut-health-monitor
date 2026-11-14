@@ -88,8 +88,7 @@
     $("clock").textContent = now.toISOString().slice(11, 16);
     const list = doses(now);
     const who = aid => names.get(aid) || aid;
-    // Name with the crew member's avatar (the My health silhouette, by sex).
-    const person = aid => `<span class="person">${A.avatar(members.get(aid) || { id: aid }, "avatar-sm")}<strong>${esc(who(aid))}</strong></span>`;
+    const person = aid => `<strong>${esc(who(aid))}</strong>`;
 
     // Needs attention: overdue first, then due now, then alert-linked suggestions.
     const attn = [
@@ -115,6 +114,7 @@
       <div class="actions"><button type="button" data-prn="${esc(a.id)}" data-what="given">Mark given</button>
         <button type="button" class="link" data-prn="${esc(a.id)}" data-what="dismissed">Not needed</button></div></li>`;
 
+    renderCrew(list, sugg);
     $("attention").innerHTML = n
       ? attn.map(doseItem).join("") + sugg.map(suggItem).join("")
       : '<li class="muted">Nothing due right now.</li>';
@@ -127,6 +127,42 @@
 
     document.querySelectorAll("[data-give]").forEach(b => b.addEventListener("click", () => mark(b.dataset.give, "given")));
     document.querySelectorAll("[data-prn]").forEach(b => b.addEventListener("click", () => mark(`prn|${b.dataset.prn}`, b.dataset.what)));
+  }
+
+  // ---- the crew, whole body (owner, 2026-11-14) ---------------------------------
+  // One whole-body avatar per crew member, the body parts their medicines are
+  // for lit up: overdue orange, due now yellow, later today blue; given today
+  // goes back to normal. Alert suggestions light their alert's body part.
+  // (Lookups inside the function: init() renders before the file has run to here.)
+  function renderCrew(list, sugg) {
+    const DOSE_LEVEL = { overdue: "alert", due: "watch", upcoming: "info" };
+    const DOSE_RANK = { overdue: 3, due: 2, upcoming: 1, given: 0 };
+    const aids = members.size ? [...members.keys()] : [...new Set(PLAN.schedule.map(m => m.aid))];
+    $("medCrew").innerHTML = aids.map(aid => {
+      const m = members.get(aid) || { id: aid };
+      // Per medicine: its most urgent dose today.
+      const meds = new Map();
+      for (const d of list.filter(x => x.aid === aid)) {
+        const cur = meds.get(d.drug);
+        if (!cur || DOSE_RANK[d.status] > DOSE_RANK[cur.status]) meds.set(d.drug, d);
+      }
+      const hits = {}, rows = [];
+      for (const d of meds.values()) {
+        A.addHit(hits, d.region, DOSE_LEVEL[d.status]);
+        const when = d.status === "overdue" ? "overdue" : d.status === "due" ? "due now"
+          : d.status === "given" ? "given" : `next ${d.time}`;
+        rows.push(`<li class="lv-${DOSE_LEVEL[d.status] || "none"}"><span class="dot"></span>${esc(d.area || "")}: ${esc(d.drug)}, ${esc(when)}</li>`);
+      }
+      for (const { alert: a, med } of sugg.filter(s => s.alert.astronaut_id === aid)) {
+        A.addHit(hits, a.body_region || "whole_body", a.severity);
+        rows.push(`<li class="lv-${esc(a.severity)}"><span class="dot"></span>${esc(A.REGION_NAMES[a.body_region] || "Whole body")}: consider ${esc(med.drug)}</li>`);
+      }
+      return `<article class="mc-card">
+        ${A.bodyFigure(m, hits)}
+        <div class="mc-text"><strong>${esc(m.name || aid)}</strong><div class="muted small">${esc(m.role || "")}</div>
+          <ul class="mc-list">${rows.join("") || '<li class="muted">No medicines today</li>'}</ul></div>
+      </article>`;
+    }).join("");
   }
 
   function statusText(d) {

@@ -339,7 +339,7 @@
     if (!live) return;
 
     const L = circ.lighting || {};
-    setLight(L.mode);
+    setLight();
     const since = L.since ? `, since ${utcTime(L.since)}` : "";
     $("lightChip").textContent = L.mode === "off" ? `Lights off${since}`
       : `${A.LIGHTING_NAMES[L.mode] || L.mode} light, ${L.cct_k} K${since}`;
@@ -551,21 +551,21 @@
     el.className = s > STALE_S ? "stale" : "";
   }
 
-  // ---- the console follows the module's lighting -----------------------------
-  // Pre-sleep (2700 K) or lights off: html[data-light] switches style.css to the
-  // dark, warm, blue-free set, as the Sleep & light tab advises. ?light=… (set
-  // by auth.js) overrides it for a demo. The chart reads colours from CSS, so
-  // it is rebuilt when the light changes.
+  // ---- colour scheme ---------------------------------------------------------
+  // Always the dark theme (owner, 2026-11-14): the page no longer switches to
+  // the warm Pre-sleep palette with the module's lighting (`mode` is ignored;
+  // the Sleep & light tab still shows the lighting). ?light=pre_sleep or
+  // ?light=off on the URL (set by auth.js) still shows the warm set for a demo.
+  // The chart reads colours from CSS, so it is rebuilt when the set changes.
   const forcedLight = new URLSearchParams(location.search).get("light");
-  function setLight(mode) {
-    const want = forcedLight || mode || "general";
+  function setLight() {
+    const want = forcedLight || "general";
     if ($("lightNote")) $("lightNote").hidden = !(want === "pre_sleep" || want === "off");
     if (document.documentElement.dataset.light === want) return;
     document.documentElement.dataset.light = want;
-    try { sessionStorage.setItem("ahm-light", want); } catch { /* fine without */ }
     if (chart) setTimeout(rebuildChart, 850);   // after the CSS colour fade
   }
-  setLight(document.documentElement.dataset.light);   // note for a mode restored by auth.js
+  setLight();
 
   function setConn(text, cls) { const el = $("conn"); el.textContent = text; el.className = `pill ${cls}`; }
 
@@ -650,20 +650,14 @@
              superior vena cava on the astronaut's right, the aortic arch with
              its three branches. -->
         <g class="region" data-region="heart" tabindex="0" role="button" aria-label="Heart">
-          <rect x="96.3" y="88.3" width="3.7" height="17.2" rx="1.6"/>
-          <rect x="101.3" y="82.6" width="2" height="7.4" rx="1"/>
-          <rect x="104.1" y="80.9" width="2" height="8.2" rx="1"/>
-          <rect x="107.1" y="82.6" width="2" height="6.6" rx="1"/>
-          <path d="M 100.4 104.7 L 100.4 94.9 C 100.4 86.7 111.5 86.7 111.5 94.1 L 111.5 100.6 L 107.8 100.6 L 107.8 94.5 C 107.8 90.8 104.1 90.8 104.1 94.9 L 104.1 104.7 Z"/>
-          <path d="M 95.9 103.1 C 92.6 108.8 92.6 117 96.7 122.8 C 101.6 127.7 111.5 128.5 119.7 126 C 123 124.4 123 121.1 122.1 117.8 C 120.5 112.1 117.2 105.5 112.3 102.3 C 107.4 99.8 100.8 100.6 95.9 103.1 Z"/>
+          ${A.BODY_ORGANS.heart}
         </g>
         <!-- Lungs: narrow rounded apex just above the collarbone, broad base curving
              over the diaphragm dome, straight inner (medial) border. The
              astronaut's left lung (viewer's right) is narrower and has the
              cardiac notch where the heart shows through. -->
         <g class="region" data-region="lungs" tabindex="0" role="button" aria-label="Lungs">
-          <path d="M 86.9 67.8 C 78.7 71.1 72.1 87.5 71.3 108 C 70.5 118.7 71.3 125.2 73.8 128.5 Q 84.4 118.7 95.1 125.2 C 96.7 112.1 95.9 87.5 94.3 74.4 C 92.6 69.5 90.2 67 86.9 67.8 Z"/>
-          <path d="M 113.1 67.8 C 121.3 71.1 127.9 87.5 128.7 108 C 129.5 118.7 128.7 125.2 126.2 128.5 Q 121.3 121.9 117.2 126.9 C 120.5 120.3 122.1 109.6 115.6 103.1 C 109.8 98.2 105.7 90.8 105.7 74.4 C 107.4 69.5 109.8 67 113.1 67.8 Z"/>
+          ${A.BODY_ORGANS.lungs}
         </g>
         <g class="region" data-region="head" tabindex="0" role="button" aria-label="Head">
           <path data-part="earL" d="M81.6 32.5 C81 30.1 79 30.6 78.3 31.4 C77.6 32.1 77.1 34.9 77.2 36.9 C77.3 39 78 42.1 78.9 43.6 C79.7 45.1 81.7 47.7 82.2 45.8 C82.7 44 82.3 34.9 81.6 32.5 Z"/>
