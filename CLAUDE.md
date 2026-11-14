@@ -75,7 +75,10 @@ profile also stores `onboard_action` (one line for the watch) and `body_region`
 ## Coordination rules
 
 1. Each person edits only their own folder. Shared decisions go in this file.
-2. Run `git pull` before every Claude Code session.
+2. **Start every Claude Code session by reading `STATUS.md`**, then
+   `git pull` and `git log --oneline -15`. Update your own section of
+   `STATUS.md` whenever you merge or get blocked — it is the only place a cold
+   session learns what the other two have been doing.
 3. One branch per feature, small PRs, merge to `main` every 2-3 hours.
    **`main` must always run.**
 4. Never edit `docs/api-spec.md` unless the owner asks.
