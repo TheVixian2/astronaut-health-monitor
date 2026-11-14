@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Astronaut Health Monitor backend. The contract is docs/api-spec.md.
 
 Heart rate for a1 comes from the watch (POST /ingest). Every other vital, and all
@@ -108,6 +109,7 @@ class Insight(BaseModel):
     why: str
     trend: str
     recommended_action: str
+    source: Literal["claude", "on_board"] = "on_board"  # claude: AI-generated, labelled so on screen
 
 
 class Confirmation(BaseModel):  # PROVISIONAL
@@ -808,7 +810,7 @@ async def attach_insight(s: AstronautState, alert: Alert, v: dict, ctx: engine.C
         result = await insight_service.generate_insight(
             alert.profile, v, b, onboard_action=alert.onboard_action,
             act_within_s=alert.act_within_s, one_way_delay_s=mission.real_one_way_delay_s, fallback=fallback)
-    alert.insight = Insight(**result.model_dump())
+    alert.insight = Insight(**result.model_dump(), source="on_board" if result is fallback else "claude")
     store.set_insight(alert.model_dump(mode="json"))
     publish_alert(s, alert)
 

@@ -97,6 +97,32 @@ Simulator**. Requires Xcode 16+. The Simulator reaches the backend over
 Optionally, `tools/simulate_crew.py` drives the other three crew members and can
 seed baseline history (`--seed-baseline`) for an instant demo.
 
+## Use of AI (Super Intelligence, SI)
+
+Disclosed as the NASA Space Apps submission guide requires for code and data.
+
+- **The idea and the design decisions are the team's.** The focus on behavioral
+  health, commander-first release, the hygiene privacy rule (Mission Control
+  sees who, the commander sees hours only) and "proven signals only" were decided
+  by the team. AI did not come up with the solution.
+- **Code: written with AI assistance.** The team used **Claude Code**
+  (Anthropic; models Claude Opus 5 and Opus 5.5) to write and edit the backend,
+  web app and watch app, from our instructions, and we reviewed and ran the
+  result. Commits made through Claude Code carry a `Co-Authored-By: Claude`
+  line, and every source file has a header comment saying it was written with AI assistance.
+- **Research and docs.** Claude helped search for and summarize studies and NASA
+  sources and draft the docs in `docs/`. Each cited source was checked against the
+  original paper or NASA page; they are listed with links in `docs/nasa-data.md` and on the Data sources page.
+- **AI inside the app (runtime).** The backend calls Claude (`claude-sonnet-5-5`
+  by default, `backend/insight_service.py`) for two things only: the plain-language
+  explanation of an alert raised from physical readings, and the watch's *Ask*
+  and *Why?* answers. It only ever sends physical readings; **psychological data is never sent to a
+  cloud model**. Every Claude answer is labelled **"AI-generated (Claude)"** on
+  screen. Without an API key, during a communications blackout, or if Claude is
+  unreachable, the app uses fixed on-board text instead, labelled "On board".
+- **No AI-generated images, video or audio** are in the app or repo. Screenshots
+  are of the running app.
+
 ## Docs
 
 - `CLAUDE.md` — locked decisions, condition profiles, team lanes, coordination rules.

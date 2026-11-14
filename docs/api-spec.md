@@ -115,13 +115,18 @@ The stream opens with a comment line: `: connected view=crew one_way_delay_s=20`
   "onboard_action": "one pre-written line — the only text the watch shows",
   "act_within_s": 600,
   "ground_eta_s": 1320,
-  "insight": { "why": "...", "trend": "...", "recommended_action": "..." }
+  "insight": { "why": "...", "trend": "...", "recommended_action": "...", "source": "claude|on_board" }
 }
 ```
 
 `insight` is `null` until the Claude call returns, and **null is a valid final
 state** — render the alert without it. Web app only; the watch shows
 `onboard_action` and nothing else.
+
+`insight.source` is `"claude"` when Claude wrote it (show it labelled
+"AI-generated (Claude)") and `"on_board"` for the fixed on-board text (no key,
+blackout, Claude unavailable, or a psychological alert, which never goes to a
+cloud model).
 
 Alerts fire **only on a NEW match**, not on every tick while the condition
 persists. That gate is what stops repeated Claude calls.

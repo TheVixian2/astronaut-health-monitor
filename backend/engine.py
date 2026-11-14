@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Condition engine: each astronaut against their OWN baseline, never a population threshold.
 
 This module answers "does a profile match right now?" and

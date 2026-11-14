@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Astronaut console: a crew member's own data. Live (view=crew).
 //
 // DATA ONLY, NO WARNINGS (decision, NotKaemy 2026-11-14): crew members see

@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Debug page: connect to /astronauts/{id}/stream over SSE and show exactly
 // what arrives. Alerts are upserted by id (the backend re-sends an alert with
 // the same id once its insight is ready).
@@ -80,7 +81,8 @@
     if (!alerts.size) { ul.innerHTML = '<li class="muted">No alerts yet.</li>'; return; }
     ul.innerHTML = [...alerts.values()].reverse().map(a => {
       const ins = a.insight
-        ? `<dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd><dt>Trend</dt><dd>${esc(a.insight.trend)}</dd>` +
+        ? `<p class="muted small">${a.insight.source === "claude" ? "AI-generated (Claude)" : "On board"}</p>` +
+          `<dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd><dt>Trend</dt><dd>${esc(a.insight.trend)}</dd>` +
           `<dt>Suggested</dt><dd>${esc(a.insight.recommended_action)}</dd></dl>`
         : '<p class="muted small">Explanation pending…</p>';
       return `<li class="alert sev-${esc(a.severity)}">

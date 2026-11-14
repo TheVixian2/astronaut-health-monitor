@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Accuracy check for the psychological profile, on simulated crews.
 
 For each random seed: write six weeks of history (tools/simulate_crew.py) into a throwaway

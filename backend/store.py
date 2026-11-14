@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """SQLite persistence: samples, alerts and check-ins survive restarts.
 
 All live writes go through one background thread, so a slow disk never blocks a

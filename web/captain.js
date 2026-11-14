@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Commander, "Crew wellbeing" tab: every crew member's physical and
 // psychological warnings, each with advice on how the Commander can help. On
 // board, so not delayed. The page's other tabs are the Commander's own data

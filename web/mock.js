@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // In-page stand-in for the backend's SSE stream, for working without a backend.
 // Mirrors backend/main.py (mock) on the `backend` branch:
 //   - `vitals` every 3 s: mean-reverting random walk around a per-astronaut baseline

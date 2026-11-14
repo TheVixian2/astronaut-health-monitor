@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Circadian rhythm: a countermeasure loop built on the on-board lighting (PROVISIONAL).
 
 The loop: detect body-clock drift -> suggest a lighting plan -> verify sleep improved.
