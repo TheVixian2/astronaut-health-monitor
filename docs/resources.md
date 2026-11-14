@@ -94,6 +94,19 @@ cheap and make "we use NASA data" true:
 | **Papers**: Barger 2014 (ISS sleep about 6 h), Stahn 2017 (core temperature rises in long spaceflight), Zeitlin 2013 (MSL-RAD cruise dose) | Simulation ranges and pitch numbers | Cited by other teams too |
 | **Research report** — `C:\Users\Stefan\Desktop\astro-health\docs\research.md` (stefanalbu2010-byte's PC) | About 80 cited sources on astronaut self-monitoring, with confidence labels | Can be added to the repo if useful |
 
+## Light, circadian rhythm and immunity (suggested by our mentor/judge)
+
+| Resource | What it gives us | Status |
+|---|---|---|
+| **NASA ISS Solid-State Lighting Assembly (SSLA)**: https://ntrs.nasa.gov/citations/20160005080 · https://ntrs.nasa.gov/api/citations/20200011570/downloads/20200011570.pdf | ISS LED lighting with 3 modes: **General 4500K** (daytime), **Pre-sleep 2700K** (blue-depleted, so less melatonin suppression), **Phase-shift 6500K** (blue-enriched, for shifting sleep). The values differ slightly between documents. | found (check the exact numbers) |
+| **DarkSky International** (formerly IDA): https://darksky.org | Light-pollution advocacy. Recommends **3000K or lower**, fully shielded, dimmable lights. **The site blocks scripts**, so open it in a browser. | found (via search) |
+| DarkSky: *Artificial Light at Night: State of the Science 2022*: https://darksky.org/app/uploads/2022/06/SOTS-post-final-version-220527.pdf | Blue light's effect on circadian rhythm depends on intensity and timing | found |
+| DarkSky: *Blue-rich light white paper*: https://darksky.org/app/uploads/bsk-pdf-manager/8_IDA-BLUE-RICH-LIGHT-WHITE-PAPER.PDF | Blue-rich light at night suppresses melatonin. **It also says the health evidence "permits no firm conclusions"**, so we quote it honestly. | found |
+| *Light at night disrupts biological clocks, calendars, and immune function* (Semin. Immunopathol. 2021): https://pmc.ncbi.nlm.nih.gov/articles/PMC8564795 | Review: light at night suppresses melatonin, alters clock genes, and affects innate and adaptive immunity. **Mostly animal evidence.** | found |
+| *Protecting the melatonin rhythm through circadian healthy light exposure*: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4284776/ | Melatonin suppression peaks around **460 nm (blue)** | found |
+| *Latent virus reactivation in ISS astronauts* (Frontiers Microbiol. 2019): https://www.frontiersin.org/journals/microbiology/articles/10.3389/fmicb.2019.00016/full | Shedding of herpesviruses (VZV, EBV, CMV) rises in spaceflight. Changes are associated with the **daily cortisol rhythm**. This is an association, not proof of cause. | found |
+| *Astroimmunology* review (Nat Rev Immunol 2025): https://vivo.weill.cornell.edu/display/pubid41102553 | Lists abnormal circadian rhythms among the spaceflight factors that disrupt immune cells | found (abstract only) |
+
 ## Competition note
 
 Lots of teams are on this same challenge, and several already use **NASA OSDR

@@ -139,3 +139,34 @@ Append freely. Dated bullets. Unsorted is fine.
 - **The only targeted partner resource is CSA radiation monitoring.** Cutting `spe`
   completely would drop it. A light radiation display (dose per environment, OSDR RadLab)
   keeps it in.
+## 2026-11-14 — light, circadian rhythm and the immune system (from our mentor/judge)
+
+- **A judge raised this, so show we listened.** Mentor/judge explained how blue light
+  and circadian rhythm affect the immune system and pointed us to DarkSky
+  (https://darksky.org). Sources are in `docs/resources.md` under "Light, circadian rhythm
+  and immunity".
+- **The chain in one sentence:** blue light (~460 nm) at the wrong time suppresses
+  melatonin and shifts the body clock, which hurts sleep, and a disrupted clock
+  dysregulates the immune system.
+- **Why it's worse in space:** the ISS sees ~16 sunrises a day and all light is
+  artificial. Crews sleep ~6 h, and dormant herpesviruses (VZV, EBV, CMV) reactivate
+  more often in flight, linked to changes in the daily cortisol rhythm. **Say
+  "associated with", not "causes".**
+- **NASA already treats light as medicine:** the ISS LED lights have a **pre-sleep mode
+  (2700K, blue-depleted)** and a **phase-shift mode (6500K, blue-enriched)**, plus 4500K
+  for daytime. Strong slide: "NASA changes the colour of the station's light to protect
+  the crew's clock".
+- **What we can build cheaply (ask Luca, the check-in would need a new optional field):**
+  1. Check-in question: "screens or bright light in the last hour before sleep?"
+     and/or bedtime, so we can see whether sleep timing is irregular.
+  2. Recommendation text that uses NASA's own modes: "Switch your module to *pre-sleep*
+     lighting 1 h before bed; avoid screens." Our `sleep_debt` action already says
+     "dim lights 1 h before, no screens", so cite the SSLA there.
+  3. Self-check card: "Your sleep timing varied by 2 h this week. Irregular light and
+     sleep can weaken immune defence." Decision support, never a diagnosis.
+- **Impact on Earth (ties to the CSA "why science in space" resource):** shift workers,
+  night-shift nurses, polar crews, and everyone under light pollution. DarkSky's
+  guidance (≤3000K, shielded, dimmable) is the Earth-side version of the ISS pre-sleep mode.
+- **Be honest about evidence:** most immune findings come from animal studies, and
+  DarkSky's own white paper says the health evidence "permits no firm conclusions".
+  Saying that out loud makes us look *more* credible to a judge.
