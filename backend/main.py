@@ -23,6 +23,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+import circadian
+
 TICK_S = 3
 AUTO_ALERT_EVERY_S = int(os.getenv("MOCK_AUTO_ALERT_S", "60"))  # 0 turns it off
 INSIGHT_DELAY_S = 2  # mock "Claude is thinking" delay before insight arrives
@@ -169,13 +171,15 @@ PROFILES = {
                                "a headache if you have one.")),
     "sleep_debt": dict(
         severity="watch", hazard="isolation", body_region="head", act_within_s=86400,
-        onboard_action="Protect tonight's sleep: dim lights 1 h before, no screens, use the eye mask.",
+        onboard_action="Consider pre-sleep lighting (2700K) 1 h before bed, screens aside, eye mask.",
         insight=Insight(
             why="Short sleep for several nights, lower mood and a raised resting heart rate together "
                 "may indicate accumulating sleep debt and strain.",
             trend="Sleep about 30% under your usual, mood down to 2/5, resting heart rate up ~8%.",
-            recommended_action="Prioritise sleep tonight and consider a private conference with the "
-                               "flight surgeon or a talk with a crewmate.")),
+            recommended_action="You might consider protecting tonight's sleep: the station's pre-sleep "
+                               "lighting mode (2700K, less blue light) about 1 h before bed can help. "
+                               "A private conference with the flight surgeon or a talk with a crewmate "
+                               "is always an option.")),
     "sans": dict(
         severity="watch", hazard="gravity", body_region="head", act_within_s=86400,
         onboard_action="Do an Amsler grid and acuity check today; log any headache.",
@@ -197,6 +201,7 @@ class AstronautState:
         self.id = aid
         self.name, self.role, self.baseline = CREW[aid]
         self.values = {k: float(v) for k, v in self.baseline.model_dump().items()}
+        self.values["sleep_h_last_night"] = circadian.last_sleep_h(aid)
         self.real_hr: Optional[tuple[float, float, str]] = None  # watch (bpm, loop time, source)
         self.alerts: list[Alert] = []
         self.active: dict[str, Alert] = {}  # profile -> alert
@@ -208,8 +213,9 @@ class AstronautState:
             v = self.values[field]
             self.values[field] = v + random.gauss(0, step) + (getattr(self.baseline, field) - v) * 0.1
         self.values["spo2_pct"] = min(self.values["spo2_pct"], 100.0)
-        for field in ("sleep_h_last_night", "mood_1to5"):
-            self.values[field] = self.manual.get(field, getattr(self.baseline, field))
+        # Last night's sleep comes from the on-board lighting log unless the check-in says otherwise.
+        self.values["sleep_h_last_night"] = self.manual.get("sleep_h_last_night", circadian.last_sleep_h(self.id))
+        self.values["mood_1to5"] = self.manual.get("mood_1to5", self.baseline.mood_1to5)
 
     def snapshot(self) -> Vitals:
         v = self.values
@@ -405,3 +411,28 @@ async def debug_scenario(body: ScenarioRequest) -> Accepted:
     # Stub: accepted and ignored until the post-pivot scenario enum is in the spec.
     get_state(body.astronaut_id)
     return Accepted()
+
+
+# --- Circadian / lighting (PROVISIONAL, not yet in docs/api-spec.md) ------------
+# Private by default: the ground view gets 403 unless the astronaut shares it.
+
+@app.get("/astronauts/{aid}/circadian")
+async def get_circadian(aid: str, view: Literal["crew", "ground"] = "crew") -> circadian.Circadian:
+    get_state(aid)
+    if view == "ground" and not circadian.is_shared(aid):
+        raise HTTPException(403, "Not shared: the astronaut keeps sleep and lighting data private.")
+    return circadian.assess(aid, now())
+
+
+@app.put("/astronauts/{aid}/circadian/sharing")
+async def put_circadian_sharing(aid: str, body: circadian.SharingRequest) -> circadian.SharingRequest:
+    get_state(aid)
+    circadian.set_shared(aid, body.share_with_ground)
+    return body
+
+
+@app.put("/astronauts/{aid}/lighting")
+async def put_lighting(aid: str, body: circadian.LightingRequest) -> circadian.Lighting:
+    # Records the crew's own switch of the SSLA mode; the app never changes it by itself.
+    get_state(aid)
+    return circadian.set_lighting(aid, body.mode, now())
