@@ -437,7 +437,12 @@
   // Links marked data-href keep ?mock / ?base / ?aid when moving between pages.
   document.querySelectorAll("a[data-href]").forEach(a => { a.href = linkWithSettings(a.dataset.href); });
   const who = window.AHMAuth && window.AHMAuth.session();
-  document.querySelectorAll("[data-user]").forEach(el => { el.textContent = who ? `Signed in as ${who.user}: ${who.label}` : ""; });
+  // Just the role (the account name is the tooltip), so a seven-tab menu still
+  // fits on one line at 1280 px.
+  document.querySelectorAll("[data-user]").forEach(el => {
+    el.textContent = who ? who.label : "";
+    el.title = who ? `Signed in as ${who.user}` : "";
+  });
   // "All views" and other presenter-only links.
   if (!who || who.role !== "demo") document.querySelectorAll("[data-demo-only]").forEach(el => { el.hidden = true; });
   document.querySelectorAll("[data-signout]").forEach(b => b.addEventListener("click", () => window.AHMAuth.logout()));
