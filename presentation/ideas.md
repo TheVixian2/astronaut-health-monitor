@@ -31,3 +31,38 @@ Append freely. Dated bullets. Unsorted is fine.
 - **Decision support, never a diagnosis.** Say this out loud before a judge asks.
 - **Don't oversell the radiation data if `spe` is cut** — and if it's kept, note
   that GOES measures near Earth and is a stand-in for deep space.
+
+## 2026-11-14 — SANS measurement and countermeasures
+
+- **Positioning, say it exactly like this:** this does not replace OCT. It is the
+  *between-scans early-warning layer* — the cheap daily self-test that tells the
+  crew when it's worth doing an OCT scan or escalating to the ground. Judges
+  can't poke holes in that; "our tablet diagnoses SANS" they can.
+- **Why the gap is real:** strict SANS diagnosis needs optic disc edema visible
+  on fundoscopy, which catches only ~15% of astronauts — but OCT shows *most*
+  long-duration crew have some disc swelling fundoscopy misses. OCT is
+  infrequent, needs scheduling and needs an expert to read it. On Mars there is
+  no expert at the other end of a 22-minute link.
+- **What's actually on station:** OCT (crew-operated, ground-guided), ocular
+  ultrasound, tonometry. MRI — which shows globe flattening — is post-flight only.
+- **Clinical picture (for the slide):** optic disc edema graded on the Frisén
+  scale, globe flattening, choroidal and retinal folds, hyperopic refractive
+  shift, cotton wool spots.
+- **Close the loop — the strongest demo beat.** Detect trend -> recommend
+  countermeasure -> re-test -> show the trend flatten. The software prescribes
+  and then *verifies*, rather than just alarming.
+- **Countermeasures under investigation (say "under investigation", not
+  "proven"):** Lower Body Negative Pressure, venoconstrictive thigh cuffs,
+  B-vitamin supplementation (one-carbon metabolism pathway implicated in
+  severity), and "space anticipation glasses" — which are correction, not
+  prevention.
+- **Don't overclaim mechanism.** It is still unclear whether the swelling is true
+  papilledema from raised intracranial pressure; the asymmetry between eyes
+  doesn't fit that cleanly.
+- **Persistence is a good closing line:** most signs resolve after return, but
+  globe flattening and refractive change have persisted **over 12 years** in some
+  astronauts.
+- Sources: https://pmc.ncbi.nlm.nih.gov/articles/PMC7005826 ·
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC6043524 ·
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC8085766 ·
+  https://cm.healio.com/news/ophthalmology/20180515/nasa-research-progresses-toward-understanding-ocular-consequences-of-longduration-spaceflights
