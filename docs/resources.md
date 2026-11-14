@@ -130,6 +130,22 @@ Limited, from the study design and population.
 | Cantisani et al. (PNAS 2026), *Social interactions in ICE environments: Antarctic winter teams using wearable sensors*: https://consensus.app/papers/details/w:f3e38452-0a00-4bc3-a4e6-14005fd1d61a/ | More close contact also went with conflict, so only a change from one's own normal counts | Limited (analog, wearable sensors) |
 | Bouse et al. (Sensors 2024), *Indoor Localization Using Bluetooth Beacons and RSSI Fingerprinting with Smartwatch*: https://consensus.app/papers/details/w:85a9c2ed-5af8-4417-ba15-63ea6555bdde/ | Watch + beacon room detection about 86-92% accurate, errors mostly in doorways: why two scans must agree | Limited (engineering study) |
 
+## Astronaut vitals in flight: reference values (Consensus-checked 2026-11-14)
+
+Population values for context and hard limits. The score itself compares each astronaut with
+their own in-flight days 7-14, which already include the usual flight shifts.
+
+| Resource | What it gives us | Evidence |
+|---|---|---|
+| Mendes Zambetta et al. (Front Physiol 2024), *Effects of weightlessness on the cardiovascular system*: https://consensus.app/papers/details/w:e8614dd4-ad0f-4558-a9e4-4311d1ba00d9/ | Heart rate about **+3.4 bpm** in spaceflight vs Earth; HRV and baroreflex sensitivity generally lower | Moderate (systematic review + meta-analysis, 62 studies, n = 963, flight and analogs) |
+| Otsuka et al. (Heliyon 2016), *Long-term exposure to microgravity alters the time structure of HRV*: https://consensus.app/papers/details/w:8f3d2dcc-09dd-467d-94dc-b5b74f0656ed/ | HRV keeps its 24-h rhythm on 6-month ISS flights; a ~90-min component grows about 3x | Limited (ISS, n = 10) |
+| Stahn et al. (Sci Rep 2017), *Increased core body temperature in astronauts during long-duration missions*: https://consensus.app/papers/details/w:43743ce7-1f34-42dc-9c1a-ff80aa51cef1/ | Resting core temperature rises about **1 °C over 2.5 months**; it rises higher and faster during exercise | Limited (ISS astronauts, small n) |
+| Wydotis et al. (Am J Physiol Regul 2026), *Body heat accrual and cognition*: https://consensus.app/papers/details/w:22fe5515-86f8-4619-896a-5534fc86ac20/ | Core ~37 °C on Earth → ~38 °C after 2.5 months in flight; **~38.5 °C may start cognitive decline**; over 40 °C possible in exercise | Limited (review) |
+| Gimunová et al. (npj Microgravity 2026), *Spaceflight and thermoregulation: a systematic review*: https://consensus.app/papers/details/w:a5826aef-0e22-4591-bbc4-e35c534de82e/ | Raised core temperature on long missions is a consistent finding | Moderate (systematic review, 20 studies) |
+| Jones et al. (Nature 2024), *Molecular and physiological changes in the SpaceX Inspiration4 civilian crew*: https://consensus.app/papers/details/w:ccf73407-b07e-4490-8df9-1802a0d1d99c/ | Real in-flight **smartwatch wearable data** from 4 civilian astronauts (3 days) | Limited (n = 4, short flight) |
+| Sanders et al. (npj Microgravity 2024), *Inspiration4 data access through NASA OSDR*: https://consensus.app/papers/details/w:b810f9a8-5cba-490f-90bd-e793459eb5df/ | How to download the Inspiration4 data from **NASA's Open Science Data Repository** (GLOpenAPI) | NASA open data |
+| Overbey et al. (Nature 2024), *The Space Omics and Medical Atlas (SOMA)*: https://consensus.app/papers/details/w:2349be28-69d2-4bba-a52f-0d1f8deeac4b/ | Open atlas of clinical and omics data: NASA Twins Study, JAXA, Inspiration4, Axiom, Polaris | Strong as a data source |
+
 ## Competition note
 
 Lots of teams are on this same challenge, and several already use **NASA OSDR
