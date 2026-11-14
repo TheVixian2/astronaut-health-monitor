@@ -161,7 +161,11 @@ a.home:hover { text-decoration: underline; }
 .ack { flex: none; padding: 8px 14px; }
 
 /* body figure */
-.body-card svg { display: block; width: 100%; max-width: 220px; margin: 0 auto; }
+/* The body figure fills the card's free height (the card stretches with the
+   vitals card). height: 0 + flex-basis 0 so the drawing itself never makes
+   the card taller; it scales to fit and stays centred (viewBox, "meet"). */
+.body-card { display: flex; flex-direction: column; }
+.body-card svg { display: block; width: 100%; height: 0; flex: 1 1 0; min-height: 340px; margin: 0 auto; }
 .region { cursor: pointer; outline: none; }
 .region > * { fill: var(--body); stroke: #3a3f4c; stroke-width: 1.5; transition: fill .15s; }
 .region[data-region="lungs"] > * { fill: #22325f; }          /* palette blue, darkened */
@@ -179,23 +183,34 @@ a.home:hover { text-decoration: underline; }
 .mini .sev-critical .dot { background: var(--sev-critical); }
 
 /* vitals tiles */
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+/* Vitals tiles: tall, and auto-fit so they always stretch across the whole row. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .tile {
-  display: flex; flex-direction: column; gap: 2px; text-align: left;
-  padding: 8px 10px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 8px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 8px; text-align: left;
+  min-height: 132px; padding: 14px 16px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 10px;
 }
 .tile:hover { background: rgba(255,255,255,.06); }
 .tile.dim { opacity: .4; }
 .tile.charted { border-color: var(--accent); }
 .tile.off .t-delta { color: var(--sev-alert); font-weight: 700; }
-.t-label { color: var(--muted); font-size: 12px; }
-.t-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-strong); }
-.t-unit { font-size: 12px; color: var(--muted); font-weight: 400; }
-.t-base { font-size: 12px; }
-.chart-wrap { margin-top: 14px; height: 210px; display: flex; flex-direction: column; }
-.chart-wrap { position: relative; min-width: 0; }
-.chart-wrap canvas { flex: 1; min-height: 0; max-width: 100%; }
-.chart-head { margin-bottom: 4px; }
+.t-label { color: var(--muted); font-size: 13px; }
+.t-value { font-size: 34px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.t-unit { font-size: 15px; color: var(--muted); font-weight: 400; }
+.t-base { font-size: 13px; }
+/* The vitals card stretches to the body card's height (same grid row); the
+   chart takes all the height left under the tiles. The canvas is absolutely
+   positioned in .chart-box so Chart.js sizes it from the box and can never
+   push the card taller (no resize loop). */
+.vitals-card { display: flex; flex-direction: column; }
+/* On the My health tab the page fills the window: the console grid stretches
+   to the bottom and the chart takes the extra height (body[data-tab] is set by
+   self-check.js; also on the Commander's and doctor's pages). */
+body.selfcheck[data-tab="health"] { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+body.selfcheck[data-tab="health"] #console { flex: 1; }
+.chart-wrap { margin-top: 16px; flex: 1; min-height: 260px; display: flex; flex-direction: column; position: relative; min-width: 0; }
+.chart-wrap .chart-box { position: relative; flex: 1; min-height: 220px; }
+.chart-wrap .chart-box canvas { position: absolute; inset: 0; }
+.chart-head { margin-bottom: 6px; }
 
 /* check-in */
 .checkin { display: grid; gap: 12px; }
@@ -299,7 +314,7 @@ a.home:hover { text-decoration: underline; }
 .sleep-gate p { margin: 0; }
 .private-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-bottom: 8px; }
 .tile.masked { cursor: default; }
-.tile.masked .t-value { font-size: 15px; color: var(--muted); padding: 4px 0; }
+.tile.masked .t-value { font-size: 20px; color: var(--muted); padding: 4px 0; }
 
 /* ---- login + area menus --------------------------------------------------- */
 .login-page { display: grid; place-items: center; min-height: 100vh; }
