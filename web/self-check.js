@@ -113,6 +113,7 @@
   }
 
   function onVitals(v) {
+    v = A.withStress(v);             // adds stress_0to100, derived from HRV
     latest = v;
     lastVitalsAt = new Date(v.timestamp);
     history.push({ t: lastVitalsAt, v });
@@ -192,11 +193,15 @@
       // Plain numbers: the difference from baseline is shown, never coloured as a warning.
       const p = deltaPct(now, base);
       const delta = p == null ? "" : ` (${p >= 0 ? "+" : "−"}${Math.abs(p).toFixed(0)}%)`;
+      // Stress is a 0-100 level, so its band reads better than a percentage.
+      const reading = f.key === "stress_0to100"
+        ? (now == null ? "needs HRV" : `${A.stressBand(now)}, usual ${fmt(base)}`)
+        : `usual ${fmt(base)}<span class="t-delta">${delta}</span>`;
       const cls = ["tile", inRegion ? "" : "dim", f.key === chartField ? "charted" : ""].join(" ");
       return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">
         <span class="t-top"><span class="t-label">${f.label}</span>${A.vitalIcon(f.key)}</span>
         <span class="t-value">${fmt(now)}<span class="t-unit"> ${f.unit}</span></span>
-        <span class="t-base">usual ${fmt(base)}<span class="t-delta">${delta}</span></span></button>`;
+        <span class="t-base">${reading}</span></button>`;
     }).join("");
   }
 
@@ -205,6 +210,11 @@
   function rebuildChart() {
     const field = FIELDS.find(f => f.key === chartField);
     $("chartTitle").textContent = `${field.label} (${field.unit})`;
+    $("chartNote").textContent = field.key === "stress_0to100"
+      ? "From your HRV vs your usual: lower HRV, higher level. Our scale (Apple Watch has none): 0-25 resting, 26-50 low, 51-75 medium, 76-100 high."
+      : field.key === "hrv_sdnn_ms"
+        ? "Heart-rate variability (SDNN), as Apple Watch records it. Dashed line: your usual."
+        : "Last few minutes. Dashed line: your usual. Tap a reading to chart it.";
     if (!window.Chart) { $("chartFallback").hidden = false; $("chart").hidden = true; return; }
     if (chart) chart.destroy();
     const css = getComputedStyle(document.documentElement);
@@ -632,7 +642,7 @@
       <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
       <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
       <div class="chart-wrap">
-        <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small">Last few minutes. Dashed line: your usual. Tap a reading to chart it.</span></div>
+        <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small" id="chartNote">Last few minutes. Dashed line: your usual. Tap a reading to chart it.</span></div>
         <!-- The chart fills whatever height the card has left (style.css). -->
         <div class="chart-box"><canvas id="chart"></canvas></div>
         <p id="chartFallback" class="muted small" hidden>Chart unavailable (Chart.js did not load — offline?).</p>
