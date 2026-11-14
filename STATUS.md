@@ -116,6 +116,31 @@ Branch: `backend`
     with its source link, a lighting chip ("Pre-sleep · 2700K"), a "share with
     ground" toggle (off by default), and optionally a 7-night bedtime chart from
     `nights`. In the Ground view, a 403 should read "Kept private by the astronaut".
+- **Done: circadian is now a full countermeasure loop (branch `backend`).**
+  Following the judge's "light simulation must be closer to Earth" point and the
+  team's wish to make circadian a big part of the project:
+  **detect drift → suggest a lighting plan → verify sleep improved.**
+  - **Detect:** body-clock drift in min/night. `a2` drifts ~15 min later each night,
+    bedtime spread ~1.7 h, and bright light before sleep on 4 of 7 nights.
+  - **Suggest:** `plan` built from the three ISS SSLA modes (morning phase-shift
+    6500K → day general 4500K → pre-sleep 2700K → dark). It stays fixed once accepted.
+  - **Verify:** `verification` compares before/after, e.g. *"bedtime varied by 0.2 h
+    (was 1.7 h), slept 7.1 h (was 6.3 h)"*; `summary.status` becomes `improving`.
+  - `environment_note` per mission (ISS 16 sunrises/day; Moon 29.5-day lunar day;
+    Mars: no day/night at all, so the lighting is the only cue).
+  - **New, provisional (Luca, for the spec):** `PUT /astronauts/{id}/circadian/plan
+    {accepted}` is the astronaut's own choice. `POST /debug/circadian {astronaut_id,
+    action: advance|reset, nights 1-14}` fast-forwards nights for the demo. `GET
+    /circadian` gains `environment_note`, `plan`, `verification`, and
+    `summary.drift_min_per_night / sleep_avg_h / target_bedtime`; `status` adds
+    `improving`. Existing fields are unchanged.
+  - **NotKaemy:** show the plan as a timeline of coloured bars by mode, with an
+    "I'd like to try this plan" button (calls `PUT .../plan`) and the verification
+    message when present. Demo button: `POST /debug/circadian` advance 4 nights.
+  - **Demo beat (~20 s):** `a2` card → accept plan → fast-forward 4 nights → "your
+    bedtime varied by 0.2 h, was 1.7 h". The close-the-loop moment.
+  - **Persistence note:** the lighting log lives in memory for now. It moves to
+    SQLite with the persistence task below.
 - **Next:** `tools/simulate_crew.py`. **The post-pivot spec has LANDED** —
   `docs/api-spec.md` is reconciled with the running backend as of 2026-11-14, so
   the condition engine is unblocked.
@@ -230,5 +255,22 @@ Branch: `web`
   score display. Luca, the shapes I need: the PHQ-2 fields on `POST /checkin`,
   where the AI summary comes back from, and how the SANS score arrives (field
   on vitals, its own event, or an alert).
-- **Blocked on:** the post-pivot `docs/api-spec.md` for the two items above.
-  Not blocked on anything else.
+- **Done on `web` (not merged yet) — circadian in both views.** Self-check:
+  lighting chip, `card` text, 7-night bedtime chart, recommendation + sources,
+  share toggle. Ground: one sleep & light line per crew card. Tested in real
+  time against `main`'s backend.
+- **Decision (NotKaemy): sleep & lighting is shared with ground by default,
+  and private on the ship console.** The console is a shared screen on board,
+  so Self-check hides the card and the "Sleep last night" tile behind "Show my
+  sleep data" (re-hides after 2 min). The astronaut can still untick sharing;
+  Ground then shows "not shared by the astronaut". Web and mock are done.
+  - **@stefanalbu2010-byte, one-line backend change please:** in
+    `backend/circadian.py`, `_shared = {aid: True for aid in HABITS}` (default
+    shared). Until then the real backend still answers Ground with 403, so
+    Ground shows "not shared" for everyone.
+  - **Luca, spec:** the circadian section should say "shared with ground by
+    default; the astronaut can opt out". Also `card` is shown as an object in
+    the spec, but `circadian.py` returns a **string or null** — the web
+    accepts both for now; please pick one.
+- **Blocked on:** the post-pivot `docs/api-spec.md` for PHQ-2 and the SANS
+  score display. Not blocked on anything else.
