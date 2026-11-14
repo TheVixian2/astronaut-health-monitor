@@ -321,6 +321,8 @@ class HistoryPoint(BaseModel):
     resp_rate_bpm: Optional[float] = None
     sleep_h_last_night: Optional[float] = None
     mood_1to5: Optional[float] = None
+    low: dict[str, Optional[float]] = {}   # lowest reading in the bucket, per field
+    high: dict[str, Optional[float]] = {}  # highest reading in the bucket, per field
 
 
 # --- State -----------------------------------------------------------------------
@@ -1123,9 +1125,11 @@ async def get_report(aid: str, days: int = Query(7, ge=1, le=42),
 # --- PROVISIONAL: history, live light time (not yet in docs/api-spec.md) ---
 
 @app.get("/astronauts/{aid}/history")
-async def get_history(aid: str, hours: float = Query(24, gt=0, le=24 * 60)) -> list[HistoryPoint]:
+async def get_history(aid: str, hours: float = Query(24, gt=0, le=24 * 60),
+                      bucket_s: Optional[int] = Query(None, ge=TICK_S, le=86400)) -> list[HistoryPoint]:
+    """Average, low and high per bucket. bucket_s=3600 gives hour-by-hour."""
     get_state(aid)
-    bucket_s = max(TICK_S, int(hours * 3600 / 300))  # at most ~300 points per chart
+    bucket_s = bucket_s or max(TICK_S, int(hours * 3600 / 300))  # default: at most ~300 points per chart
     rows = await asyncio.to_thread(store.history, aid, store.iso(now() - timedelta(hours=hours)), bucket_s)
     return [HistoryPoint(**r) for r in rows]
 

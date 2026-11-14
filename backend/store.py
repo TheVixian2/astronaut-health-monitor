@@ -240,8 +240,8 @@ def checkins_between(aid: str, start: str, end: Optional[str] = None) -> list[tu
 
 
 def history(aid: str, since: str, bucket_s: int) -> list[dict]:
-    """Vitals averaged into time buckets, oldest first, for charts. Sensor errors are left out."""
-    avgs = ", ".join(f"AVG({f}) AS {f}" for f in VITAL_FIELDS)
+    """Vitals per time bucket (average, low, high), oldest first, for charts. Sensor errors are left out."""
+    avgs = ", ".join(f"AVG({f}), MIN({f}), MAX({f})" for f in VITAL_FIELDS)
     with _db() as con:
         rows = con.execute(
             f"SELECT (CAST(strftime('%s', ts) AS INTEGER) / ?) * ? AS b, {avgs} "
@@ -250,7 +250,10 @@ def history(aid: str, since: str, bucket_s: int) -> list[dict]:
     out = []
     for b, *vals in rows:
         point = {"ts": iso(datetime.fromtimestamp(b, timezone.utc))}
-        point.update({f: (round(v, 1) if v is not None else None) for f, v in zip(VITAL_FIELDS, vals)})
+        r = [round(v, 1) if v is not None else None for v in vals]
+        point.update({f: r[3 * i] for i, f in enumerate(VITAL_FIELDS)})
+        point["low"] = {f: r[3 * i + 1] for i, f in enumerate(VITAL_FIELDS)}
+        point["high"] = {f: r[3 * i + 2] for i, f in enumerate(VITAL_FIELDS)}
         out.append(point)
     return out
 
