@@ -42,10 +42,10 @@
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
     renderMission();
     if (TEST) {
+      // Data only: no boxes explaining what the test data represent (owner, 2026-11-14).
       document.body.classList.add("test-feed");
-      $("pageSub").textContent = `Test feed: a scripted test subject, new data every ${window.AHMTestFeed.STEP_S} s`;
-      $("delayBanner").querySelector("strong").textContent = "Test feed.";
-      $("delayText").textContent = "Not delayed. Each step sends one vital wrong, then good, through every vital in turn.";
+      $("pageSub").textContent = "Test feed";
+      $("delayBanner").style.display = "none";
     }
 
     let list;
@@ -235,8 +235,6 @@
     const status = crewStatus(c);
     const v = c.latest;
     const rows = A.FIELDS.map(f => thresholdRow(f, v)).join("");
-    const testStep = TEST && v && v.test_step
-      ? `<div class="small cc-test">Test step: <strong>${esc(v.test_step.label)}</strong>, ${v.test_step.wrong ? "wrong reading" : "good reading"}</div>` : "";
     const latestAlert = [...c.alerts.values()].pop();
     el.className = `card crew-card st-${status}`;
     el.innerHTML = `
@@ -244,7 +242,6 @@
         <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} (${esc(aid)})</div></div>
         <span class="st-pill">${esc(status)}</span>
       </div>
-      ${testStep}
       <div class="th-list">${rows}</div>
       ${spark(c.hr, c.baseHr)}
       <div class="small cc-age" data-aid="${esc(aid)}">${ageText(c)}</div>
