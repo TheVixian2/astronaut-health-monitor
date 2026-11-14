@@ -23,6 +23,12 @@
   --body: #1c1f27;           /* body figure */
   --ok: #3ccf8e;
 
+  /* area tints: On board = Mars red, Ground = blue (tags, presenter cards) */
+  --onboard-bg: rgba(143, 31, 15, .45);   /* dark Mars red, see-through */
+  --onboard-fg: #f0a49a;                  /* Mars red, lightened to read on black */
+  --ground-bg: rgba(27, 58, 138, .5);     /* palette blue, see-through */
+  --ground-fg: #b9c8f2;                   /* palette blue, lightened */
+
   /* Severity colours stay yellow / orange / red (web/CLAUDE.md); critical
      uses the palette's Mars red. */
   --sev-watch: #f5c542;
@@ -119,12 +125,7 @@ a.home:hover { text-decoration: underline; }
 .err { color: var(--sev-critical); }
 [hidden] { display: none !important; }
 
-/* ---- landing ----------------------------------------------------------- */
-.landing { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding-top: 20px; }
-.choice { display: block; color: inherit; text-decoration: none; }
-a.choice:hover { border-color: var(--accent); }
-.choice p { margin: 0; }
-.soon { opacity: .55; }
+/* ---- presenter page (index.html); its profile cards are further down ---- */
 .landing-note { margin-top: 18px; }
 
 /* ---- self-check -------------------------------------------------------- */
@@ -310,20 +311,45 @@ a.choice:hover { border-color: var(--accent); }
 .login-form button { padding: 8px 14px; }
 
 .user { color: var(--muted); }
-.pick { margin: 20px 0 10px; }
-.areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.area-choice { display: block; color: inherit; text-decoration: none; padding: 20px; border-top: 4px solid var(--line); }
-.area-choice:hover { border-color: var(--accent); }
-.area-choice p { margin: 0; }
-/* Area colours: On board = Mars red (the spacecraft), Ground = palette blue. */
-.area-choice.onboard { border-top-color: var(--mars); }
-.area-choice.ground { border-top-color: var(--blue); }
-.area-choice.onboard:hover { border-color: var(--mars); }
-.area-choice.ground:hover { border-color: var(--accent); }
+.pick { margin: 20px 0 12px; }
+
+/* ---- presenter page: the four profiles, 2 x 2 ------------------------------ */
+/* Area colours: On board = Mars red (the spacecraft), Ground = palette blue.
+   Each card sets --tint / --tint-bg / --tint-fg and the rest follows. */
+body.presenter { max-width: 1080px; margin: 0 auto; }
+.profiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 720px) { .profiles { grid-template-columns: minmax(0, 1fr); } }
+.profile { --tint: var(--mars); --tint-bg: var(--onboard-bg); --tint-fg: var(--onboard-fg);
+  display: flex; flex-direction: column; gap: 14px; padding: 22px; color: inherit; text-decoration: none;
+  border-top: 4px solid var(--tint);
+  background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--tint) 14%, transparent), transparent 60%), var(--panel);
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.profile.ground { --tint: var(--blue); --tint-bg: var(--ground-bg); --tint-fg: var(--ground-fg); }
+.profile:hover, .profile:focus-visible { transform: translateY(-2px); border-color: var(--tint);
+  box-shadow: 0 10px 28px -14px var(--tint); outline: none; }
+.profile.ground:hover, .profile.ground:focus-visible { border-color: var(--accent); }
+.p-head { display: flex; gap: 16px; align-items: center; }
+.p-icon { flex: none; width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center;
+  background: var(--tint-bg); color: var(--tint-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint-fg) 22%, transparent); }
+.p-icon svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.profile h2 { font-size: 20px; text-transform: none; letter-spacing: 0; margin: 6px 0 2px; }
+.p-who { color: var(--text-strong); font-weight: 600; }
+.p-who .muted { font-weight: 400; }
+.p-text { margin: 0; color: var(--text); }
+.p-tabs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.p-tabs li { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.p-tabs li.key { border-color: color-mix(in srgb, var(--tint-fg) 45%, transparent); color: var(--tint-fg); background: var(--tint-bg); }
+.p-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.p-open { font-weight: 700; color: var(--tint-fg); }
+.p-open span { display: inline-block; transition: transform .15s ease; }
+.profile:hover .p-open span { transform: translateX(4px); }
+@media (prefers-reduced-motion: reduce) { .profile, .p-open span { transition: none; } .profile:hover { transform: none; } }
 .area-tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
   padding: 2px 8px; border-radius: 999px; }
-.onboard .area-tag, .area-onboard .area-tag { background: rgba(143, 31, 15, .45); color: #f0a49a; }
-.ground .area-tag, .area-ground .area-tag { background: rgba(27, 58, 138, .5); color: #b9c8f2; }
+.onboard .area-tag, .area-onboard .area-tag { background: var(--onboard-bg); color: var(--onboard-fg); }
+.ground .area-tag, .area-ground .area-tag { background: var(--ground-bg); color: var(--ground-fg); }
 
 /* the menu bar at the top of each area */
 .appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 0;
@@ -348,7 +374,6 @@ a.choice:hover { border-color: var(--accent); }
 /* on-board tabs: a tab with a single card uses the full width */
 .sc-grid > .solo { grid-column: 1 / -1; }
 .checkin-card .checkin { max-width: 640px; }
-.area-choice h2 { font-size: 18px; text-transform: none; letter-spacing: 0; margin: 10px 0 6px; }
 
 /* Body figure: the heart icon has thin vessels, so its selection outline is
    thinner than other regions' or it swallows them. */

@@ -52,8 +52,12 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   lasts 12 h in `localStorage`. **Not security:** passwords are readable in
   the code and the backend has no auth. The repo goes public at submission —
   don't reuse a real password.
-- `index.html` — presenter-only list of every interface, plus the live demo.
-  Keeps `?mock`/`?base`/`?aid`.
+- `index.html` — presenter-only page: the four profiles as a **2 × 2 grid** of
+  cards (role icon, the real name from `GET /crew` by role, Ground's light
+  time from `GET /mission`, the profile's tabs, its login), plus the live demo
+  link. One column under 720 px. Keeps `?mock`/`?base`/`?aid`. Card styles:
+  `.profiles` / `.profile` in `style.css`, tinted with the area tokens
+  `--onboard-*` / `--ground-*`.
 - **Menus** (the `.appnav` bar at the top of each page; "All views" link only
   for the presenter, `[data-demo-only]`):
   - **Astronaut console** (`self-check.html`): *My health · Check-in · Sleep &
