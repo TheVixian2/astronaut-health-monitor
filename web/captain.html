@@ -71,11 +71,12 @@
     <div class="card"><svg id="habMap" viewBox="0 0 1000 300" role="img" aria-label="Habitat map with crew positions" style="width:100%;height:auto"></svg>
       <p class="muted small" id="habUntracked"></p>
       <p class="muted small">Concept layout of a Mars transit habitat. Each module has a Bluetooth beacon the
-        watch detects; the hygiene module has none and is never tracked. Live positions are for safety
+        watch detects. Who is in the hygiene module is shown only to Mission Control; you see hours per person. Live positions are for safety
         (fire, depressurisation).</p></div>
     <div id="habRooms" class="hab-grid"></div>
-    <p class="muted small">Time in shared rooms is a supporting signal only: the evidence that it tracks mood
-      is weak, so it is shown here and never added to the wellbeing score.</p>
+    <p class="muted small">Time with crewmates is one input of the wellbeing profile (12 % of the score; the
+      method is at GET /wellbeing/method). The evidence for it is limited (self-reported support linked to lower
+      stress in NASA analog crews).</p>
   </section>
 
   <footer class="foot muted small">Your own tabs show your data against your own baseline. Crew warnings

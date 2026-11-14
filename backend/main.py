@@ -1463,13 +1463,13 @@ async def get_environment() -> CabinEnvironment:
 class Room(BaseModel):
     id: str
     name: str
-    kind: Literal["shared", "private", "untracked"]
+    kind: Literal["shared", "private", "hygiene"]
 
 
 class Location(BaseModel):
     astronaut_id: str
     name: str
-    room: Optional[str]   # null while in the hygiene module: it has no beacon, never tracked
+    room: Optional[str]   # null for the commander while someone is in hygiene (Mission Control sees it)
     room_name: str
     since: Optional[datetime]
 
@@ -1477,9 +1477,10 @@ class Location(BaseModel):
 class RoomTime(BaseModel):
     astronaut_id: str
     day_start: datetime
-    hours: dict[str, float]          # room id -> hours today (hygiene excluded)
+    hours: dict[str, float]          # room id -> hours today (hygiene excluded; see hygiene_h)
     shared_h: float
     private_h: float
+    hygiene_h: float                 # hours in hygiene today: the commander sees time, never who is in it now
     shared_normal_h: float           # average full day in shared rooms, own mission days 7-14
     shared_so_far_normal_h: float    # the same normal, scaled to the time of day so far
     shared_7d_avg_h: float           # average full day in shared rooms over the last 7 days
@@ -1512,9 +1513,10 @@ async def get_crew_locations(viewer: str) -> list[Location]:
     t = now()
     out = []
     for s in crew.values():
-        tracked = s.room is not None and location.ROOMS[s.room].kind != "untracked"
+        # Hygiene: Mission Control sees who; the commander never does (only daily hours, /rooms).
+        tracked = s.room is not None and (viewer == "ground" or location.ROOMS[s.room].kind != "hygiene")
         out.append(Location(astronaut_id=s.id, name=s.name, room=s.room if tracked else None,
-                            room_name=location.ROOMS[s.room].name if tracked else "Not tracked",
+                            room_name=location.ROOMS[s.room].name if tracked else "Not shown (hygiene)",
                             since=s.room_since if tracked else None))
         _note_map_view(s, viewer, t)
     return out
@@ -1541,7 +1543,7 @@ async def get_room_time(aid: str, viewer: str) -> RoomTime:
     base7 = with_crew([s.history.days.get(d.date()) for d in base_days]) if s.history else []
     return RoomTime(
         astronaut_id=aid, day_start=start, hours={r: round(h, 1) for r, h in hours.items() if r != "hygiene"},
-        shared_h=kinds["shared"], private_h=kinds["private"],
+        shared_h=kinds["shared"], private_h=kinds["private"], hygiene_h=kinds["hygiene"],
         shared_normal_h=round(statistics.fmean(shared(d, d + timedelta(days=1)) for d in base_days), 1),
         shared_so_far_normal_h=round(statistics.fmean(shared(d, d + (t - start)) for d in base_days), 1),
         shared_7d_avg_h=round(statistics.fmean(shared(start - timedelta(days=i), start - timedelta(days=i - 1))
@@ -1550,7 +1552,8 @@ async def get_room_time(aid: str, viewer: str) -> RoomTime:
         with_crew_normal_h=round(statistics.fmean(base7), 1) if base7 else None,
         note="Time with crewmates (a shared room with someone else there, awake hours) is one of the inputs "
              "of the wellbeing profile, compared with your own mission days 7-14; GET /wellbeing/method shows "
-             "its weight. Rooms only, never coordinates. The hygiene module has no beacon and is never tracked.")
+             "its weight. Rooms only, never coordinates. Hygiene: the commander sees hours per day, never who is "
+             "in it now; only Mission Control sees that.")
 
 
 @app.get("/notifications")

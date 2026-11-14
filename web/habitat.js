@@ -5,7 +5,10 @@
   const A = window.AHM;
   const cfg = A.settings();
   const $ = id => document.getElementById(id);
-  const viewer = "a1"; // the Commander (backend COMMANDER_ID)
+  // Who is looking: the Commander (a1) by default; Mission Control's page sets
+  // <body data-viewer="ground">. Hygiene: Mission Control sees who is in it; the
+  // Commander sees only each person's hours there (room cards), never who now.
+  const viewer = document.body.dataset.viewer || "a1";
 
   // Concept layout, viewBox 1000 x 300: [x, y, w, h].
   const LAYOUT = {
@@ -25,13 +28,13 @@
   const initials = name => name.replace(/^(Cmdr\.|Dr\.)\s*/, "").split(" ").map(p => p[0]).join("").slice(0, 2);
 
   function drawMap(locs) {
-    const fill = { shared: "#1d2a3a", private: "#2a2140", untracked: "#222" };
+    const fill = { shared: "#1d2a3a", private: "#2a2140", hygiene: "#232323" };
     let svg = `<rect x="8" y="28" width="984" height="244" rx="40" fill="none" stroke="#ffffff33" stroke-width="2"/>`;
     for (const r of rooms) {
       const [x, y, w, h] = LAYOUT[r.id] || [];
       if (x == null) continue;
       svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${fill[r.kind]}" stroke="#ffffff26"
-        ${r.kind === "untracked" ? 'stroke-dasharray="6 4"' : ""}/>
+        ${r.kind === "hygiene" ? 'stroke-dasharray="6 4"' : ""}/>
         <text x="${x + 8}" y="${y + 16}" fill="#9aa4b2" font-size="12">${A.esc(r.name)}</text>`;
     }
     const perRoom = {};
@@ -46,8 +49,10 @@
       });
     }
     $("habMap").innerHTML = svg;
-    const away = locs.filter(l => !l.room).map(l => l.name);
-    $("habUntracked").textContent = away.length ? `Not tracked right now (hygiene module): ${away.join(", ")}.` : "";
+    const hidden = locs.filter(l => !l.room).length;
+    $("habUntracked").textContent = hidden
+      ? `${hidden} crew member${hidden > 1 ? "s are" : " is"} in the hygiene module. Who is in it is shown only to Mission Control.`
+      : "";
   }
 
   // One tall card per crew member (styles: "Habitat tab" in style.css): the
@@ -73,6 +78,7 @@
         <caption class="muted small">Today so far</caption>
         <tr><th>Shared rooms</th><td class="num">${t.shared_h} h</td></tr>
         <tr><th>Private</th><td class="num">${t.private_h} h</td></tr>
+        <tr><th>Hygiene</th><td class="num">${t.hygiene_h ?? "—"} h</td></tr>
         <tr><th>Normal by now (shared)</th><td class="num muted">${t.shared_so_far_normal_h} h</td></tr>
       </table>
     </article>`;
@@ -123,9 +129,9 @@
       $("habConn").textContent = "offline"; $("habConn").className = "pill pill-off";
       return;
     }
-    refreshLocations(); refreshRooms(); refreshCabin();
+    refreshLocations(); refreshCabin();
     setInterval(refreshLocations, 5000);
     setInterval(refreshCabin, 30000);
-    setInterval(refreshRooms, 60000);
+    if ($("habRooms")) { refreshRooms(); setInterval(refreshRooms, 60000); }  // room time: Commander only
   })();
 })();
