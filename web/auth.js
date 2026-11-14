@@ -15,6 +15,9 @@
     doctor:  { password: "mars2026", role: "doctor",  home: "doctor.html",     label: "Crew Medical Officer" },
     ground:  { password: "mars2026", role: "ground",  home: "ground.html",     label: "Mission Control" },
     demo:    { password: "mars2026", role: "demo",    home: "index.html",      label: "Presenter (all views)" },
+    // Test feed (owner, 2026-11-14): Mission Control with a scripted test
+    // subject instead of the crew, new data every 10 s (test-feed.js).
+    test:    { password: "mars2026", role: "test",    home: "ground.html",     label: "Test feed" },
   };
 
   // Which roles may open which page. "demo" (the presenter) may open all of them.
@@ -24,30 +27,34 @@
     "self-check.html": ["crew", "demo"],
     "captain.html": ["captain", "demo"],
     "doctor.html": ["doctor", "demo"],
-    "ground.html": ["ground", "demo"],
+    "ground.html": ["ground", "demo", "test"],
     "stream-check.html": ["ground", "demo"],
     "history.html": ["crew", "captain", "doctor", "ground", "demo"],
-    "sources.html": ["crew", "captain", "doctor", "ground", "demo"],
+    "sources.html": ["crew", "captain", "doctor", "ground", "demo", "test"],
   };
 
   const KEY = "ahm-session";
-  const TTL_MS = 12 * 3600 * 1000;   // stay signed in for 12 h
+  const TTL_MS = 12 * 3600 * 1000;   // at most 12 h, even in a tab left open
 
-  // localStorage so the session covers every tab and both panes of demo.html.
-  // Falls back to sessionStorage; if neither works the gate lets everyone in as
+  // Every new visit starts at the login page (owner, 2026-11-14), so the
+  // session lives in sessionStorage: it lasts for this tab, both panes of
+  // demo.html and pages opened from it, and ends when the tab is closed.
+  // Falls back to localStorage; if neither works the gate lets everyone in as
   // the presenter rather than trapping them in a redirect loop.
   const store = (() => {
-    for (const s of [() => window.localStorage, () => window.sessionStorage]) {
+    for (const s of [() => window.sessionStorage, () => window.localStorage]) {
       try { const st = s(); st.setItem("ahm-probe", "1"); st.removeItem("ahm-probe"); return st; } catch { /* next */ }
     }
     return null;
   })();
 
-  // The public GitHub Pages demo must open without a login (Space Apps rule), as the presenter.
+  // The public GitHub Pages demo must open without a login (Space Apps rule).
+  // It still starts at the login page, which there offers "Continue as
+  // presenter" with no password (guest() below).
   const HOSTED = location.hostname.endsWith("github.io");
 
   function session() {
-    if (!store || HOSTED) return { user: "demo", ...ACCOUNTS.demo, at: Date.now() };
+    if (!store) return { user: "demo", ...ACCOUNTS.demo, at: Date.now() };
     try {
       const s = JSON.parse(store.getItem(KEY) || "null");
       // Sessions from before roles existed have no role: sign in again.
@@ -65,6 +72,9 @@
     return { user: name, ...acc, password: undefined };
   }
 
+  // The no-password way in on the public demo: signs in as the presenter.
+  function guest() { return login("demo", ACCOUNTS.demo.password); }
+
   function logout() {
     if (store) store.removeItem(KEY);
     location.href = "login.html";
@@ -81,7 +91,7 @@
     return /^[a-z][a-z-]*\.html([?#].*)?$/.test(next || "") ? next : null;
   }
 
-  window.AHMAuth = { session, login, logout, canOpen, safeNext, ACCOUNTS };
+  window.AHMAuth = { session, login, guest, logout, canOpen, safeNext, ACCOUNTS, HOSTED };
 
   // Hide the app menus when a page is shown inside demo.html.
   if (window.top !== window.self) document.documentElement.classList.add("embedded");
@@ -113,14 +123,11 @@
     addEventListener("DOMContentLoaded", applyZoom);   // Chart.js may load after this script
   }
 
-  // ---- the console follows the module's lighting (style.css, html[data-light]) ----
-  // self-check.js sets the mode from GET /circadian; here we only restore the
-  // last known mode on console pages (no silver flash in Pre-sleep), or take
-  // ?light=pre_sleep for a demo on any page.
+  // ---- colour scheme (style.css, html[data-light]) ----------------------------
+  // Always the dark theme (owner, 2026-11-14). Only ?light=pre_sleep (or off)
+  // shows the warm set, for a demo, on any page.
   {
-    const consolePage = ["self-check.html", "captain.html", "doctor.html"].includes(page);
-    let light = new URLSearchParams(location.search).get("light");
-    if (!light && consolePage) { try { light = sessionStorage.getItem("ahm-light"); } catch { /* none */ } }
+    const light = new URLSearchParams(location.search).get("light");
     if (light) document.documentElement.dataset.light = light;
   }
 

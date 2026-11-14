@@ -290,6 +290,21 @@ a.home:hover { text-decoration: underline; }
   background: var(--btn-bg); transition: transform .3s ease; }
 .sex-switch:has(#sexF:checked) .sex-thumb { transform: translateX(100%); }
 @media (prefers-reduced-motion: reduce) { .sex-thumb { transition: none; } }
+/* Cycle-aware usual: a small button next to the body switch and its dialog. */
+.cycle-btn { padding: 5px 12px; border-radius: 999px; font-size: var(--t-sm); font-weight: 600;
+  background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.cycle-btn:hover { color: var(--text-strong); background: var(--wash-2); }
+.cycle-btn.on { color: var(--onboard-fg); border-color: var(--onboard); background: var(--onboard-bg); }
+.cycle-dlg { width: min(440px, calc(100vw - 32px)); padding: 22px 24px; border: 1px solid var(--line-strong);
+  border-radius: var(--r-plate); background: var(--panel); color: var(--text); }
+.cycle-dlg::backdrop { background: rgba(0, 0, 0, .6); }
+.cycle-dlg h2 { font-size: var(--t-md); margin: 0 0 10px; }
+.cycle-dlg form { display: grid; gap: 12px; }
+.cycle-dlg p { margin: 0; }
+.cycle-dlg label { display: grid; gap: 4px; color: var(--muted); font-weight: 500; font-size: var(--t-sm); }
+.cycle-len { display: inline-flex; align-items: center; gap: 8px; color: var(--text); }
+.cycle-len input { width: 5em; }
+.dlg-actions { display: flex; align-items: center; gap: 14px; margin-top: 4px; }
 .body-card svg { display: block; width: 100%; height: 0; flex: 1 1 0; min-height: 190px; margin: 0 auto; }
 .region { cursor: pointer; outline: none; }
 /* One solid silhouette: head, torso and limbs are edged in their own fill
@@ -452,9 +467,13 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .transit-list .sev-alert .sev, .transit-list .sev-alert .count { color: var(--alert-ink); }
 .transit-list .sev-critical .sev, .transit-list .sev-critical .count { color: var(--crit-ink); }
 
-.ground-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
-@media (max-width: 900px) { .ground-grid { grid-template-columns: minmax(0, 1fr); } }
-.crew { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+/* Mission Control: the crew across the full width (two cards a row), then
+   alerts, then the habitat as its own section at the bottom (owner, 2026-11-14). */
+.ground-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.crew { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .crew { grid-template-columns: minmax(0, 1fr); } }   /* also the half-width pane in demo.html */
+@media (max-width: 480px) { .th-row { grid-template-columns: 7em 4.6em minmax(40px, 1fr) 4em; gap: 6px; } }
+.hab-section #habMap { display: block; width: 100%; max-width: 1100px; height: auto; margin: 4px auto 0; }
 
 .crew-card { border-top: 4px solid var(--ok); display: grid; gap: 8px; }
 .crew-card.st-watch { border-top-color: var(--sev-watch); }
@@ -466,6 +485,27 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .st-watch .st-pill { background: var(--watch-bg); color: var(--watch-ink); }
 .st-alert .st-pill { background: var(--alert-bg); color: var(--alert-ink); }
 .st-critical .st-pill { background: var(--crit-bg); color: var(--crit-ink); }
+/* Threshold rows on Mission Control: label, reading, green-to-red scale with a
+   marker, change from usual. Boundaries --b1..--b3 come from AHM.thresholdLevel. */
+.th-list { display: grid; gap: 3px; }
+.th-row { display: grid; grid-template-columns: 9.5em 6em minmax(60px, 1fr) 5.4em; align-items: center;
+  gap: 12px; font-size: var(--t-sm); }
+.th-label { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.th-val { font-stretch: var(--narrow); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text-strong); white-space: nowrap; }
+.th-val .t-unit { font-size: var(--t-xs); }
+.th-scale { position: relative; height: 8px; border-radius: 4px; opacity: .9;
+  background: linear-gradient(90deg, var(--ok) 0, var(--ok) calc(var(--b1) - 3%),
+    var(--sev-watch) calc(var(--b1) + 3%), var(--sev-watch) calc(var(--b2) - 3%),
+    var(--sev-alert) calc(var(--b2) + 3%), var(--sev-alert) calc(var(--b3) - 3%),
+    var(--sev-critical) calc(var(--b3) + 3%)); }
+.th-scale.th-empty { background: var(--wash-2); }
+.th-mark { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px;
+  background: var(--text-strong); box-shadow: 0 0 0 2px var(--panel); transition: left .4s ease; }
+.th-dev { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+.th-watch .th-dev { color: var(--watch-ink); font-weight: 650; }
+.th-alert .th-dev { color: var(--alert-ink); font-weight: 650; }
+.th-critical .th-dev { color: var(--crit-ink); font-weight: 700; }
+.th-critical .th-label, .th-alert .th-label { color: var(--text-strong); }
 .cvs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .cv { display: flex; flex-direction: column; min-width: 0; }
 .cv-val { font-size: var(--t-md); font-stretch: var(--narrow); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-strong); }
@@ -531,6 +571,18 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .login-form label { display: grid; gap: 4px; color: var(--muted); font-weight: 500; }
 .login-form input { padding: 9px 11px; }
 .login-form button { padding: 10px 14px; }
+/* Period selector (pattern.js): presenter only, in the header's status line,
+   in place of the live status (Live / updated / Earth is ... away). */
+.period { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.period select { padding: 4px 8px; }
+.period input[type=range] { width: 180px; accent-color: var(--accent); }
+.period input[type=range]:disabled { opacity: .4; }
+.period-label { font-size: var(--t-sm); font-variant-numeric: tabular-nums; color: var(--text-strong); white-space: nowrap; }
+body.pattern .status > span:not(#conn):not(#lightNote) { display: none; }
+body.selfcheck.pattern:not([data-tab="health"]) .period { display: none; }
+.login-guest { display: grid; gap: 6px; margin: -4px 0 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.login-guest button { padding: 10px 14px; background: transparent; color: var(--text-strong); border: 1px solid var(--line-strong); }
+.login-guest button:hover { background: var(--wash-2); }
 
 .user { color: var(--muted); }
 .pick { margin: 20px 0 12px; }
@@ -591,7 +643,7 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 .ground .area-tag, .area-ground .area-tag { background: var(--ground-bg); color: var(--ground-fg); }
 
 /* the menu bar at the top of each area */
-.appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 0;
+.appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0;
   border-bottom: 1px solid var(--line); }
 .appnav .brand { color: var(--text-strong); text-decoration: none; display: inline-flex; align-items: center; }
 /* The palette's four-stripe mark (silver, Mars red, dark Mars red, blue) after
@@ -603,7 +655,7 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
   box-shadow: 0 0 0 1px var(--line-strong);
 }
 .appnav .menu { display: flex; flex-wrap: wrap; gap: 2px; flex: 1; }
-.appnav .menu a { color: var(--muted); text-decoration: none; padding: 7px 12px; border-radius: var(--r-control); font-weight: 500; }
+.appnav .menu a { color: var(--muted); text-decoration: none; padding: 7px 10px; white-space: nowrap; border-radius: var(--r-control); font-weight: 500; }
 .appnav .menu a:hover { color: var(--text-strong); background: var(--wash-2); }
 .appnav .menu a[aria-current="page"] { color: var(--text-strong); background: var(--panel); box-shadow: inset 0 -3px 0 var(--ground); font-weight: 650; }
 .area-onboard .menu a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--onboard); }
@@ -617,12 +669,63 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 /* Pre-sleep note in the console header (only shown in that light) */
 .light-note { color: var(--onboard-fg); font-weight: 600; }
 
-/* ---- Commander + ship's doctor ---------------------------------------------- */
-.captain-note, .sample-note { margin: 16px 0; padding: 12px 14px; border-radius: var(--r-plate); max-width: 100ch;
-  background: var(--onboard-bg); border: 1px solid var(--onboard); }
-.sample-note { background: var(--ground-bg); border-color: var(--ground); }
-.captain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
-.cap-panel { border-top: 4px solid var(--ok); }
+/* ---- Commander + Crew Medical Officer ---------------------------------------- */
+/* Whole-body crew avatars (common.js AHM.bodyFigure): the My health silhouette
+   and organs, the affected parts filled in their level's colour. */
+.body-fig { display: block; flex: none; width: 72px; height: auto; overflow: visible; }
+.body-fig .bf-part { fill: var(--body); stroke: var(--body); stroke-width: 1.2; }
+.body-fig .bf-heart > * { fill: var(--heart); stroke: var(--body-line); stroke-width: 1.2; }
+.body-fig .bf-lungs > * { fill: var(--lungs); stroke: var(--body-line); stroke-width: 1.2; }
+.body-fig .lv-info, .body-fig .lv-info > * { fill: var(--accent); stroke: var(--accent); }
+.body-fig .lv-watch, .body-fig .lv-watch > * { fill: var(--sev-watch); stroke: var(--sev-watch); }
+.body-fig .lv-alert, .body-fig .lv-alert > * { fill: var(--sev-alert); stroke: var(--sev-alert); }
+.body-fig .lv-critical, .body-fig .lv-critical > * { fill: var(--sev-critical); stroke: var(--sev-critical); }
+/* Whole body: an outline round the figure, as on My health. */
+.body-fig.whole-watch { filter: drop-shadow(1.5px 0 0 var(--sev-watch)) drop-shadow(-1.5px 0 0 var(--sev-watch)) drop-shadow(0 1.5px 0 var(--sev-watch)) drop-shadow(0 -1.5px 0 var(--sev-watch)); }
+.body-fig.whole-alert { filter: drop-shadow(1.5px 0 0 var(--sev-alert)) drop-shadow(-1.5px 0 0 var(--sev-alert)) drop-shadow(0 1.5px 0 var(--sev-alert)) drop-shadow(0 -1.5px 0 var(--sev-alert)); }
+.body-fig.whole-critical { filter: drop-shadow(1.5px 0 0 var(--sev-critical)) drop-shadow(-1.5px 0 0 var(--sev-critical)) drop-shadow(0 1.5px 0 var(--sev-critical)) drop-shadow(0 -1.5px 0 var(--sev-critical)); }
+/* Crew wellbeing card: the figure on the left, everything else beside it. */
+.cp-layout { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 20px; flex: 1; }
+.cp-fig { padding-top: 4px; }
+.cp-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.warn .head.head-person { align-items: center; }
+.warn .med-line { margin: 4px 0 2px; }
+/* Medications: the crew in a row, whole body, what each medicine is for. */
+.med-crew { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 16px; }
+@media (max-width: 1100px) { .med-crew { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .med-crew { grid-template-columns: minmax(0, 1fr); } }
+.mc-card { display: flex; gap: 14px; align-items: flex-start; padding: 14px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--r-plate); }
+.mc-card .body-fig { width: 56px; }
+.mc-text { min-width: 0; }
+.mc-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: var(--t-sm); }
+.mc-list .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--line-strong); }
+.mc-list .lv-info .dot { background: var(--accent); }
+.mc-list .lv-watch .dot { background: var(--sev-watch); }
+.mc-list .lv-alert .dot { background: var(--sev-alert); }
+.mc-list .lv-critical .dot { background: var(--sev-critical); }
+.mc-list .lv-none { color: var(--muted); }
+/* Crew wellbeing: the four crew members 2 x 2, cards in a row the same height. */
+.captain-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+@media (max-width: 900px) { .captain-grid { grid-template-columns: minmax(0, 1fr); } }
+.cap-panel { border-top: 4px solid var(--ok); display: flex; flex-direction: column; gap: 14px; }
+.cp-stats { display: flex; border: 1px solid var(--line); border-radius: var(--r-plate); background: var(--wash); }
+.cp-stat { flex: 1; display: grid; gap: 2px; padding: 8px 14px; margin: 0; min-width: 0; }
+.cp-stat + .cp-stat { border-left: 1px solid var(--line); }
+.cp-val { font-size: var(--t-lg); font-stretch: var(--narrow); font-weight: 650; line-height: 1.1; color: var(--text-strong);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cp-val .t-unit { font-size: var(--t-sm); font-stretch: 100%; font-weight: 400; color: var(--muted); }
+.cp-sec { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 6px 14px; align-items: start;
+  padding-top: 12px; border-top: 1px solid var(--line); }
+.cap-panel .cp-sec h3 { margin: 1px 0 0; font-size: var(--t-sm); font-weight: 650; color: var(--text); }
+.cp-sec h3 span { display: block; font-size: var(--t-xs); font-weight: 400; color: var(--muted); }
+.cp-none { margin: 0; font-size: var(--t-sm); color: var(--ok-ink); }
+.cp-none::before { content: "✓"; margin-right: 6px; font-weight: 700; }
+.cp-wb { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: var(--t-sm); }
+.cp-areas { color: var(--text-strong); font-weight: 600; }
+.cp-note { margin: -4px 0 8px; font-size: var(--t-xs); color: var(--muted); }
+.cp-wb + .cp-none, .cp-note + .cp-none { margin-top: 0; }
+@media (max-width: 480px) { .cp-sec { grid-template-columns: minmax(0, 1fr); } }
 .cap-panel.st-watch { border-top-color: var(--sev-watch); }
 .cap-panel.st-alert { border-top-color: var(--sev-alert); }
 .cap-panel.st-critical { border-top-color: var(--sev-critical); }

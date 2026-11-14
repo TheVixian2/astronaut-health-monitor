@@ -107,7 +107,7 @@
     const mind = kind => (self ? SELF_ADVICE.psych : advise(kind, name));
     const physical = [], psych = [];
     for (const a of latestPerProfile(c.alerts)) {
-      const w = { severity: a.severity, title: profileName(a.profile), when: a.started_at,
+      const w = { severity: a.severity, title: profileName(a.profile), when: a.started_at, region: a.body_region,
                   detail: `${REGION_NAMES[a.body_region] || a.body_region}: ${a.onboard_action}` };
       if (A.isPsychological(a)) psych.push({ ...w, advice: mind(a.profile) });
       else physical.push({ ...w, advice: phys(ADVICE[a.profile] ? a.profile : "physical") });
@@ -115,17 +115,17 @@
 
     const v = c.latest, base = v?.baseline || {};
     if (v && typeof v.mood_1to5 === "number" && v.mood_1to5 <= LOW_MOOD) {
-      psych.push({ severity: v.mood_1to5 <= 1 ? "alert" : "watch", title: "Low mood",
+      psych.push({ severity: v.mood_1to5 <= 1 ? "alert" : "watch", title: "Low mood", region: "head",
                    detail: `Mood ${v.mood_1to5}/5 (usual ${base.mood_1to5 ?? "?"}/5)`, advice: mind("mood") });
     }
     if (v && typeof v.sleep_h_last_night === "number"
         && (v.sleep_h_last_night < SHORT_SLEEP_H || (base.sleep_h_last_night && v.sleep_h_last_night < base.sleep_h_last_night * SHORT_SLEEP_RATIO))) {
-      psych.push({ severity: "watch", title: "Short sleep",
+      psych.push({ severity: "watch", title: "Short sleep", region: "head",
                    detail: `${v.sleep_h_last_night} h last night (usual ${base.sleep_h_last_night ?? "?"} h)`, advice: mind("sleep") });
     }
     const card = c.circ && A.circadianCardText(c.circ.card);
     if (card) {
-      psych.push({ severity: "watch", title: "Irregular sleep timing", detail: card, advice: mind("circadian") });
+      psych.push({ severity: "watch", title: "Irregular sleep timing", region: "head", detail: card, advice: mind("circadian") });
     }
     return { name, self, physical, psych };
   }
@@ -146,28 +146,48 @@
   }
 
   const WB_CLASS = { steady: "nominal", watch: "watch", concern: "alert", urgent: "critical" };
+  // Level and areas only, never their answers. The general rule is a tooltip;
+  // that the astronaut hasn't been told yet stays visible.
   function wellbeingLine(wb) {
     if (!wb || !wb.level) return "";
-    const areas = wb.areas && wb.areas.length ? `, ${esc(wb.areas.join(", "))}` : "";
-    return `<p class="small">Wellbeing check: <span class="st-${WB_CLASS[wb.level] || "nominal"}"><span class="st-pill">${esc(wb.level)}</span></span>${areas}
-      <span class="muted">(level and areas only, never their answers${wb.visible_because === "commander_first" ? "; they haven't been told you can see it" : ""})</span></p>`;
+    const areas = wb.areas && wb.areas.length ? `<span class="cp-areas">${esc(wb.areas.join(", "))}</span>` : "";
+    return `<p class="cp-wb" title="Level and areas only, never their answers">Wellbeing check
+        <span class="st-${WB_CLASS[wb.level] || "nominal"}"><span class="st-pill">${esc(wb.level)}</span></span>${areas}</p>
+      ${wb.visible_because === "commander_first" ? '<p class="cp-note">They haven\'t been told you can see this.</p>' : ""}`;
   }
 
+  // One card per crew member, 2 x 2 (owner, 2026-11-14: "make these feel
+  // better"): head, a stats strip, then a Physical and a Psychological row.
   function panel(aid, c, { name, self, physical, psych }) {
     const all = physical.concat(psych);
     const worst = all.reduce((w, x) => (!w || SEVERITY_RANK[x.severity] > SEVERITY_RANK[w] ? x.severity : w), null);
     const v = c.latest;
-    const stats = v ? `HR ${v.heart_rate_bpm}, mood ${v.mood_1to5}/5, sleep ${v.sleep_h_last_night} h` : "No data yet";
+    const stat = (label, val, unit) =>
+      `<div class="cp-stat"><span class="muted small">${label}</span><span class="cp-val">${esc(val ?? "—")}<span class="t-unit"> ${unit}</span></span></div>`;
+    const stats = v
+      ? stat("Heart rate", v.heart_rate_bpm, "bpm") + stat("Mood", v.mood_1to5, "/5") + stat("Sleep last night", v.sleep_h_last_night, "h")
+      : '<p class="muted small cp-stat">No data yet</p>';
+    const none = '<p class="cp-none">Nothing to act on</p>';
+    const list = ws => `<ul class="warns">${ws.map(w => item(w, name)).join("")}</ul>`;
+    // Whole-body avatar: every warning lights up its body part (psychological
+    // ones and the wellbeing check: the head).
+    const hits = {};
+    for (const w of all) A.addHit(hits, w.region || "whole_body", w.severity);
+    if (c.wb && WB_CLASS[c.wb.level] && WB_CLASS[c.wb.level] !== "nominal") A.addHit(hits, "head", WB_CLASS[c.wb.level]);
     return `<article class="card cap-panel st-${worst || "nominal"}">
-      <div class="cc-head">
-        <div><strong>${esc(c.info.name)}</strong>${self ? ' <span class="you-tag">you</span>' : ""}<div class="muted small">${esc(c.info.role)} (${esc(aid)}). ${esc(stats)}</div></div>
-        <span class="st-pill">${esc(worst || "nominal")}</span>
+      <div class="cp-layout">
+        <div class="cp-fig">${A.bodyFigure(c.info, hits)}</div>
+        <div class="cp-main">
+          <div class="cc-head">
+            <div><strong>${esc(c.info.name)}</strong>${self ? ' <span class="you-tag">you</span>' : ""}<div class="muted small">${esc(c.info.role)} (${esc(aid)})</div></div>
+            <span class="st-pill">${esc(worst || "nominal")}</span>
+          </div>
+          <div class="cp-stats">${stats}</div>
+          <div class="cp-sec"><h3>Physical</h3><div>${physical.length ? list(physical) : none}</div></div>
+          <div class="cp-sec"><h3>Psychological <span>confidential</span></h3>
+            <div>${wellbeingLine(c.wb)}${psych.length ? list(psych) : none}</div></div>
+        </div>
       </div>
-      <h3>Physical</h3>
-      ${physical.length ? `<ul class="warns">${physical.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
-      <h3>Psychological <span class="muted small">(confidential)</span></h3>
-      ${wellbeingLine(c.wb)}
-      ${psych.length ? `<ul class="warns">${psych.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
     </article>`;
   }
 

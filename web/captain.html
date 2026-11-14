@@ -9,7 +9,8 @@
   <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <!-- Loaded without blocking: a slow or missing network (offline on board) must never hold up the page's scripts. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -57,13 +58,6 @@
       <span id="crewConn" class="pill pill-wait">connecting…</span>
     </div>
 
-    <div class="captain-note">
-      <strong>Crew members don't see these warnings.</strong>
-      Their own console shows only their data, so whether and how to raise
-      anything is up to you: in person, in private. Medical questions go to the
-      Crew Medical Officer.
-    </div>
-
     <div id="crewPanels" class="captain-grid"><p class="muted">Loading crew…</p></div>
   </section>
 
@@ -91,6 +85,7 @@
   <script src="mock-snapshot.js"></script>
   <script src="mock.js"></script>
   <script src="common.js"></script>
+  <script src="pattern.js"></script>
   <script src="self-check.js"></script>
   <script src="captain.js"></script>
   <script src="habitat.js"></script>
