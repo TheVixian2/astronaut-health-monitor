@@ -71,6 +71,7 @@ profile also stores `onboard_action` (one line for the watch) and `body_region`
 | Watch + API spec + integration | **Luca** (has the Mac) | `/watch-app`, `docs/api-spec.md`, merging PRs |
 | Backend | **stefanalbu2010-byte**, joined by Luca once the watch app is done | `/backend`, `/tools` |
 | Web | **NotKaemy** | `/web` (both views) |
+| Presentation | **dbm711** | `/presentation` — works on `main`, no lane branch |
 
 ## Coordination rules
 

@@ -64,6 +64,17 @@ Branch: `backend`
   intent. Ask Luca before implementing conditions.
 - **Blocked on:** nothing for step 1.
 
+## Presentation — dbm711
+
+Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
+
+- **Working:** `presentation/ideas.md` is seeded with the SANS framing and
+  sources, the demo choreography, the behavioural-health argument and the NASA
+  data gap. `demo-script.md` has the 90-second run.
+- **Next:** turn `ideas.md` into actual slides; chase the TODO about the Space
+  Apps challenge page's own suggested-resources list.
+- **Blocked on:** nothing. Scope is still settling, so expect the content to move.
+
 ## Web — NotKaemy
 
 Branch: `web`

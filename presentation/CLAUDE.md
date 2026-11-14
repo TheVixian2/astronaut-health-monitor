@@ -1,7 +1,11 @@
 # presentation — CLAUDE.md
 
-**Shared folder. Everyone writes here** — this is the one exception to "edit only
-your own lane."
+**Owner: dbm711.** Shared folder — **everyone writes here**, this is the one
+exception to "edit only your own lane." dbm711 owns the pitch and works
+*only* in this folder; everyone else drops ideas in as they come up.
+
+**Work on `main`, not a lane branch** (coordination rule 3b) — `presentation/`
+is a shared path, so edits go straight to `main`: pull, small commit, push.
 
 ## What goes here
 
