@@ -17,7 +17,6 @@ astronaut data is involved. The body-clock input (live lighting log) is not incl
 """
 
 import argparse
-import random
 import sys
 import tempfile
 from collections import Counter
@@ -65,7 +64,7 @@ def run(seeds: int, verbose: bool) -> None:
             end = datetime(2026, 11, 14, 12, 0, tzinfo=timezone.utc)
             import contextlib, io
             with contextlib.redirect_stdout(io.StringIO()):
-                start = simulate_crew.seed(random.Random(seed), seed, end=end)
+                start = simulate_crew.seed(seed, end=end)
             hist = histories(start, end)
             for aid, h in hist.items():
                 levels = {}

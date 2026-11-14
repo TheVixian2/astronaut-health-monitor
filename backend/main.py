@@ -35,6 +35,7 @@ import behavioral
 import circadian
 import engine
 import horizons
+import iss_live
 import insight_service
 import location
 import quality
@@ -231,6 +232,8 @@ class CrewMemberWellbeing(BaseModel):
     trend: str
     confidence: str
     unreleased_alert: bool
+    visible_because: Literal["commander_first", "shared", "ground"]  # commander_first: not shown to them yet
+    areas: list[str] = []              # which areas raised the level; never the answers
 
 
 class CrewWellbeing(BaseModel):
@@ -410,6 +413,8 @@ class HistoryPoint(BaseModel):
     resp_rate_bpm: Optional[float] = None
     sleep_h_last_night: Optional[float] = None
     mood_1to5: Optional[float] = None
+    low: dict[str, Optional[float]] = {}   # lowest reading in the bucket, per field
+    high: dict[str, Optional[float]] = {}  # highest reading in the bucket, per field
 
 
 # --- State -----------------------------------------------------------------------
@@ -911,6 +916,10 @@ async def tick_loop() -> None:
                     s.room, s.room_since = room, t
                 s.room_source = src
             ticks += 1
+            if ticks % 10 == 0:  # real ISS cabin data into every stream, ~30 s
+                env = CabinEnvironment(**iss_live.snapshot())
+                for aid in crew:
+                    publish(aid, "environment", env)
             if ticks % REFRESH_EVERY_TICKS == 0:
                 await refresh_from_store()
                 evaluate_wellbeing(t)
@@ -956,6 +965,7 @@ async def lifespan(app: FastAPI):
     global mission_start, seeded_until
     await asyncio.to_thread(store.init)
     store.start_writer()
+    iss_live.start()  # real cabin data from NASA ISS Live; never blocks
     stored_start = await asyncio.to_thread(store.meta_get, "mission_start")
     if stored_start:
         mission_start = datetime.fromisoformat(stored_start)
@@ -980,6 +990,7 @@ async def lifespan(app: FastAPI):
     yield
     for task in list(background):
         task.cancel()
+    iss_live.stop()
     store.stop_writer()
 
 
@@ -1341,9 +1352,11 @@ async def get_report(aid: str, days: int = Query(7, ge=1, le=42),
 # --- PROVISIONAL: history, live light time (not yet in docs/api-spec.md) ---
 
 @app.get("/astronauts/{aid}/history")
-async def get_history(aid: str, hours: float = Query(24, gt=0, le=24 * 60)) -> list[HistoryPoint]:
+async def get_history(aid: str, hours: float = Query(24, gt=0, le=24 * 60),
+                      bucket_s: Optional[int] = Query(None, ge=TICK_S, le=86400)) -> list[HistoryPoint]:
+    """Average, low and high per bucket. bucket_s=3600 gives hour-by-hour."""
     get_state(aid)
-    bucket_s = max(TICK_S, int(hours * 3600 / 300))  # at most ~300 points per chart
+    bucket_s = bucket_s or max(TICK_S, int(hours * 3600 / 300))  # default: at most ~300 points per chart
     rows = await asyncio.to_thread(store.history, aid, store.iso(now() - timedelta(hours=hours)), bucket_s)
     return [HistoryPoint(**r) for r in rows]
 
@@ -1395,12 +1408,19 @@ async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
         members.append(CrewMemberWellbeing(
             astronaut_id=s.id, name=s.name, role=s.role, level=s.profile.level, score=s.profile.score,
             trend=s.trend.direction if s.trend else "unknown", confidence=s.profile.confidence,
-            unreleased_alert=withheld_for_self(s)))
+            unreleased_alert=withheld_for_self(s),
+            visible_because="ground" if view == "ground" else "commander_first" if withheld_for_self(s) else "shared",
+            areas=_area_list(s.profile, "wellbeing") if s.profile.level != "steady" else []))
     crew_wide = [f"Most of the crew ({n} of {len(crew)}) {CREW_WIDE_TEXT[name]}."
                  for name, n in crew_counts.items() if n >= behavioral.CREW_WIDE_MIN and name in CREW_WIDE_TEXT]
     suggestions = []
     if any(crew_counts.get(n, 0) >= behavioral.CREW_WIDE_MIN for n in ("sleep", "body_clock")):
         suggestions.append("Consider reviewing the crew schedule and the lighting plan; a crew rest period may help.")
+    env = iss_live.snapshot()
+    if env["status"] in ("elevated", "above_limit"):
+        suggestions.append(f"Cabin CO2 is {env['co2_1h_avg_mmhg'] or env['co2_mmhg']} mmHg (live ISS reading; "
+                           f"NASA limit {env['co2_limit_mmhg']:g} mmHg). Headaches and poorer sleep start around this "
+                           "level: consider checking the CO2 scrubber and ventilation.")
     if crew_counts.get("social_time", 0) >= behavioral.CREW_WIDE_MIN:
         suggestions.append("Consider shared crew time: a common meal or a crew evening.")
     if crew_counts.get("mood", 0) >= behavioral.CREW_WIDE_MIN:
@@ -1413,6 +1433,124 @@ async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
         view=view, crew_wide=crew_wide, members=members, suggestions=suggestions,
         note=f"Crew-wide trends never name anyone and need at least {behavioral.CREW_WIDE_MIN} people. "
              "Questionnaire answers are never aggregated.")
+
+
+# --- PROVISIONAL: live cabin environment from NASA ISS Live (iss_live.py) -----------
+
+class CabinEnvironment(BaseModel):
+    source: str
+    updated_at: Optional[datetime]
+    ppco2_lab_mmhg: Optional[float]
+    ppco2_node3_mmhg: Optional[float]
+    ppo2_lab_mmhg: Optional[float]
+    cabin_pressure_mmhg: Optional[float]
+    cabin_temp_c: Optional[float]
+    co2_mmhg: Optional[float]          # the higher of Lab and Node 3 right now
+    co2_1h_avg_mmhg: Optional[float]   # what NASA-STD-3001's 3 mmHg limit applies to
+    co2_limit_mmhg: float
+    status: Literal["ok", "elevated", "above_limit", "unavailable"]
+    note: str
+    source_url: str
+
+
+@app.get("/environment")
+async def get_environment() -> CabinEnvironment:
+    return CabinEnvironment(**iss_live.snapshot())
+
+
+# --- PROVISIONAL: habitat rooms (location.py: same rooms and stays as the beacons and the profile) ---
+
+class Room(BaseModel):
+    id: str
+    name: str
+    kind: Literal["shared", "private", "untracked"]
+
+
+class Location(BaseModel):
+    astronaut_id: str
+    name: str
+    room: Optional[str]   # null while in the hygiene module: it has no beacon, never tracked
+    room_name: str
+    since: Optional[datetime]
+
+
+class RoomTime(BaseModel):
+    astronaut_id: str
+    day_start: datetime
+    hours: dict[str, float]          # room id -> hours today (hygiene excluded)
+    shared_h: float
+    private_h: float
+    shared_normal_h: float           # average full day in shared rooms, own mission days 7-14
+    shared_so_far_normal_h: float    # the same normal, scaled to the time of day so far
+    shared_7d_avg_h: float           # average full day in shared rooms over the last 7 days
+    with_crew_7d_avg_h: Optional[float] = None   # shared room with a crewmate there: the profile input
+    with_crew_normal_h: Optional[float] = None
+    note: str
+
+
+@app.get("/habitat")
+async def get_habitat() -> list[Room]:
+    return [Room(id=r.id, name=r.name, kind=r.kind) for r in location.ROOMS.values()]
+
+
+def _note_map_view(s: AstronautState, viewer: str, t: datetime) -> None:
+    """The crew map is polled every few seconds: keep one line per viewer per day."""
+    day = store.iso(t)[:10]
+    for e in s.location_seen:
+        if e["viewer"] == viewer and e["reason"] == "crew map (safety)" and e["at"][:10] == day:
+            e["at"], e["views"] = store.iso(t), e.get("views", 1) + 1
+            return
+    s.location_seen.append({"viewer": viewer, "at": store.iso(t), "reason": "crew map (safety)", "views": 1})
+    del s.location_seen[:-50]
+
+
+@app.get("/crew/locations")
+async def get_crew_locations(viewer: str) -> list[Location]:
+    """Where everyone is now: for the commander and Mission Control (safety: fire, depressurisation)."""
+    if viewer not in (COMMANDER_ID, "ground"):
+        raise HTTPException(403, "Crew locations are for the commander and Mission Control.")
+    t = now()
+    out = []
+    for s in crew.values():
+        tracked = s.room is not None and location.ROOMS[s.room].kind != "untracked"
+        out.append(Location(astronaut_id=s.id, name=s.name, room=s.room if tracked else None,
+                            room_name=location.ROOMS[s.room].name if tracked else "Not tracked",
+                            since=s.room_since if tracked else None))
+        _note_map_view(s, viewer, t)
+    return out
+
+
+@app.get("/astronauts/{aid}/rooms")
+async def get_room_time(aid: str, viewer: str) -> RoomTime:
+    """Hours per room today vs the astronaut's own normal. The astronaut and the commander only."""
+    get_state(aid)
+    if viewer not in (aid, COMMANDER_ID):
+        raise HTTPException(403, "Room time is for the astronaut and the commander.")
+    s = get_state(aid)
+    t = now()
+    start = t.replace(hour=0, minute=0, second=0, microsecond=0)
+    b0 = datetime.combine(mission_start.date() + timedelta(days=6), datetime.min.time(), tzinfo=timezone.utc)
+    visits = await asyncio.to_thread(store.visits_between, store.iso(min(b0, start - timedelta(days=7))),
+                                     store.iso(t))
+    shared = lambda a, b: location.by_kind(location.hours_by_room(visits, aid, a, b))["shared"]
+    hours = location.hours_by_room(visits, aid, start, t)
+    kinds = location.by_kind(hours)
+    base_days = [b0 + timedelta(days=d) for d in range(8)]
+    with_crew = lambda days: [d.crew_h for d in days if d and d.crew_h is not None]
+    last7 = with_crew([s.history.days.get(start.date() - timedelta(days=i)) for i in range(1, 8)]) if s.history else []
+    base7 = with_crew([s.history.days.get(d.date()) for d in base_days]) if s.history else []
+    return RoomTime(
+        astronaut_id=aid, day_start=start, hours={r: round(h, 1) for r, h in hours.items() if r != "hygiene"},
+        shared_h=kinds["shared"], private_h=kinds["private"],
+        shared_normal_h=round(statistics.fmean(shared(d, d + timedelta(days=1)) for d in base_days), 1),
+        shared_so_far_normal_h=round(statistics.fmean(shared(d, d + (t - start)) for d in base_days), 1),
+        shared_7d_avg_h=round(statistics.fmean(shared(start - timedelta(days=i), start - timedelta(days=i - 1))
+                                               for i in range(1, 8)), 1),
+        with_crew_7d_avg_h=round(statistics.fmean(last7), 1) if last7 else None,
+        with_crew_normal_h=round(statistics.fmean(base7), 1) if base7 else None,
+        note="Time with crewmates (a shared room with someone else there, awake hours) is one of the inputs "
+             "of the wellbeing profile, compared with your own mission days 7-14; GET /wellbeing/method shows "
+             "its weight. Rooms only, never coordinates. The hygiene module has no beacon and is never tracked.")
 
 
 @app.get("/notifications")
@@ -1534,7 +1672,9 @@ async def get_location(aid: str, viewer: str) -> LocationView:
         reason = _emergency(s)
         roles = {COMMANDER_ID: "commander", CMO_ID: "doctor", "ground": "ground"}
         if viewer not in roles or reason is None:
-            raise HTTPException(403, "Location is private: only the astronaut sees it, except in an emergency.")
+            raise HTTPException(403, "Location history is the astronaut's own. The commander and Mission Control "
+                                     "see current rooms on GET /crew/locations; the Crew Medical Officer only "
+                                     "in an emergency.")
         s.location_seen.append({"viewer": viewer, "at": store.iso(t), "reason": reason})
         return LocationView(astronaut_id=aid, view=roles[viewer], current=current, reason=reason,
                             today_minutes=None, week=None, seen_by=None,
@@ -1558,8 +1698,9 @@ async def get_location(aid: str, viewer: str) -> LocationView:
                 "alone_in_quarters_h_per_day": round(statistics.fmean(q_h), 1) if q_h else None}
     return LocationView(astronaut_id=aid, view="self", current=current, reason=None, today_minutes=minutes,
                         week=week, seen_by=list(s.location_seen),
-                        note=(social.detail if social else "") + " Rooms only, never coordinates; nobody gets a "
-                             "live map of the crew.")
+                        note=(social.detail if social else "") + " Rooms only, never coordinates. The commander "
+                             "and Mission Control can see which room you're in now (for safety: fire or "
+                             "depressurisation), and seen_by lists who looked. Hygiene is never tracked.")
 
 
 @app.get("/mission/light-time")

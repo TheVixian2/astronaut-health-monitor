@@ -31,7 +31,7 @@ tools/check_profile.py on simulated crews, not on real astronauts.
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from statistics import fmean, linear_regression, pstdev
+from statistics import fmean, linear_regression, stdev
 from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -66,6 +66,12 @@ INPUTS = {
                       "NASA's 3-min Reaction Self Test (PVT-B, 355 ms lapse; Basner et al. 2011). "
                       "Tracks fatigue and alertness, not mood itself."),
 }
+# Spread floor relative to the astronaut's own level. Eight baseline days can give a spread that is
+# too small by chance, and then an ordinary week looks like a big change. Night-to-night HRV
+# fluctuation is normal and measurable (Grosicki et al., Am J Physiol Heart 2025, >21,000 wearable
+# users), and daily activity varies even more. PLACEHOLDERS, tuned with tools/check_profile.py.
+REL_FLOOR = {"hrv": 0.10, "activity": 0.20, "social_time": 0.10, "reaction_time": 0.05}
+
 AREA = {"sleep": "sleep", "hrv": "body", "social_time": "time with crew", "activity": "activity",
         "body_clock": "sleep", "resting_heart_rate": "body", "phq": "questionnaire", "mood": "mood",
         "reaction_time": "alertness"}
@@ -225,10 +231,12 @@ def severity_from_z(z: Optional[float]) -> float:
     return max(0.0, min(1.0, (z - 0.5) / 1.5))
 
 
-def _mean_sd(values: list[float], floor: float, need: int = 0) -> Optional[tuple[float, float]]:
+def _mean_sd(values: list[float], floor: float, need: int = 0, rel: float = 0.0) -> Optional[tuple[float, float]]:
+    """Baseline mean and spread: the sample SD, never below `floor` or `rel` x the mean."""
     if len(values) < (need or MIN_DAYS):
         return None
-    return fmean(values), max(pstdev(values), floor)
+    m = fmean(values)
+    return m, max(stdev(values), floor, rel * abs(m))
 
 
 def _z(recent: Optional[float], base: Optional[tuple[float, float]], direction: str) -> Optional[float]:
@@ -310,7 +318,7 @@ def compute(h: History, end: date, live: bool = False) -> Result:
 
     def daily(name: str, attr: str, nd: int = 1, extra: str = "") -> None:
         group, weight, direction, floor, unit, label, ev = INPUTS[name]
-        base = _mean_sd(_day_values(h, attr, b0, b1), floor)
+        base = _mean_sd(_day_values(h, attr, b0, b1), floor, rel=REL_FLOOR.get(name, 0.0))
         vals = _day_values(h, attr, w0, end)
         recent = fmean(vals) if len(vals) >= MIN_DAYS else None
         z = _z(recent, base, direction)
@@ -335,8 +343,8 @@ def compute(h: History, end: date, live: bool = False) -> Result:
 
     # Time with crewmates: crew time down OR time alone in own quarters up, whichever is worse.
     g, w, _, floor, unit, label, ev = INPUTS["social_time"]
-    base_c = _mean_sd(_day_values(h, "crew_h", b0, b1), floor)
-    base_q = _mean_sd(_day_values(h, "quarters_h", b0, b1), floor)
+    base_c = _mean_sd(_day_values(h, "crew_h", b0, b1), floor, rel=REL_FLOOR["social_time"])
+    base_q = _mean_sd(_day_values(h, "quarters_h", b0, b1), floor, rel=REL_FLOOR["social_time"])
     vc, vq = _day_values(h, "crew_h", w0, end), _day_values(h, "quarters_h", w0, end)
     rc = fmean(vc) if len(vc) >= MIN_DAYS else None
     rq = fmean(vq) if len(vq) >= MIN_DAYS else None
@@ -375,7 +383,8 @@ def compute(h: History, end: date, live: bool = False) -> Result:
                             f"{mood_base[0]:.1f}." if zm is not None else "Not enough mood check-ins yet.")))
 
     rts = [p["reaction_test"] for p in base_ck if p.get("reaction_test")]
-    rt_base = _mean_sd([t["mean_rt_ms"] for t in rts], INPUTS["reaction_time"][3], MIN_CHECKINS)
+    rt_base = _mean_sd([t["mean_rt_ms"] for t in rts], INPUTS["reaction_time"][3], MIN_CHECKINS,
+                       REL_FLOOR["reaction_time"])
     lapse_base = _mean_sd([t["lapses"] for t in rts], 1.0, MIN_CHECKINS)
     latest_rt = next((p["reaction_test"] for p in reversed(_checkins_in(h, w0, ck_end)) if p.get("reaction_test")), None)
     if latest_rt and rt_base:

@@ -43,14 +43,18 @@ def _walk(rng, value, target, step, rate=0.3):
     return value + rng.gauss(0, step) + (target - value) * rate
 
 
-def seed(rng: random.Random, seed_value: int = 42, end: datetime | None = None) -> datetime:
+def seed(seed_value: int = 42, end: datetime | None = None) -> datetime:
     """Six weeks of history. Day-to-day variation is realistic on purpose (resting HR ~3%, HRV ~12%,
     activity ~25%, sleep ~0.5 h): with too little noise every change looks huge, and the accuracy
-    check (tools/check_profile.py) would be meaningless. Returns the mission start."""
+    check (tools/check_profile.py) would be meaningless. Returns the mission start.
+
+    Each astronaut has their own random stream, so the past days come out the same whatever the
+    time of day the seed runs: the demo story is repeatable."""
     end = end or datetime.now(timezone.utc).replace(second=0, microsecond=0)
     start = (end - timedelta(days=MISSION_DAYS - 1)).replace(hour=0, minute=0)
     samples, checkins, visits = [], [], []
     for aid, (_, _, b) in engine.CREW.items():
+        rng = random.Random(f"vitals-{aid}-{seed_value}")
         v = {k: float(x) for k, x in b.items()}
         t, sleep_h, day_seen = start, b["sleep_h_last_night"], None
         day_target: dict = {}
@@ -178,7 +182,7 @@ def main() -> None:
         store.reset()
         print(f"Reset {store.DB_PATH}")
     if args.seed_baseline:
-        seed(rng, args.seed)
+        seed(args.seed)
     if args.run:
         run(args.base, args.scenario, args.post_hr, rng)
 

@@ -181,9 +181,42 @@ sees.** It is a deliberate design position, not a toggle for convenience — see
 - `GET /notifications?viewer=` → `[Notice]`; also pushed live as SSE event `notice`.
 - `GET /checkin/questions` → exact PHQ-2 wording + reaction-test instructions.
 
+- **Commander first (live):** the commander (`viewer=a1`) always sees every crew
+  member's `level` and `areas` (masked signals, never PHQ-2 answers);
+  `GET /crew/wellbeing` members carry `visible_because: commander_first` and `areas`.
+  Mission Control still needs sharing or the urgent level.
+- `GET /astronauts/{id}/history?hours=&bucket_s=` → each point also has `low{}` and
+  `high{}` per field; `bucket_s=3600` = hour by hour.
+
+## Cabin environment — **PROVISIONAL**, real NASA data (`backend/iss_live.py`)
+
+Live from **NASA ISS Live** telemetry (public Lightstreamer feed, adapter `ISSLIVE`):
+US Lab + Node 3 ppCO2, Lab ppO2, cabin pressure, cabin air temperature.
+
+- `GET /environment` → `{source, updated_at, ppco2_lab_mmhg, ppco2_node3_mmhg,
+  ppo2_lab_mmhg, cabin_pressure_mmhg, cabin_temp_c, co2_mmhg, co2_1h_avg_mmhg,
+  co2_limit_mmhg: 3, status: ok|elevated|above_limit|unavailable, note, source_url}`
+- SSE event **`environment`** (same shape) on every stream, ~every 30 s.
+- NASA-STD-3001 limit: 3 mmHg 1-hour average; `elevated` from 2.5 (OCHMO-TB-004:
+  headache risk < 1 % needs a 7-day average below 2.5). Elevated CO2 adds a
+  crew-wide suggestion to `GET /crew/wellbeing`.
+- `AHM_ISS_LIVE=0` turns the feed off; without network `status` is `unavailable`.
+
+## Habitat — **PROVISIONAL** (live in `backend/habitat.py`)
+
+Room per astronaut from a Bluetooth beacon per module (simulated by a fixed daily
+schedule). **The hygiene module has no beacon and is never tracked.**
+
+- `GET /habitat` → `[{id, name, kind: shared|private|untracked}]`
+- `GET /crew/locations?viewer=a1|ground` → `[{astronaut_id, name, room|null,
+  room_name, since}]` — safety use (fire, depressurisation).
+- `GET /astronauts/{id}/rooms?viewer=<self>|a1` → `{hours{room: h}, shared_h,
+  private_h, shared_normal_h, shared_so_far_normal_h, shared_7d_avg_h, note}`.
+  Supporting signal only (weak evidence): shown, never added to the wellbeing score.
+
 ### Decided 2026-11-14, NOT built yet
 
-1. **Commander first, then released.** A psychological flag reaches the
+1. **Release step (still to build).** A psychological flag reaches the
    **commander** first; the commander releases it to the astronaut.
    `PUT /astronauts/{id}/alerts/{alert_id}/release` (commander, or the deputy) sets
    `released_to_crew_at`; `view=crew` streams withhold unreleased psychological items.

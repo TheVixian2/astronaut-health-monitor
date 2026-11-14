@@ -56,7 +56,11 @@ this long; default 12 h).
   (`PUT .../release`) or after `AHM_RELEASE_AFTER_S`. PHQ-9 question 9 above 0 is released at
   once. Psychological data is never sent to a cloud model; those explanations are built on board.
 - Every profile weight lives in `behavioral.INPUTS` / `GROUP_WEIGHT`. After changing one, run
-  `python ../tools/check_profile.py --seeds 30` and keep false "concern" at 0%.
+  `python ../tools/check_profile.py --seeds 30` and keep false "concern" at 0%. Baseline spread
+  is the sample SD with a floor (`REL_FLOOR`, relative to the person's own level), so eight
+  baseline days can't make an ordinary week look like a big change.
+- The seed is repeatable: each astronaut has their own random stream and rooms follow the
+  mission day, so a2 ends at "watch" on day 42 whatever time the seed runs.
 
 ## Layout
 
@@ -69,8 +73,13 @@ this long; default 12 h).
   as SDs from the astronaut's own days 7-14, weighted (watch/station 70, check-ins 30), with the
   PHQ safety rules on top, a confidence, and a daily trend. `method()` lists every weight.
   Crew-wide trends never name anyone and need >= 3 people.
-- `location.py` — room from Bluetooth beacons (two scans must agree), simulated schedule,
-  daily time with crewmates / alone in quarters. Rooms only; others see it only in an emergency.
+- `location.py` — the habitat's rooms (ids shared with `web/habitat.js`: `q_a1`..`q_a4`,
+  `command`, `lab`, `galley`, `exercise`; `hygiene` has no beacon and is never tracked), room from
+  Bluetooth beacons (two scans must agree), simulated schedule, stored stays, daily time with
+  crewmates / alone in quarters. Rooms only. `GET /crew/locations` (commander, Mission Control:
+  safety) and `GET /astronauts/{id}/rooms` (astronaut, commander) read the same live room and
+  stored stays as the profile; map views are listed in the astronaut's `seen_by`.
+- `iss_live.py` — live ISS cabin CO2 from NASA ISS Live (Lightstreamer), `/environment`.
 - `quality.py` — sensor checks per reading: impossible values, spikes, stuck sensor,
   watch dropout. Sensor errors the astronaut reports are flagged `artifact`, never deleted.
 - `store.py` — SQLite schema, background writer, reads (baseline, history, check-ins).

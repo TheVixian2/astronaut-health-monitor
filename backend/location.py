@@ -11,11 +11,14 @@ the astronaut's own normal, feed the psychological profile (behavioral.py: socia
 Proximity sensors measured crew cohesion in Mars-500 (Johannes et al., PLoS ONE 2015) and
 Antarctic winter-overs (Basner et al., Front Psychol 2026).
 
-Privacy: rooms only, no coordinates. Only the astronaut sees where they are; the commander,
-the Crew Medical Officer and Mission Control see the current room only during an emergency
-(an active alert or an urgent wellbeing level), and the astronaut can see who looked. Nobody
-gets a live map of the crew. There is no physical watch or beacon in this project: movement
-is simulated from a daily schedule unless a scan arrives.
+Privacy: rooms only, no coordinates. The hygiene module has no beacon and is never tracked.
+The commander and Mission Control see which room everyone is in now (GET /crew/locations, for
+safety: fire or depressurisation; team decision). Time per room is for the astronaut and the
+commander; the astronaut's own location page lists who looked. There is no physical watch or
+beacon in this project: movement is simulated from a daily schedule unless a scan arrives.
+
+Room ids are shared with the habitat map (web/habitat.js): q_a1..q_a4, command, lab, galley,
+exercise, hygiene.
 """
 
 import hashlib
@@ -36,7 +39,7 @@ IBEACON_UUID = "6D61B6C0-4D41-5253-2D44-472D48414221"  # one UUID for the habita
 CREW_IDS = ("a1", "a2", "a3", "a4")
 FIRST_NAME = {"a1": "Elena", "a2": "Mihai", "a3": "Sara", "a4": "Jonas"}
 
-Kind = Literal["quarters", "shared", "private"]
+Kind = Literal["shared", "private", "untracked"]
 
 
 @dataclass(frozen=True)
@@ -48,16 +51,20 @@ class RoomDef:
 
 
 ROOMS: dict[str, RoomDef] = {
-    **{f"quarters_{a}": RoomDef(f"quarters_{a}", f"Crew quarters ({FIRST_NAME[a]})", "quarters", a)
-       for a in CREW_IDS},
-    "galley": RoomDef("galley", "Galley and wardroom", "shared"),
     "command": RoomDef("command", "Command deck", "shared"),
-    "lab": RoomDef("lab", "Science lab", "shared"),
-    "exercise": RoomDef("exercise", "Exercise area", "shared"),
-    "hygiene": RoomDef("hygiene", "Hygiene compartment", "private"),
+    "lab": RoomDef("lab", "Lab", "shared"),
+    "galley": RoomDef("galley", "Galley & wardroom", "shared"),
+    "exercise": RoomDef("exercise", "Exercise", "shared"),
+    **{f"q_{a}": RoomDef(f"q_{a}", f"Quarters {i}", "private", a) for i, a in enumerate(CREW_IDS, start=1)},
+    "hygiene": RoomDef("hygiene", "Hygiene (not tracked)", "untracked"),  # no beacon, ever
 }
-BEACONS = {f"dg-{rid}": rid for rid in ROOMS}  # beacon id -> room id
-MINOR = {rid: i + 1 for i, rid in enumerate(ROOMS)}
+TRACKED = [rid for rid, r in ROOMS.items() if r.kind != "untracked"]
+BEACONS = {f"dg-{rid}": rid for rid in TRACKED}  # beacon id -> room id
+MINOR = {rid: i + 1 for i, rid in enumerate(TRACKED)}
+
+
+def quarters(aid: str) -> str:
+    return f"q_{aid}"
 
 
 class BeaconReading(BaseModel):
@@ -82,13 +89,41 @@ class Room(BaseModel):
     name: str
     kind: Kind
     owner: Optional[str]
-    beacon_id: str
-    ibeacon: dict
+    beacon_id: Optional[str]   # null: no beacon (hygiene)
+    ibeacon: Optional[dict]
 
 
 def rooms() -> list[Room]:
-    return [Room(id=r.id, name=r.name, kind=r.kind, owner=r.owner, beacon_id=f"dg-{r.id}",
-                 ibeacon={"uuid": IBEACON_UUID, "major": 1, "minor": MINOR[r.id]}) for r in ROOMS.values()]
+    return [Room(id=r.id, name=r.name, kind=r.kind, owner=r.owner,
+                 beacon_id=f"dg-{r.id}" if r.id in MINOR else None,
+                 ibeacon={"uuid": IBEACON_UUID, "major": 1, "minor": MINOR[r.id]} if r.id in MINOR else None)
+            for r in ROOMS.values()]
+
+
+def hours_by_room(visits: list[tuple[str, str, str, str]], aid: str, start: datetime,
+                  end: datetime) -> dict[str, float]:
+    """Hours per room for one astronaut inside [start, end), from stored stays."""
+    out: dict[str, float] = {}
+    for vid, room, entered, left in visits:
+        if vid != aid:
+            continue
+        a = max(_parse(entered), start)
+        b = min(_parse(left), end)
+        if b > a:
+            out[room] = out.get(room, 0.0) + (b - a).total_seconds() / 3600
+    return {r: round(h, 2) for r, h in out.items()}
+
+
+def by_kind(hours: dict[str, float]) -> dict[str, float]:
+    out = {"shared": 0.0, "private": 0.0, "untracked": 0.0}
+    for r, h in hours.items():
+        if r in ROOMS:
+            out[ROOMS[r].kind] += h
+    return {k: round(v, 1) for k, v in out.items()}
+
+
+def _parse(ts: str) -> datetime:
+    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
 
 # --- Simulated daily schedule ----------------------------------------------------
@@ -108,28 +143,28 @@ def _rng(*parts) -> random.Random:
 def scheduled_room(aid: str, t: datetime, mission_day: int, seed: int = 0) -> str:
     """Where the schedule puts this astronaut at time t. Deterministic, so live and seeded agree."""
     m = t.hour * 60 + t.minute
-    day = t.date().isoformat()
-    quarters = f"quarters_{aid}"
+    day = mission_day  # by mission day, not date: the same story on every run
+    own = quarters(aid)
     withdraw = 0.0
     if aid == "a2" and mission_day >= DECLINE_FROM_DAY:
         withdraw = min(1.0, (mission_day - DECLINE_FROM_DAY + 1) / 14)   # ramps up over two weeks
     if m < AWAKE[0] or m >= AWAKE[1]:
-        return quarters
+        return own
     if HYGIENE[aid] <= m < HYGIENE[aid] + 15:
         return "hygiene"
     meal = 420 <= m < 465 or 720 <= m < 780 or 1080 <= m < 1140      # 07:00, 12:00, 18:00
     if meal:
         skip = 0.05 + 0.15 * withdraw
-        return quarters if _rng(seed, aid, day, "meal", m // 60).random() < skip else "galley"
+        return own if _rng(seed, aid, day, "meal", m // 60).random() < skip else "galley"
     lo, hi = EXERCISE[aid]
     if lo <= m < hi:
         return "exercise"
     if 465 <= m < 1080:                                               # work, with short breaks
-        return quarters if _rng(seed, aid, day, "break", m // 30).random() < 0.08 else WORK_ROOM[aid]
+        return own if _rng(seed, aid, day, "break", m // 30).random() < 0.08 else WORK_ROOM[aid]
     if m < 420:
-        return quarters
+        return own
     p = P_SOCIAL[aid] * (1 - 0.35 * withdraw)                         # evening free time
-    return "galley" if _rng(seed, aid, day, "evening", m // 30).random() < p else quarters
+    return "galley" if _rng(seed, aid, day, "evening", m // 30).random() < p else own
 
 
 def simulate_visits(aid: str, start: datetime, end: datetime, mission_start: date, seed: int = 0) -> list[tuple]:
@@ -214,8 +249,8 @@ def daily_social(visits: list[tuple[str, str, str, str]], first_day: date, last_
     for aid, room, entered, left in visits:
         if aid not in grid:
             continue
-        a = int((datetime.fromisoformat(entered.replace("Z", "+00:00")) - origin).total_seconds() // (SLOT_MIN * 60))
-        b = int((datetime.fromisoformat(left.replace("Z", "+00:00")) - origin).total_seconds() // (SLOT_MIN * 60))
+        a = int((_parse(entered) - origin).total_seconds() // (SLOT_MIN * 60))
+        b = int((_parse(left) - origin).total_seconds() // (SLOT_MIN * 60))
         for i in range(max(a, 0), min(b, len(grid[aid]))):
             grid[aid][i] = room
     out: dict[str, dict[date, tuple[float, float]]] = {a: {} for a in CREW_IDS}
@@ -232,7 +267,7 @@ def daily_social(visits: list[tuple[str, str, str, str]], first_day: date, last_
             for i, room in enumerate(slots, start=lo):
                 if room is None:
                     continue
-                if room == f"quarters_{aid}":
+                if room == quarters(aid):
                     quarters_h += h
                 elif ROOMS.get(room) and ROOMS[room].kind == "shared" and any(
                         grid[o][i] == room for o in CREW_IDS if o != aid):

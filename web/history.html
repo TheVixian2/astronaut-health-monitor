@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>History · AHM</title>
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js via CDN (web/CLAUDE.md). -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    .hist { max-width: 1100px; margin: 0 auto; padding: 0 16px 32px; display: grid; gap: 16px; }
+    .hist .card { padding: 14px 16px; }
+    .hist .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .hist .seg { display: inline-flex; border: 1px solid #ffffff26; border-radius: 8px; overflow: hidden; }
+    .hist .seg button { background: none; border: 0; color: inherit; padding: 6px 12px; cursor: pointer; font: inherit; }
+    .hist .seg button[aria-pressed="true"] { background: #ffffff1f; font-weight: 600; }
+    .hist .chart-box { position: relative; height: 280px; }
+    .hist table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    .hist th, .hist td { text-align: right; padding: 4px 8px; border-bottom: 1px solid #ffffff12; }
+    .hist th:first-child, .hist td:first-child { text-align: left; }
+    .hist .dev-up { color: #f0a050; } .hist .dev-down { color: #6fb3ff; }
+    .hist .table-scroll { max-height: 320px; overflow: auto; }
+    .hist pre { white-space: pre-wrap; font-size: 13px; margin: 0; }
+    .hist .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 800px) { .hist .two { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="selfcheck">
+  <nav class="appnav area-onboard" aria-label="History">
+    <a class="brand" data-href="index.html" href="index.html" title="Home">AHM</a>
+    <span class="area-tag">History</span>
+    <div class="menu"><a id="back" href="index.html">← Back</a></div>
+    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+  </nav>
+
+  <header class="bar">
+    <div>
+      <h1>Health history</h1>
+      <div class="who"><strong id="name">…</strong> <span class="muted" id="role"></span></div>
+    </div>
+    <div class="controls">
+      <label id="pickWrap" class="small">Astronaut <select id="pick"></select></label>
+    </div>
+  </header>
+
+  <main class="hist">
+    <section class="card">
+      <div class="controls">
+        <div class="seg" id="ranges" role="group" aria-label="Time range"></div>
+        <div class="seg" id="fields" role="group" aria-label="Vital"></div>
+        <span class="muted small" id="rangeLabel"></span>
+      </div>
+      <div class="chart-box"><canvas id="chart"></canvas></div>
+      <p class="muted small">Line = average · shaded band = lowest to highest reading in that period ·
+        dashed = this astronaut's own normal (mission days 7–14).</p>
+      <div class="table-scroll"><table id="table"></table></div>
+    </section>
+
+    <div class="two">
+      <section class="card">
+        <h2>Sleep · last 7 nights</h2>
+        <div class="chart-box" style="height:200px"><canvas id="sleepChart"></canvas></div>
+        <p class="muted small" id="sleepNote"></p>
+      </section>
+      <section class="card" id="alertsCard" hidden>
+        <h2>Alerts</h2>
+        <div id="alerts" class="small"></div>
+      </section>
+    </div>
+
+    <section class="card" id="reportCard" hidden>
+      <h2>Report for Mission Control <span class="muted small">· last 7 days</span></h2>
+      <pre id="report">…</pre>
+    </section>
+  </main>
+
+  <footer class="foot muted small">Decision support only, not a diagnosis. Every value is compared with this
+    astronaut's own baseline, never a population average.</footer>
+
+  <script src="mock.js"></script>
+  <script src="common.js"></script>
+  <script src="history.js"></script>
+</body>
+</html>
