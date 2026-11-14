@@ -283,7 +283,7 @@
       data: {
         labels: history.map(p => tlabel(p.t)),
         datasets: [
-          { label: field.label, data: history.map(p => p.v[chartField]), borderColor: tok("--accent"),
+          { label: field.label, data: history.map(p => p.v[chartField]), borderColor: A.vitalColor(chartField),
             pointRadius: 0, borderWidth: 2, tension: 0.3 },
           { label: "Your baseline", data: history.map(p => p.v.baseline?.[chartField]), borderColor: tok("--muted"),
             borderDash: [5, 5], pointRadius: 0, borderWidth: 1.5 },
@@ -498,6 +498,8 @@
         <p class="ci-source muted small">${esc(q.phq2.source)}</p>`;
       $("checkin").insertBefore(step, nav);
     }
+    // NASA's 3-minute reaction test (PVT-B), optional, after the PHQ-2: reaction-test.js.
+    if (window.ReactionTest && q.reaction_test) $("checkin").insertBefore(window.ReactionTest.step(q.reaction_test), nav);
     ciShow(ciAt);
   })();
   ciShow(0);
@@ -516,6 +518,8 @@
     const li = f.querySelector('input[name="phq2_little_interest"]:checked');
     const fd = f.querySelector('input[name="phq2_feeling_down"]:checked');
     if (li && fd) body.phq2 = { little_interest: Number(li.value), feeling_down: Number(fd.value) };
+    const rt = f.querySelector('input[name="reaction_test"]');
+    if (rt && rt.value) { try { body.reaction_test = JSON.parse(rt.value); } catch { /* not sent */ } }
 
     const out = $("checkinResult");
     out.className = "ci-result muted";
