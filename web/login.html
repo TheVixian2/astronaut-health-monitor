@@ -22,8 +22,12 @@
       <button type="submit">Sign in</button>
       <p id="loginError" class="err small" role="alert" hidden>Wrong username or password.</p>
     </form>
+    <div id="guestBox" class="login-guest" hidden>
+      <button type="button" id="guest">Continue as presenter</button>
+      <p class="muted small">Public demo: no account or password needed.</p>
+    </div>
     <p class="muted small">Demo build: placeholder accounts, one per role
-      (crew, captain, doctor, ground, demo).</p>
+      (crew, captain, doctor, ground, demo, test).</p>
   </main>
   <script>
     const params = new URLSearchParams(location.search);
@@ -33,6 +37,12 @@
 
     const already = AHMAuth.session();
     if (already) location.replace(target(already));
+
+    // Public demo (GitHub Pages): one click in, no password (Space Apps rule).
+    if (AHMAuth.HOSTED) {
+      document.getElementById("guestBox").hidden = false;
+      document.getElementById("guest").addEventListener("click", () => location.replace(target(AHMAuth.guest())));
+    }
 
     document.getElementById("login").addEventListener("submit", e => {
       e.preventDefault();

@@ -32,14 +32,24 @@
   const transit = new Map();        // alert id -> alert, raised on board, not yet received
   const sources = [];
 
+  // Test feed (test-feed.js): the `test` account, or ?test, shows one scripted
+  // test subject (new data every 10 s, no light delay) instead of the crew.
+  const TEST = !!(window.AHMTestFeed && window.AHMTestFeed.enabled);
+
   init();
 
   async function init() {
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
     renderMission();
+    if (TEST) {
+      document.body.classList.add("test-feed");
+      $("pageSub").textContent = `Test feed: a scripted test subject, new data every ${window.AHMTestFeed.STEP_S} s`;
+      $("delayBanner").querySelector("strong").textContent = "Test feed.";
+      $("delayText").textContent = "Not delayed. Each step sends one vital wrong, then good, through every vital in turn.";
+    }
 
     let list;
-    try { list = await A.getJSON(cfg.base, "/crew", cfg.mock); }
+    try { list = TEST ? window.AHMTestFeed.crew : await A.getJSON(cfg.base, "/crew", cfg.mock); }
     catch (err) {
       $("crew").innerHTML = `<p class="err">Could not load crew: ${esc(err.message)}. Is the backend running? (Add ?mock to use fake data.)</p>`;
       setConn("disconnected", "pill-off");
@@ -51,7 +61,7 @@
 
     let open = 0;
     for (const aid of crew.keys()) {
-      const { source } = A.openStream({ ...cfg, aid, view: "ground" });
+      const source = TEST ? new window.AHMTestFeed.EventSource() : A.openStream({ ...cfg, aid, view: "ground" }).source;
       sources.push(source);
       source.onopen = () => { open++; updateConn(); };
       source.onerror = () => updateConn();
@@ -66,6 +76,7 @@
       else setConn(`${live}/${sources.length} streams`, "pill-wait");
     }
 
+    if (TEST) { setInterval(tick, 1000); return; }   // no circadian or transit for the test subject
     pollCircadian();
     setInterval(pollCircadian, CIRC_POLL_MS);
 
@@ -80,6 +91,7 @@
   function onVitals(aid, v) {
     const c = crew.get(aid);
     if (!c) return;
+    v = A.withScan(A.withStress(v), aid);   // stress from HRV; simulated X-ray scan until the backend sends one
     c.latest = v;
     c.at = new Date(v.timestamp);
     c.baseHr = v.baseline ? v.baseline.heart_rate_bpm : null;
@@ -189,10 +201,32 @@
     for (const aid of crew.keys()) renderCard(aid);
   }
 
-  const CARD_FIELDS = [
-    ["heart_rate_bpm", "HR", "bpm"], ["spo2_pct", "SpO₂", "%"],
-    ["temp_c", "Temp", "°C"], ["resp_rate_bpm", "Resp", "/min"],
-  ];
+  // Every vital with its green-to-red threshold scale (owner, 2026-11-14):
+  // green near the astronaut's own usual, then yellow / orange / red at the
+  // watch / alert / critical steps in AHM.thresholdLevel (placeholders).
+  const LEVEL_NAMES = { ok: "near usual", watch: "watch", alert: "alert", critical: "critical" };
+  function thresholdRow(f, v) {
+    const now = v ? v[f.key] : null, base = v?.baseline?.[f.key];
+    const t = A.thresholdLevel(f.key, now, base);
+    const show = x => (typeof x === "number" && f.dp != null ? x.toFixed(f.dp) : fmt(x));
+    const pc = x => `${(x * 100).toFixed(1)}%`;
+    let change = "";
+    if (t) {
+      const sign = t.signed > 0 ? "+" : t.signed < 0 ? "−" : "±";
+      change = t.by === "score" ? A.stressBand(now)
+        : t.by === "pct" ? `${sign}${Math.abs(t.signed).toFixed(f.deltaDp || 0)}%`
+        : `${sign}${Math.abs(t.signed).toFixed(f.key === "temp_c" ? 1 : 0)}`;
+    }
+    const scale = t
+      ? `<span class="th-scale" style="--b1:${pc(t.steps[0])};--b2:${pc(t.steps[1])};--b3:${pc(t.steps[2])}"
+           role="img" aria-label="${esc(f.label)}: ${LEVEL_NAMES[t.level]}"><span class="th-mark" style="left:${pc(t.pos)}"></span></span>`
+      : '<span class="th-scale th-empty" aria-hidden="true"></span>';
+    return `<div class="th-row th-${t ? t.level : "none"}" title="${esc(f.label)}: ${t ? LEVEL_NAMES[t.level] : "no reading"}${base != null ? `, usual ${esc(show(base))} ${esc(f.unit)}` : ""}">
+      <span class="th-label">${esc(f.label)}</span>
+      <span class="th-val">${show(now)}<span class="t-unit"> ${esc(f.unit)}</span></span>
+      ${scale}
+      <span class="th-dev">${esc(change)}</span></div>`;
+  }
 
   function renderCard(aid) {
     const c = crew.get(aid);
@@ -200,15 +234,9 @@
     if (!c || !el) return;
     const status = crewStatus(c);
     const v = c.latest;
-    const rows = CARD_FIELDS.map(([k, label, unit]) => {
-      const now = v ? v[k] : null, base = v?.baseline?.[k];
-      const pct = deltaPct(now, base);
-      const off = pct != null && Math.abs(pct) >= 10;
-      const d = pct == null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
-      return `<div class="cv"><span class="muted small">${label}</span>
-        <span class="cv-val">${fmt(now)}<span class="t-unit"> ${unit}</span></span>
-        <span class="small ${off ? "cv-off" : "muted"}">${d}</span></div>`;
-    }).join("");
+    const rows = A.FIELDS.map(f => thresholdRow(f, v)).join("");
+    const testStep = TEST && v && v.test_step
+      ? `<div class="small cc-test">Test step: <strong>${esc(v.test_step.label)}</strong>, ${v.test_step.wrong ? "wrong reading" : "good reading"}</div>` : "";
     const latestAlert = [...c.alerts.values()].pop();
     el.className = `card crew-card st-${status}`;
     el.innerHTML = `
@@ -216,7 +244,8 @@
         <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} (${esc(aid)})</div></div>
         <span class="st-pill">${esc(status)}</span>
       </div>
-      <div class="cvs">${rows}</div>
+      ${testStep}
+      <div class="th-list">${rows}</div>
       ${spark(c.hr, c.baseHr)}
       <div class="small cc-age" data-aid="${esc(aid)}">${ageText(c)}</div>
       ${latestAlert ? `<div class="small cc-alert sev-${esc(latestAlert.severity)}"><span class="dot"></span>${esc(profileName(latestAlert.profile))}, ${esc(REGION_NAMES[latestAlert.body_region] || latestAlert.body_region)}</div>` : ""}
