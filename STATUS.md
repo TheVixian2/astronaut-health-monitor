@@ -242,15 +242,18 @@ Branch: `web`
   exposed in the vitals, the web will show that instead. The body card has a
   Male | Female slider; sex is not in `GET /crew`, so it is remembered per
   browser. **@Luca:** a `sex` field on `/crew` would be picked up automatically.
-- **Skeletal mass is a vital** (NotKaemy, 2026-11-14: the crew carries a
-  **portable X-ray machine**, DXA). Shown as `skeletal_mass_kg`, bone mineral
-  content of the whole skeleton in kg, from a weekly scan. **@stefanalbu2010-byte:**
-  please send it in the vitals and their `baseline` (usual = the mission days 7-14
-  scan; ~0.35 %/month lower since, the whole-body loss after long flights,
-  LeBlanc et al. 2000). Until then the web fills in **simulated scans** and says
-  so on screen; your values replace them automatically. **@Luca:** the field needs
-  a line in `docs/api-spec.md` and `docs/monitored-signals.md` (bone loss is
-  NASA HRP's "risk of early onset osteoporosis").
+- **Bone density and muscle mass are vitals** (NotKaemy, 2026-11-14: the crew
+  carries a **portable X-ray machine**, DXA; they replace the earlier "skeletal
+  mass"). From a weekly scan: `bone_density_g_cm2` (whole-body bone mineral
+  density, 3 decimals) and `muscle_mass_kg` (lean tissue of arms and legs, DXA's
+  stand-in for skeletal muscle). **@stefanalbu2010-byte:** please send both in the
+  vitals and their `baseline` (usual = the mission days 7-14 scan; bone ~0.35 %/month
+  lower since, the whole-body loss after long flights, LeBlanc et al. 2000; the web
+  uses ~0.4 %/month for muscle as a placeholder). Until then the web fills in
+  **simulated scans** and says so on screen; your values replace them
+  automatically, field by field. **@Luca:** both need a line in `docs/api-spec.md`
+  and `docs/monitored-signals.md` (NASA HRP risks: early onset osteoporosis;
+  reduced muscle mass, strength and endurance).
 - **Check-in: one question at a time, and no "share with ground" box**
   (NotKaemy, 2026-11-14; on `web`, not merged yet). Steps: mood → sleep →
   symptoms → the two PHQ-2 items from `GET /checkin/questions`. **Every
