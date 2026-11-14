@@ -88,3 +88,26 @@ Append freely. Dated bullets. Unsorted is fine.
   visible immediately. Bi-weekly cadence is otherwise undemoable in a 2-day event.
 - Decision support bites hardest here: the summary describes what was reported
   and how it is trending. It never names a condition.
+
+## 2026-11-14 — NASA data (gap + plan)
+
+- **Current state: we use no NASA data at all.** The only external feed is NOAA
+  GOES proton flux — **NOAA, not NASA** — and it's a cut candidate with `spe`.
+  Say "NOAA" in the pitch; misattributing it is exactly what a judge catches.
+  Space Apps judging usually weights use of NASA data, so this is a real gap.
+- **Best fix, cheapest: parameterise the simulation from NASA's published
+  evidence and cite it in the code.** Baseline ranges, the mission-day 7-14
+  window, ~70% SANS prevalence, Frisén grading, cabin CO2 levels. Turns "we
+  invented these numbers" into "these are NASA figures" — defensible and true.
+- **NTRS** (NASA Technical Reports Server) has a real API —
+  `https://ntrs.nasa.gov/api/citations/...` — and holds the SANS literature. We
+  can honestly say we pulled from a NASA API.
+- **NASA OSDR** hosts the Inspiration4 mission data (first open-access commercial
+  astronaut health database) with a public API. **Caveat:** heavily omics and
+  biospecimen data, not vital-sign time series — it will not drive a monitor.
+  Look, but don't plan around it. https://science.data.nasa.gov
+- **Not usable in a weekend:** LSDA / LSAH (archived astronaut medical data) —
+  formal request, data use agreement, board review.
+- **TODO:** check the Space Apps challenge page's own suggested-resources list.
+  Judges often expect those specific datasets, and that list beats anything
+  found by general search.
