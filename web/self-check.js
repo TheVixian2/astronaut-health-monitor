@@ -37,7 +37,7 @@
 
   $("tiles").addEventListener("click", e => {
     const tile = e.target.closest(".tile");
-    if (tile) { chartField = tile.dataset.key; renderTiles(); rebuildChart(); }
+    if (tile && !isMasked(tile.dataset.key)) { chartField = tile.dataset.key; renderTiles(); rebuildChart(); }
   });
 
   $("checkin").addEventListener("submit", onCheckin);
@@ -99,7 +99,7 @@
   function renderCircadian() {
     const live = !!circ;
     $("circLive").hidden = !live;
-    $("lightChip").hidden = !live;
+    $("lightChip").hidden = !live || !sleepRevealed;   // quarters' lighting is personal too
     $("staticEvidence").hidden = live;   // the live card carries its own evidence line
     if (!live) { $("tipsBox").open = true; return; }
 
@@ -123,9 +123,43 @@
 
     $("circShare").checked = !!circ.share_with_ground;
     $("circShareNote").textContent = circ.share_with_ground
-      ? "Shared: the flight surgeon can see your sleep and lighting summary. You can turn this off any time."
-      : "Off by default. Your sleeping-quarters data stays on board unless you choose otherwise.";
+      ? "Shared with the flight surgeon (the default). Untick to keep it on board."
+      : "Not shared: the flight surgeon can't see your sleep and lighting summary. Tick to share again.";
   }
+
+  // ---- shared-console privacy ----------------------------------------------
+  // The ship console is a shared screen, so sleep and lighting data are hidden
+  // until the astronaut taps "Show my sleep data", and hide again on their own.
+
+  const REVEAL_S = 120;
+  let sleepRevealed = false;
+  let hideAt = 0;
+
+  function isMasked(key) { return key === "sleep_h_last_night" && !sleepRevealed; }
+
+  function setRevealed(on) {
+    sleepRevealed = on;
+    hideAt = on ? Date.now() + REVEAL_S * 1000 : 0;
+    $("sleepGate").hidden = on;
+    $("sleepPrivate").hidden = !on;
+    if (!on && chartField === "sleep_h_last_night") { chartField = "heart_rate_bpm"; rebuildChart(); }
+    renderTiles();
+    renderCircadian();
+    updateHideIn();
+  }
+
+  function updateHideIn() {
+    if (!sleepRevealed) return;
+    const left = Math.max(0, Math.ceil((hideAt - Date.now()) / 1000));
+    $("hideIn").textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+    if (left === 0) setRevealed(false);
+  }
+
+  $("showSleep").addEventListener("click", () => setRevealed(true));
+  $("hideSleep").addEventListener("click", () => setRevealed(false));
+  // Using the card keeps it open; walking away lets it hide.
+  document.querySelector(".sleep-light").addEventListener("pointerdown", () => { if (sleepRevealed) hideAt = Date.now() + REVEAL_S * 1000; });
+  setInterval(updateHideIn, 1000);
 
   // Minutes from 20:00 UTC, so bedtimes either side of midnight line up.
   function chartMin(t) {
@@ -201,7 +235,7 @@
 
   function selectRegion(r) {
     region = r;
-    const first = FIELDS.find(f => f.region === r);
+    const first = FIELDS.find(f => f.region === r && !isMasked(f.key));
     if (first) chartField = first.key;
     renderBody();
     renderTiles();
@@ -249,6 +283,13 @@
       const pct = deltaPct(now, base);
       const off = pct != null && Math.abs(pct) >= 10;
       const inRegion = region === "whole_body" || f.region === region;
+      if (isMasked(f.key)) {
+        // Shared console: sleep stays hidden until the astronaut reveals it.
+        return `<button type="button" class="tile masked ${inRegion ? "" : "dim"}" data-key="${f.key}" disabled>
+          <span class="t-label">${f.label}</span>
+          <span class="t-value">Hidden</span>
+          <span class="t-base muted">private on this console</span></button>`;
+      }
       const cls = ["tile", inRegion ? "" : "dim", off ? "off" : "", f.key === chartField ? "charted" : ""].join(" ");
       const delta = pct == null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
       return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">

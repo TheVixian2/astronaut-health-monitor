@@ -35,9 +35,14 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - **Circadian (PROVISIONAL in the spec):** Self-check's Light & sleep card
   reads `GET /circadian?view=crew` — lighting chip, `card` text, 7-night
   bedtime chart, `recommendation` + source, and the share toggle
-  (`PUT /circadian/sharing`, off by default). Ground shows one line per
-  astronaut from `view=ground`: a **403 means "kept private by the
-  astronaut"**, 404 shows nothing. Without the endpoint the card falls back to
+  (`PUT /circadian/sharing`). **Shared with ground by default** (decided
+  2026-11-14; backend default change requested from stefanalbu2010-byte); the
+  astronaut can opt out. **On the ship console sleep data is private**: the
+  console is a shared screen, so the card and the "Sleep last night" tile stay
+  hidden until the astronaut taps "Show my sleep data", and re-hide after 2 min
+  without touching the card. Ground shows one line per astronaut from
+  `view=ground`: a **403 means "not shared by the astronaut"**, 404 shows
+  nothing. Without the endpoint the card falls back to
   the static guidance. `card` is accepted as a string (backend) or an object
   (spec) via `AHM.circadianCardText()`.
 - `ground.html` / `ground.js` — the flight surgeon: one `view=ground` stream
