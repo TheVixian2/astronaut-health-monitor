@@ -72,10 +72,11 @@
   }
 
   // CLAUDE.md: round trip > act_within_s -> "Act on board now", else "Ground will see this in X".
+  // Round trip uses the REAL light time; one_way_delay_s is only the demo-compressed delivery delay.
   // Returns {onboard: bool|null, text}.
   function verdict(alert, mission) {
     if (!mission) return { onboard: null, text: `Act within ${dur(alert.act_within_s)}` };
-    const roundTrip = 2 * mission.one_way_delay_s;
+    const roundTrip = 2 * (mission.real_one_way_delay_s ?? mission.one_way_delay_s);
     return roundTrip > alert.act_within_s
       ? { onboard: true, text: `Act on board now — ${dur(alert.act_within_s)} window` }
       : { onboard: false, text: `Ground will see this in ${dur(alert.ground_eta_s ?? mission.one_way_delay_s)}` };
