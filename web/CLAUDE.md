@@ -2,6 +2,13 @@
 
 **Owner: NotKaemy.** Only the web owner edits this folder.
 
+**App name: "Dr. Galactic"** (renamed by NotKaemy 2026-11-14). It is in
+every page's `<title>` ("Commander · Dr. Galactic"), the top-left brand in the
+menu bar, and the login / presenter / demo headings, where it is wrapped in
+`.app-name`. The name is shown **20% larger** than the text around it
+(`.app-name, .appnav .brand { font-size: 1.2em }` in `style.css`). Internal
+names (`window.AHM`, `ahm-session`, the repo) stay as they are.
+
 ## Stack
 
 Plain HTML/CSS/JS. **No build step, no framework, no npm.** Chart.js from a CDN
@@ -45,8 +52,16 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   lasts 12 h in `localStorage`. **Not security:** passwords are readable in
   the code and the backend has no auth. The repo goes public at submission —
   don't reuse a real password.
-- `index.html` — presenter-only list of every interface, plus the live demo.
-  Keeps `?mock`/`?base`/`?aid`.
+- `index.html` — presenter-only page: the four profiles as a **2 × 2 grid** of
+  cards (role icon, the real name from `GET /crew` by role, Ground's light
+  time from `GET /mission`, the profile's tabs, its login), plus the live demo
+  link. **Fills the window exactly** (screens ≥ 721 × 521): a small script in
+  `index.html` finds the largest font size at which all four cards fit and
+  sets `--fit`; every size on the page is in `em` of it, so it all scales
+  together and re-fits on resize. Narrower or shorter: one column, normal
+  scrolling. Keeps `?mock`/`?base`/`?aid`. Card styles:
+  `.profiles` / `.profile` in `style.css`, tinted with the area tokens
+  `--onboard-*` / `--ground-*`.
 - **Menus** (the `.appnav` bar at the top of each page; "All views" link only
   for the presenter, `[data-demo-only]`):
   - **Astronaut console** (`self-check.html`): *My health · Check-in · Sleep &
@@ -92,6 +107,11 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   poll their own `GET /vitals` (`data-poll`): browsers allow ~6 connections
   per host and the console + Ground already use 5 on one machine. In `?mock`
   mode they use in-page mock streams.
+- **My health fills the window** (all three console pages): `self-check.js`
+  sets `body[data-tab]`; on `health` the console grid stretches to the
+  bottom, the vitals tiles are tall and stretch across the row (`auto-fit`),
+  and the chart (`.chart-box`, canvas absolutely positioned so Chart.js can't
+  grow the card) and the body figure take the free height.
 - `self-check.html` / `self-check.js` — the astronaut console (data only):
   body figure, vitals tiles vs baseline, Chart.js trend, check-in form
   (`share_with_ground` off by default), sleep & light log. **Its cards are
@@ -107,10 +127,11 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   bedtime chart, `recommendation` + source, and the share toggle
   (`PUT /circadian/sharing`). **Shared with ground by default** (decided
   2026-11-14; backend default change requested from stefanalbu2010-byte); the
-  astronaut can opt out. **On the ship console sleep data is private**: the
-  console is a shared screen, so the card and the "Sleep last night" tile stay
-  hidden until the astronaut taps "Show my sleep data", and re-hide after 2 min
-  without touching the card. Ground shows one line per astronaut from
+  astronaut can opt out. **On the ship console the 7-night log and lighting
+  are private**: the console is a shared screen, so they stay hidden until the
+  astronaut taps "Show my sleep data", and re-hide after 2 min without
+  touching the card. **"Sleep last night" is public** (tile + the "Last
+  night: X h" line; NotKaemy, 2026-11-14). Ground shows one line per astronaut from
   `view=ground`: a **403 means "not shared by the astronaut"**, 404 shows
   nothing. Without the endpoint the card falls back to
   the static guidance. `card` is accepted as a string (backend) or an object
@@ -125,6 +146,10 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   pitch. The Commander pane polls (no SSE) and Ground holds 4 SSE streams,
   under the browser's ~6 per host. Tested against the real backend.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
+- **Vital icons:** every vital has a flat icon (`AHM.vitalIcon(key)` in
+  `common.js`, `VITAL_ICONS`): heart + pulse, blood drop, lungs, thermometer,
+  moon, smiley. Colours are the `--ic-*` tokens in `style.css` (`.vi-*`).
+  Shown on the My health tiles; reuse it wherever a vital is labelled.
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict
   logic here only.

@@ -3,55 +3,156 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Astronaut Health Monitor</title>
+  <title>Dr. Galactic</title>
   <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="presenter">
   <!-- Presenter ("demo" account) only: every other role is sent straight to
        its own interface by auth.js. -->
   <header class="bar">
-    <h1>Astronaut Health Monitor <span class="stripe-mark" aria-hidden="true"></span></h1>
+    <h1><span class="app-name">Dr. Galactic</span> <span class="stripe-mark" aria-hidden="true"></span></h1>
     <div class="user small"><span data-user></span> · <button type="button" class="link" data-signout>Sign out</button></div>
   </header>
 
-  <p class="muted pick">Presenter: open any interface.</p>
-  <main class="areas">
-    <a class="card area-choice onboard" data-href="self-check.html" href="self-check.html">
-      <span class="area-tag">On board</span>
-      <h2>Astronaut console</h2>
-      <p>The crew member's own data only, live: vitals against their baseline,
-        check-in, sleep &amp; light. No warnings.</p>
-      <p class="muted small">Login: <code>crew</code></p>
+  <p class="muted pick">Presenter: open any profile.</p>
+
+  <!-- 2 x 2: the three on-board profiles (Mars red) and Ground (blue).
+       Names and the light-time delay are filled in from GET /crew and
+       GET /mission below; the text in the HTML is the fallback. -->
+  <main class="profiles">
+    <a class="card profile onboard" data-href="self-check.html" href="self-check.html">
+      <div class="p-head">
+        <span class="p-icon" aria-hidden="true">
+          <!-- astronaut helmet with visor -->
+          <svg viewBox="0 0 32 32"><circle cx="16" cy="14" r="10"/><rect x="9.5" y="9.5" width="13" height="8.5" rx="4.25"/><path d="M7.5 28c1.6-3.2 4.7-5 8.5-5s6.9 1.8 8.5 5"/></svg>
+        </span>
+        <div>
+          <span class="area-tag">On board</span>
+          <h2>Astronaut console</h2>
+          <div class="p-who">Any crew member <span class="muted">· a1–a4</span></div>
+        </div>
+      </div>
+      <p class="p-text">Their own vitals against their own baseline, check-in and sleep
+        log, live. Data only: no warnings.</p>
+      <ul class="p-tabs" aria-label="Tabs"><li>My health</li><li>Check-in</li><li>Sleep &amp; light</li><li>History</li></ul>
+      <div class="p-foot"><span class="muted small">Login <code>crew</code></span><span class="p-open">Open <span aria-hidden="true">→</span></span></div>
     </a>
-    <a class="card area-choice onboard" data-href="captain.html" href="captain.html">
-      <span class="area-tag">On board</span>
-      <h2>Commander</h2>
-      <p>Their own health data, plus a Crew wellbeing tab: physical and
-        psychological warnings for every crew member, with advice on how to help.
-        The crew never see these; the Commander decides what to say.</p>
-      <p class="muted small">Login: <code>captain</code></p>
+
+    <a class="card profile onboard" data-href="captain.html" href="captain.html">
+      <div class="p-head">
+        <span class="p-icon" aria-hidden="true">
+          <!-- commander's star over a rank chevron -->
+          <svg viewBox="0 0 32 32"><path d="M16 3.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L16 18.3l-5.8 3 1.1-6.4-4.7-4.6 6.5-.9z"/><path d="M7 25.5l9 4 9-4"/></svg>
+        </span>
+        <div>
+          <span class="area-tag">On board</span>
+          <h2>Commander</h2>
+          <div class="p-who" data-crew-role="Commander">Cmdr. Elena Ionescu</div>
+        </div>
+      </div>
+      <p class="p-text">Their own data, plus every crew member's physical and
+        psychological warnings, with advice on how to help. The crew never see these.</p>
+      <ul class="p-tabs" aria-label="Tabs"><li>My health</li><li>Check-in</li><li>Sleep &amp; light</li><li>History</li><li class="key">Crew wellbeing</li><li class="key">Habitat</li></ul>
+      <div class="p-foot"><span class="muted small">Login <code>captain</code></span><span class="p-open">Open <span aria-hidden="true">→</span></span></div>
     </a>
-    <a class="card area-choice onboard" data-href="doctor.html" href="doctor.html">
-      <span class="area-tag">On board</span>
-      <h2>Ship's doctor</h2>
-      <p>Their own health data, plus a Medications tab: doses due, overdue and
-        suggested by alerts, for the whole crew.</p>
-      <p class="muted small">Login: <code>doctor</code></p>
+
+    <a class="card profile onboard" data-href="doctor.html" href="doctor.html">
+      <div class="p-head">
+        <span class="p-icon" aria-hidden="true">
+          <!-- medical cross -->
+          <svg viewBox="0 0 32 32"><path d="M12.5 4.5h7v8h8v7h-8v8h-7v-8h-8v-7h8z"/></svg>
+        </span>
+        <div>
+          <span class="area-tag">On board</span>
+          <h2>Ship's doctor</h2>
+          <div class="p-who" data-crew-role="Crew Medical Officer">Dr. Sara Okafor</div>
+        </div>
+      </div>
+      <p class="p-text">Their own data, plus today's doses for the whole crew: due,
+        overdue, and suggested by live alerts.</p>
+      <ul class="p-tabs" aria-label="Tabs"><li>My health</li><li>Check-in</li><li>Sleep &amp; light</li><li>History</li><li class="key">Medications</li></ul>
+      <div class="p-foot"><span class="muted small">Login <code>doctor</code></span><span class="p-open">Open <span aria-hidden="true">→</span></span></div>
     </a>
-    <a class="card area-choice ground" data-href="ground.html" href="ground.html">
-      <span class="area-tag">Ground</span>
-      <h2>Mission Control</h2>
-      <p>Mission control. The whole crew at once, arriving one light-time late.</p>
-      <p class="muted small">Login: <code>ground</code></p>
+
+    <a class="card profile ground" data-href="ground.html" href="ground.html">
+      <div class="p-head">
+        <span class="p-icon" aria-hidden="true">
+          <!-- Earth with an incoming signal -->
+          <svg viewBox="0 0 32 32"><circle cx="13" cy="19" r="9"/><path d="M4 19h18M13 10c-3.2 3.2-3.2 14.8 0 18M13 10c3.2 3.2 3.2 14.8 0 18"/><path d="M21.5 7.5a5 5 0 0 1 4 4M21.5 3a9.5 9.5 0 0 1 8.5 8.5"/></svg>
+        </span>
+        <div>
+          <span class="area-tag">Ground</span>
+          <h2>Mission Control</h2>
+          <div class="p-who">On Earth <span class="muted" id="delay"></span></div>
+        </div>
+      </div>
+      <p class="p-text">The whole crew at once, arriving one light-time late, with
+        what's still in transit.</p>
+      <ul class="p-tabs" aria-label="Tabs"><li class="key">Crew overview</li><li>History</li><li>Raw stream (debug)</li></ul>
+      <div class="p-foot"><span class="muted small">Login <code>ground</code></span><span class="p-open">Open <span aria-hidden="true">→</span></span></div>
     </a>
   </main>
 
   <p class="muted small landing-note">
-    For the pitch: <a data-href="demo.html" href="demo.html">live demo, Commander and Ground side by side</a>.
+    For the pitch: <a data-href="demo.html" href="demo.html">live demo, Commander and Mission Control side by side</a>.
     No backend running? <a href="index.html?mock">Use mock data</a>.
     <a data-href="sources.html" href="sources.html">Where the data comes from: live NASA data, NASA standards, simulation</a>.
   </p>
+  <script src="mock.js"></script>
   <script src="common.js"></script>
+  <script>
+    // Fit the page to the window: the largest font size (every size on the page
+    // is in em of it) at which all four cards still fit their quarter of the
+    // screen with nothing scrolling. Phones and short windows keep the normal
+    // scrolling layout (style.css, "Fit mode").
+    (function () {
+      const body = document.body;
+      const roomy = matchMedia("(min-width: 721px) and (min-height: 521px)");
+      const cards = [...document.querySelectorAll(".profile")];
+      const fits = () => document.documentElement.scrollHeight <= innerHeight + 1
+        && cards.every(c => c.scrollHeight <= c.clientHeight + 1 && c.scrollWidth <= c.clientWidth + 1);
+      function fit() {
+        if (!roomy.matches) { body.classList.remove("fit"); body.style.removeProperty("--fit"); return; }
+        body.classList.add("fit");
+        let lo = 10, hi = 40;                       // px; binary search to ~0.1 px
+        for (let i = 0; i < 9; i++) {
+          const mid = (lo + hi) / 2;
+          body.style.setProperty("--fit", `${mid}px`);
+          if (fits()) lo = mid; else hi = mid;
+        }
+        body.style.setProperty("--fit", `${Math.floor(lo * 10) / 10}px`);
+      }
+      // Re-fit straight away (9 layouts, cheap) whenever the window changes size.
+      window.fitPage = fit;
+      addEventListener("resize", fit);
+      roomy.addEventListener("change", fit);
+      let lastW = innerWidth, lastH = innerHeight;
+      new ResizeObserver(() => {
+        if (innerWidth !== lastW || innerHeight !== lastH) { lastW = innerWidth; lastH = innerHeight; fit(); }
+      }).observe(document.documentElement);
+      if (document.fonts) document.fonts.ready.then(fit);
+      fit();
+    })();
+
+    // Real names (by role) and the real light-time delay; the HTML text stays if
+    // the backend is not running. Re-fit afterwards: the text got longer.
+    (async () => {
+      const cfg = AHM.settings();
+      try {
+        const crew = await AHM.getJSON(cfg.base, "/crew", cfg.mock);
+        document.querySelectorAll("[data-crew-role]").forEach(el => {
+          const c = crew.find(x => x.role === el.dataset.crewRole);
+          if (c) el.innerHTML = `${AHM.esc(c.name)} <span class="muted">· ${AHM.esc(c.id)}</span>`;
+        });
+      } catch { /* keep the fallback names */ }
+      try {
+        const m = await AHM.getJSON(cfg.base, "/mission", cfg.mock);
+        const s = m.real_one_way_delay_s ?? m.one_way_delay_s;
+        if (s) document.getElementById("delay").textContent = `· ${AHM.dur(s)} away`;
+      } catch { /* no delay shown */ }
+      window.fitPage();
+    })();
+  </script>
 </body>
 </html>
