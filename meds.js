@@ -1,5 +1,5 @@
 // Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
-// SAMPLE MEDICATION PLAN for the ship's doctor view (doctor.html).
+// SAMPLE MEDICATION PLAN for the Crew Medical Officer view (doctor.html).
 // Illustrative demo data, NOT medical guidance. Nothing in the backend or
 // docs/api-spec.md describes medications yet; a real plan would come from a
 // backend endpoint (requested in STATUS.md). Times are station time (UTC).

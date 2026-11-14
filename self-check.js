@@ -4,12 +4,12 @@
 // DATA ONLY, NO WARNINGS (decision, NotKaemy 2026-11-14): crew members see
 // their own numbers against their own baseline, never alerts, verdicts,
 // advice or "something is wrong" wording. Warnings go to the Commander
-// (captain.html), the ship's doctor (doctor.html) and Ground. This code does
+// (captain.html), the Crew Medical Officer (doctor.html) and Ground. This code does
 // not even subscribe to `alert` events.
 //
 // Used by three pages, each with an empty <main id="console">:
 // - self-check.html: any astronaut, picked with the #aid selector (?aid=).
-// - captain.html / doctor.html: the Commander's / ship's doctor's own data,
+// - captain.html / doctor.html: the Commander's / Crew Medical Officer's own data,
 //   next to their crew tab. data-crew-role names whose data it is (looked up
 //   in GET /crew, data-aid is the fallback) and data-poll makes it poll
 //   GET /vitals instead of holding an SSE stream (browser limit ~6 per host).
@@ -75,7 +75,7 @@
   async function init() {
     try {
       const crew = await A.getJSON(cfg.base, "/crew", cfg.mock);
-      // Commander / ship's doctor: whoever holds that role on this crew.
+      // Commander / Crew Medical Officer: whoever holds that role on this crew.
       const own = ownRole && crew.find(c => c.role === ownRole);
       if (own) cfg.aid = own.id;
       const me = crew.find(c => c.id === cfg.aid);
@@ -637,7 +637,7 @@
   }
 
   // One copy for every page that shows a crew member's own data: the astronaut
-  // console and the Commander's and ship's doctor's profiles. Injected into
+  // console and the Commander's and Crew Medical Officer's profiles. Injected into
   // #console. A hoisted function, so it can sit at the end of the file.
   function consoleMarkup() {
     return `
