@@ -96,6 +96,29 @@ Branch: `backend`
   real key** (none on this machine). Profile-agnostic, so it works for any post-pivot
   condition. Not wired into `main.py` yet — the mock's fake alerts keep canned text
   until the condition engine exists.
+- **Done: circadian rhythm from the on-board lighting log (`backend/circadian.py`,
+  branch `backend`). This is the mentor/judge suggestion.** We read the ISS lighting
+  system (SSLA modes: general 4500K, pre-sleep 2700K, phase-shift 6500K) instead of
+  asking the astronaut. 7 nights of simulated log per astronaut with different
+  habits. **Only `a2` is irregular** (bedtime spread ~2 h, bright light before sleep
+  on 4 of 7 nights), so that's the demo story. `sleep_h_last_night` in vitals now
+  comes from this log.
+  - **Ethics, built in:** private by default (the ground view gets **403** until
+    the astronaut shares), suggestive wording only (tested: no "must", no
+    diagnosis), the app **never changes the lights itself**, no comparison between
+    crew, and it doesn't touch crew status or alerts.
+  - **Luca, proposed for the spec (already working, provisional):**
+    `GET /astronauts/{id}/circadian?view=crew|ground` returns `{share_with_ground,
+    lighting{mode,cct_k,since}, nights[7]{night_of,bedtime,wake_time,sleep_h,
+    pre_sleep_lighting_min,bright_light_last_hour}, summary{status,nights,
+    bedtime_spread_min,nights_bright_before_sleep}, card|null,
+    recommendation{text,source,source_url}, evidence{...}}`.
+    `PUT /astronauts/{id}/circadian/sharing {share_with_ground}`.
+    `PUT /astronauts/{id}/lighting {mode}` records the crew switching the mode.
+  - **NotKaemy, for Self-check:** show `card` when not null, `recommendation.text`
+    with its source link, a lighting chip ("Pre-sleep · 2700K"), a "share with
+    ground" toggle (off by default), and optionally a 7-night bedtime chart from
+    `nights`. In the Ground view, a 403 should read "Kept private by the astronaut".
 - **Next:** `tools/simulate_crew.py`. Not building the condition engine until the
   post-pivot spec lands. **Note for the spec:** `sans` builds up over days, so
   `orthostatic` is the only condition that can be triggered live in the demo.

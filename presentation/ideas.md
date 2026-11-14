@@ -186,3 +186,9 @@ Append freely. Dated bullets. Unsorted is fine.
   alert. Don't claim a "NASA CO2 risk" on a slide.
 - **Behavioural check-in has an exact match:** *Risk of Behavioral Changes and
   Psychiatric Disorders*. Use that title on the PHQ-2 slide.
+- **Built (backend): the app reads the station's lighting system instead of asking.**
+  No extra question for the crew. It notices that `a2`'s bedtime varied ~2 h and the
+  lights stayed bright before sleep on 4 of 7 nights, and *suggests* NASA's pre-sleep
+  mode. **Ethics line for the pitch:** "It's private by default: the flight surgeon
+  sees it only if the astronaut chooses. It suggests, never orders, and never changes
+  the lights by itself." It ties straight back to the under-reporting point.
