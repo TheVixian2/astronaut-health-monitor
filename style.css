@@ -232,3 +232,7 @@ a.choice:hover { border-color: var(--accent); }
 .cc-alert.sev-alert .dot { background: var(--sev-alert); }
 .cc-alert.sev-critical .dot { background: var(--sev-critical); }
 .foot .check { margin-left: 12px; }
+
+/* NASA hazard / HRP risk references under each alert */
+.nasa-ref { margin-top: 6px; color: var(--muted); }
+.nasa-ref a { color: var(--accent); }
