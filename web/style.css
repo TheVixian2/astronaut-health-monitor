@@ -265,6 +265,22 @@ a.home:hover { text-decoration: underline; }
    vitals card). height: 0 + flex-basis 0 so the drawing itself never makes
    the card taller; it scales to fit and stays centred (viewBox, "meet"). */
 .body-card { display: flex; flex-direction: column; }
+.body-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 12px; }
+.body-head h2 { margin: 0; }
+/* Male | Female: a two-position slider. Radios underneath, so it works with
+   the keyboard (arrow keys) and screen readers; the thumb slides across. */
+.sex-switch { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; padding: 3px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--wash); font-size: var(--t-sm); }
+.sex-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.sex-switch label { position: relative; z-index: 1; padding: 4px 14px; border-radius: 999px; text-align: center;
+  color: var(--muted); font-weight: 600; cursor: pointer; transition: color .25s; }
+.sex-switch label:hover { color: var(--text-strong); }
+.sex-switch input:checked + label { color: var(--btn-fg); }
+.sex-switch input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sex-thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px;
+  background: var(--btn-bg); transition: transform .3s ease; }
+.sex-switch:has(#sexF:checked) .sex-thumb { transform: translateX(100%); }
+@media (prefers-reduced-motion: reduce) { .sex-thumb { transition: none; } }
 .body-card svg { display: block; width: 100%; height: 0; flex: 1 1 0; min-height: 190px; margin: 0 auto; }
 .region { cursor: pointer; outline: none; }
 /* One solid silhouette: head, torso and limbs are edged in their own fill
