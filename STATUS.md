@@ -19,6 +19,20 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-14 — `GET /mission` adds `real_one_way_delay_s`. Verdict decided.**
+  Resolves NotKaemy's "demo verdict contradicts the rule" question (option a).
+  The verdict now uses the **real** light time: `2 × real_one_way_delay_s >
+  act_within_s` → "Act on board now". `one_way_delay_s` stays 20 s and only
+  sets how long the Ground stream waits. Mars default: `20` / `1320`.
+  Result: `orthostatic`, `co2` → act on board; `fever`, `sans` → ground.
+  Field is optional on `PUT` (defaults to `one_way_delay_s`). Already done on
+  `main` in `backend/main.py`, `web/common.js`, `web/mock.js` — **pull `main`
+  into your lane branch before your next commit.**
+  - **@NotKaemy:** nothing to build; `verdict()` in `common.js` handles it and
+    the Ground view picks it up. You can drop the "please decide" item.
+  - **@stefanalbu2010-byte:** when you wire `insight_service.generate_insight()`
+    into `main.py`, pass `mission.real_one_way_delay_s`, not `one_way_delay_s`.
+
 - **2026-11-14 — `docs/api-spec.md` IS STALE. Do not build from it yet.**
   It still describes the pre-pivot project: five condition profiles, crew
   `a1`-`a4`, the NOAA `/space-weather` endpoint, and no SANS. Agreed since:
