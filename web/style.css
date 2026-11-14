@@ -1,12 +1,12 @@
 /* Dr. Galactic — design system (frontend-design pass, 2026-11-14)
 
-   Concept: the console is a piece of the ship. Light Silver is the panel the
-   screen sits in, black is the engraved type, Mars red marks things on board,
-   blue marks Earth / Mission Control. Numbers are the loudest thing on screen.
+   Concept: a dark ship console. Black is the screen, silver the type, Mars red
+   marks things on board, blue marks Earth / Mission Control. Numbers are the
+   loudest thing on screen.
 
    The one bold move: the console follows the module's lighting. When the
    station lights go to Pre-sleep (SSLA, 2700 K) or off, html[data-light] turns
-   the whole interface dark, warm and blue-free — the console does what the
+   the whole interface warm and blue-free — the console does what the
    Sleep & light tab tells the crew to do. self-check.js sets it from
    GET /circadian; ?light=pre_sleep forces it for a demo (auth.js).
 
@@ -39,51 +39,52 @@
   /* shape: plates are machined (small radius), status pills are round */
   --r-plate: 6px; --r-control: 4px;
 
-  /* ---- General light (day): the silver panel ---- */
-  --bg: var(--silver);                 /* the panel the screen sits in */
-  --panel: #D5DAE3;                    /* silver, lifted: a plate */
-  --line: #A2A9B8;                     /* silver, pressed: rules */
-  --line-strong: #6E7585;
-  --text: #23262E;                     /* black ink, softened for body text */
-  --text-strong: var(--black);
-  --muted: #4D5363;                    /* 5:1+ on the panel */
-  --accent: var(--blue);               /* links, chart line, focus */
+  /* ---- General light: the dark console (owner's call, 2026-11-14: back to
+     the original dark colours; the silver day set is in git, 09b4f03) ---- */
+  --bg: var(--black);
+  --panel: #141519;                    /* black, lifted one step: a plate */
+  --line: #2a2d35;                     /* silver at low strength on black */
+  --line-strong: #464b57;
+  --text: var(--silver);
+  --text-strong: #e6e9f0;              /* lighter silver for headings and key numbers */
+  --muted: #868c99;                    /* dimmed silver */
+  --accent: #6f8fe6;                   /* palette blue, lifted: #1B3A8A is too dark for thin lines on black */
   --btn-bg: var(--blue);
-  --btn-fg: #EEF1F6;
+  --btn-fg: #e6e9f0;
   --btn-hover: #24479f;
-  --wash: rgba(11, 11, 11, .045);      /* quiet fill (inactive tiles, tracks) */
-  --wash-2: rgba(11, 11, 11, .085);    /* hover */
+  --wash: rgba(255, 255, 255, .03);    /* quiet fill (inactive tiles, tracks) */
+  --wash-2: rgba(255, 255, 255, .065); /* hover */
 
-  --body: #AEB4C2;                     /* body figure */
-  --body-line: #6E7585;
-  --lungs: #8193C2;
+  --body: #1c1f27;                     /* body figure */
+  --body-line: #3a3f4c;
+  --lungs: #22325f;                    /* palette blue, darkened */
   --heart: var(--mars-dark);
-  --region-hover: #97A3C6;
+  --region-hover: #2b3f7a;
 
-  --ok: #1F8A5B;        --ok-ink: #17643F;    --ok-bg: rgba(31, 138, 91, .15);
-  --sev-watch: #D9A300; --watch-ink: #6B4E00; --watch-bg: rgba(217, 163, 0, .2);
-  --sev-alert: #E07A10; --alert-ink: #8A4300; --alert-bg: rgba(224, 122, 16, .17);
-  --sev-critical: var(--mars); --crit-ink: var(--mars-dark); --crit-bg: rgba(214, 40, 40, .13);
+  --ok: #3ccf8e;        --ok-ink: #3ccf8e;    --ok-bg: rgba(60, 207, 142, .15);
+  --sev-watch: #f5c542; --watch-ink: #f5c542; --watch-bg: rgba(245, 197, 66, .15);
+  --sev-alert: #f28c28; --alert-ink: #f7a04f; --alert-bg: rgba(242, 140, 40, .15);
+  --sev-critical: var(--mars); --crit-ink: #f0857a; --crit-bg: rgba(214, 40, 40, .17);
 
   /* areas: On board = Mars red, Ground = blue */
   --onboard: var(--mars);
-  --onboard-bg: rgba(214, 40, 40, .12);
-  --onboard-fg: var(--mars-dark);
-  --ground: var(--blue);
-  --ground-bg: rgba(27, 58, 138, .12);
-  --ground-fg: var(--blue);
+  --onboard-bg: rgba(143, 31, 15, .45); /* dark Mars red, see-through */
+  --onboard-fg: #f0a49a;               /* Mars red, lightened to read on black */
+  --ground: var(--accent);
+  --ground-bg: rgba(27, 58, 138, .5);  /* palette blue, see-through */
+  --ground-fg: #b9c8f2;                /* palette blue, lightened */
 
-  /* vital icons (common.js vitalIcon) */
+  /* vital icons (common.js vitalIcon): one colour per vital, all from the palette */
   --ic-heart: var(--mars);
-  --ic-spo2: var(--blue);
-  --ic-resp: #4C66AE;
-  --ic-temp: #6E7585;
-  --ic-sleep: #34406B;
-  --ic-mood: #3A3F4C;
-  --ic-detail: rgba(255, 255, 255, .82);
+  --ic-spo2: var(--accent);
+  --ic-resp: #b9c8f2;
+  --ic-temp: #f0a49a;
+  --ic-sleep: #8e9bc7;                 /* silver-blue, between --silver and --blue */
+  --ic-mood: #e6e9f0;
+  --ic-detail: rgba(11, 11, 11, .55);
   --ic-mercury: var(--mars);
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 /* ---- Pre-sleep / lights off: dark, warm, no blue ---- */

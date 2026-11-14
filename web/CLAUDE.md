@@ -193,16 +193,17 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   green, watch yellow, alert orange) stay outside the palette because they
   carry meaning; use `--*-ink` for them as text, the plain ones for fills.
 - **Design system** (frontend-design pass, NotKaemy 2026-11-14; full notes at
-  the top of `style.css`): the console is a piece of the ship. **Silver is the
-  page**, black is the type, panels are lighter silver plates (`--panel`,
-  6 px radius). **Type is Archivo** (Google Fonts, one family at three
+  the top of `style.css`): a dark ship console. **Black is the page**
+  (the owner switched back from the silver day look the same day; that set is
+  in git at 09b4f03), silver is the type, panels are black lifted one step
+  (`--panel`, 6 px radius). **Type is Archivo** (Google Fonts, one family at three
   widths): 125 % heavy for the wordmark and page titles, 75 % semibold
   tabular for readouts (vitals, counts, big stats), normal for the rest.
   Sentence case everywhere: no ALL-CAPS labels, no "A · B · C" strings, no
   "→" on links. The six vitals are **one instrument strip** (cells divided by
   rules, charted one marked with a Mars-red top bar), not six cards.
   **The console follows the module's lighting:** in Pre-sleep or lights off
-  (`GET /circadian` → `lighting.mode`) `html[data-light]` switches to a dark,
+  (`GET /circadian` → `lighting.mode`) `html[data-light]` switches to a
   warm, blue-free set, with "Pre-sleep light: screen dimmed" in the header.
   Add `?light=pre_sleep` to any URL to show it in a demo.
 - The long Claude explanation (`insight.why` / `trend` / `recommended_action`)
