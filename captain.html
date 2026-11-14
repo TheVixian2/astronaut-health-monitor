@@ -25,6 +25,7 @@
       <a href="#checkin" data-tab-link="checkin">Check-in</a>
       <a href="#sleep" data-tab-link="sleep">Sleep &amp; light</a>
       <a data-href="history.html" href="history.html">History</a>
+      <a data-href="sources.html" href="sources.html">Data sources</a>
       <a href="#crew" data-tab-link="crew">Crew wellbeing <span id="crewCount" class="count" hidden></span></a>
       <a href="#habitat" data-tab-link="habitat">Habitat</a>
     </div>
@@ -71,14 +72,16 @@
       <span class="muted">Where the crew is now, and time in shared rooms vs each person's own normal</span>
       <span id="habConn" class="pill pill-wait">loading…</span>
     </div>
+    <div class="card" id="cabin"><p class="muted small">Cabin air: loading live ISS data…</p></div>
     <div class="card"><svg id="habMap" viewBox="0 0 1000 300" role="img" aria-label="Habitat map with crew positions" style="width:100%;height:auto"></svg>
       <p class="muted small" id="habUntracked"></p>
       <p class="muted small">Concept layout of a Mars transit habitat. Each module has a Bluetooth beacon the
-        watch detects; the hygiene module has none and is never tracked. Live positions are for safety
+        watch detects. Who is in the hygiene module is shown only to Mission Control; you see hours per person. Live positions are for safety
         (fire, depressurisation).</p></div>
     <div id="habRooms" class="hab-grid"></div>
-    <p class="muted small">Time in shared rooms is a supporting signal only: the evidence that it tracks mood
-      is weak, so it is shown here and never added to the wellbeing score.</p>
+    <p class="muted small">Time with crewmates is one input of the wellbeing profile (12 % of the score; the
+      method is at GET /wellbeing/method). The evidence for it is limited (self-reported support linked to lower
+      stress in NASA analog crews).</p>
   </section>
 
   <footer class="foot muted small">Crew warnings are decision support, not a diagnosis. Keep psychological
