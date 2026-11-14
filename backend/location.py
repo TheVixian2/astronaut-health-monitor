@@ -11,8 +11,11 @@ the astronaut's own normal, feed the psychological profile (behavioral.py: socia
 Proximity sensors measured crew cohesion in Mars-500 (Johannes et al., PLoS ONE 2015) and
 Antarctic winter-overs (Basner et al., Front Psychol 2026).
 
-Privacy: rooms only, no coordinates. The hygiene module has no beacon and is never tracked.
-The commander and Mission Control see which room everyone is in now (GET /crew/locations, for
+Privacy: rooms only, no coordinates. The hygiene module has a beacon, but who is in it is shown
+only to Mission Control (base operations); the commander sees only how much time each person
+spends there per day, never who is in it now (Luca's decision 2026-11-14, following NASA-STD-3001's
+privacy requirement for the hygiene compartment, [V2 7017]/[V2 7022]).
+The commander and Mission Control see which room everyone else is in now (GET /crew/locations, for
 safety: fire or depressurisation; team decision). Time per room is for the astronaut and the
 commander; the astronaut's own location page lists who looked. There is no physical watch or
 beacon in this project: movement is simulated from a daily schedule unless a scan arrives.
@@ -39,7 +42,7 @@ IBEACON_UUID = "6D61B6C0-4D41-5253-2D44-472D48414221"  # one UUID for the habita
 CREW_IDS = ("a1", "a2", "a3", "a4")
 FIRST_NAME = {"a1": "Elena", "a2": "Mihai", "a3": "Sara", "a4": "Jonas"}
 
-Kind = Literal["shared", "private", "untracked"]
+Kind = Literal["shared", "private", "hygiene"]
 
 
 @dataclass(frozen=True)
@@ -56,9 +59,9 @@ ROOMS: dict[str, RoomDef] = {
     "galley": RoomDef("galley", "Galley & wardroom", "shared"),
     "exercise": RoomDef("exercise", "Exercise", "shared"),
     **{f"q_{a}": RoomDef(f"q_{a}", f"Quarters {i}", "private", a) for i, a in enumerate(CREW_IDS, start=1)},
-    "hygiene": RoomDef("hygiene", "Hygiene (not tracked)", "untracked"),  # no beacon, ever
+    "hygiene": RoomDef("hygiene", "Hygiene", "hygiene"),  # who: Mission Control only
 }
-TRACKED = [rid for rid, r in ROOMS.items() if r.kind != "untracked"]
+TRACKED = list(ROOMS)
 BEACONS = {f"dg-{rid}": rid for rid in TRACKED}  # beacon id -> room id
 MINOR = {rid: i + 1 for i, rid in enumerate(TRACKED)}
 
@@ -89,7 +92,7 @@ class Room(BaseModel):
     name: str
     kind: Kind
     owner: Optional[str]
-    beacon_id: Optional[str]   # null: no beacon (hygiene)
+    beacon_id: Optional[str]   # every room has one; in hygiene only Mission Control sees who is there
     ibeacon: Optional[dict]
 
 
@@ -115,7 +118,7 @@ def hours_by_room(visits: list[tuple[str, str, str, str]], aid: str, start: date
 
 
 def by_kind(hours: dict[str, float]) -> dict[str, float]:
-    out = {"shared": 0.0, "private": 0.0, "untracked": 0.0}
+    out = {"shared": 0.0, "private": 0.0, "hygiene": 0.0}
     for r, h in hours.items():
         if r in ROOMS:
             out[ROOMS[r].kind] += h

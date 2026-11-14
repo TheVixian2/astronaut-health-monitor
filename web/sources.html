@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data sources · AHM</title>
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .src { max-width: 1000px; margin: 0 auto; padding: 0 16px 32px; display: grid; gap: 16px; }
+    .src .card { padding: 14px 16px; }
+    .src ul { margin: 6px 0 0; padding-left: 18px; }
+    .src li { margin: 6px 0; }
+    .src .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; margin-right: 6px; }
+    .t-live { background: rgba(60,207,142,.15); color: #3ccf8e; }
+    .t-nasa { background: rgba(111,179,255,.15); color: #6fb3ff; }
+    .t-sim { background: rgba(255,255,255,.08); color: #c9d1d9; }
+    .t-cite { background: rgba(245,197,66,.12); color: #f5c542; }
+  </style>
+</head>
+<body class="selfcheck">
+  <nav class="appnav area-onboard" aria-label="Data sources">
+    <a class="brand" data-href="index.html" href="index.html" title="Home">AHM</a>
+    <span class="area-tag">Data sources</span>
+    <div class="menu"><a href="javascript:history.back()">← Back</a></div>
+    <div class="user small"><span data-user></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+  </nav>
+
+  <header class="bar"><div><h1>Where the data comes from</h1>
+    <div class="who muted">Every number in Dr. Galactic is one of these. Full list with code locations: <code>docs/nasa-data.md</code>.</div></div></header>
+
+  <main class="src">
+    <section class="card">
+      <h2><span class="tag t-live">LIVE NASA DATA</span>Real, right now</h2>
+      <ul>
+        <li><strong>ISS cabin air</strong>: CO₂ (US Lab and Node 3), O₂, cabin pressure and temperature, live from NASA's public
+          <a href="https://lightstreamer.com/customer-story/how-nasa-is-using-lightstreamer/" target="_blank" rel="noopener">ISS Live telemetry</a>.
+          It is the cabin our simulated crew lives in (Commander → Habitat).</li>
+        <li><strong>Earth–Mars light time</strong> for today from the
+          <a href="https://ssd-api.jpl.nasa.gov/doc/horizons.html" target="_blank" rel="noopener">NASA JPL Horizons API</a>.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2><span class="tag t-nasa">NASA STANDARD / FINDING</span>Built into the logic</h2>
+      <ul>
+        <li><strong>CO₂ limit 3 mmHg</strong> (1-hour average), headaches from ~2.8 mmHg:
+          <a href="https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf" target="_blank" rel="noopener">NASA-STD-3001, OCHMO-TB-004</a>.</li>
+        <li><strong>Objective, minimally obtrusive monitoring against a personal pre-flight baseline</strong> for missions beyond
+          6 months; a private hygiene compartment, so the commander never sees who is in it (only hours per person;
+          Mission Control sees who, for base operations):
+          <a href="https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-016-behavioral-health.pdf" target="_blank" rel="noopener">NASA-STD-3001, OCHMO-TB-016</a>.</li>
+        <li><strong>Station lighting modes</strong> 4500 K / 2700 K / 6500 K for the sleep and body-clock feature:
+          <a href="https://ntrs.nasa.gov/citations/20160005080" target="_blank" rel="noopener">ISS Solid-State Lighting Assembly</a>.</li>
+        <li><strong>NASA hazard and Human Research Program risk</strong> on every flag:
+          <a href="https://www.nasa.gov/hrp/hazards" target="_blank" rel="noopener">5 Hazards</a> ·
+          <a href="https://www.nasa.gov/hrp/risks" target="_blank" rel="noopener">Risks of Human Spaceflight</a>.</li>
+        <li><strong>3-minute reaction test</strong> (PVT-B, a lapse = over 355 ms), one of NASA's behavioral-health standard measures.</li>
+        <li><strong>Mood declines over time in isolation; no reported clinical depression</strong> (NASA HERA and SIRIUS crews):
+          <a href="https://ntrs.nasa.gov/api/citations/20260002661/downloads/Bell_APEX_IWS_2026_final.pdf" target="_blank" rel="noopener">NASA HRP Investigators' Workshop 2026</a>.
+          Shapes a2's simulated decline; why we screen and never diagnose.</li>
+        <li><strong>Reaction performance stays stable</strong> over 6-month ISS missions in healthy astronauts:
+          <a href="https://doi.org/10.3389/fphys.2024.1451269" target="_blank" rel="noopener">Dev et al. 2024</a>.</li>
+        <li><strong>Crew of four, 850-day Mars mission</strong>:
+          <a href="https://ntrs.nasa.gov/api/citations/20230012629/downloads/Overview%20of%20Crew%20Operations%20for%20Transit%20to%20Mars%20V5.pdf" target="_blank" rel="noopener">NASA Mars transit crew operations</a>.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2><span class="tag t-sim">SIMULATED</span>Stands in for hardware we don't have</h2>
+      <ul>
+        <li><strong>Watch readings</strong> (heart rate, HRV, activity) come from the watchOS Simulator: there is no physical watch.</li>
+        <li><strong>Other vitals and six weeks of history</strong> for all four crew members, around each person's own baseline.</li>
+        <li><strong>Room positions</strong> from a fixed daily schedule, standing in for a Bluetooth beacon per module.</li>
+        <li><strong>Check-in answers</strong> (PHQ-2, mood, reaction test) seeded so the demo is identical every run.</li>
+      </ul>
+      <p class="muted small">Why not real astronaut data? Astronaut medical and behavioral records are protected health data.
+        NASA collects exactly these measures (HERA Standard Measures: PANAS mood, GHQ) through the
+        <a href="https://www.nasa.gov/hrp/nlsp/" target="_blank" rel="noopener">NASA Life Sciences Portal</a>, by request only.
+        NASA has this data; this tool would feed it.</p>
+    </section>
+
+    <section class="card">
+      <h2><span class="tag t-cite">BACKGROUND</span>Cited in the pitch</h2>
+      <ul>
+        <li>Morale dips in the third quarter of a mission: <a href="https://ntrs.nasa.gov/citations/20100026549" target="_blank" rel="noopener">Stuster 2010, ISS astronaut journals</a>.</li>
+        <li>Behavioral risk rises with mission length: <a href="https://ntrs.nasa.gov/citations/20250001454" target="_blank" rel="noopener">NASA Behavioral Medicine Evidence Report 2025</a>.</li>
+        <li>Support from crewmates linked to lower evening stress: <a href="https://doi.org/10.3389/fpsyg.2024.1350630" target="_blank" rel="noopener">Bell et al. 2025</a>.</li>
+        <li>Astronaut sleep in flight: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4188436" target="_blank" rel="noopener">Barger et al. 2014</a>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="foot muted small">Decision support only, never a diagnosis.</footer>
+  <script src="common.js"></script>
+</body>
+</html>

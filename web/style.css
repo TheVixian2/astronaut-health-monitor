@@ -23,6 +23,20 @@
   --body: #1c1f27;           /* body figure */
   --ok: #3ccf8e;
 
+  /* area tints: On board = Mars red, Ground = blue (tags, presenter cards) */
+  --onboard-bg: rgba(143, 31, 15, .45);   /* dark Mars red, see-through */
+  --onboard-fg: #f0a49a;                  /* Mars red, lightened to read on black */
+  --ground-bg: rgba(27, 58, 138, .5);     /* palette blue, see-through */
+  --ground-fg: #b9c8f2;                   /* palette blue, lightened */
+
+  /* vital icons (common.js vitalIcon): one colour per vital, all from the palette */
+  --ic-heart: var(--mars);
+  --ic-spo2: var(--accent);
+  --ic-resp: var(--ground-fg);
+  --ic-temp: var(--onboard-fg);
+  --ic-sleep: #8e9bc7;                    /* silver-blue, between --silver and --blue */
+  --ic-mood: var(--text-strong);
+
   /* Severity colours stay yellow / orange / red (web/CLAUDE.md); critical
      uses the palette's Mars red. */
   --sev-watch: #f5c542;
@@ -44,6 +58,9 @@ body {
 h1 { font-size: 18px; margin: 0; color: var(--text-strong); }
 h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-strong); }
 h1 .muted, h2 .muted { color: var(--muted); }
+/* The app name "Dr. Galactic": 20% larger than the text around it (owner's
+   call, 2026-11-14) — 18 → 21.6 px in headings, 14 → 16.8 px in the menu bar. */
+.app-name, .appnav .brand { font-size: 1.2em; }
 code { font-family: ui-monospace, Consolas, monospace; }
 .muted { color: var(--muted); font-weight: normal; text-transform: none; letter-spacing: 0; }
 .small { font-size: 12px; }
@@ -116,12 +133,7 @@ a.home:hover { text-decoration: underline; }
 .err { color: var(--sev-critical); }
 [hidden] { display: none !important; }
 
-/* ---- landing ----------------------------------------------------------- */
-.landing { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding-top: 20px; }
-.choice { display: block; color: inherit; text-decoration: none; }
-a.choice:hover { border-color: var(--accent); }
-.choice p { margin: 0; }
-.soon { opacity: .55; }
+/* ---- presenter page (index.html); its profile cards are further down ---- */
 .landing-note { margin-top: 18px; }
 
 /* ---- self-check -------------------------------------------------------- */
@@ -157,7 +169,11 @@ a.choice:hover { border-color: var(--accent); }
 .ack { flex: none; padding: 8px 14px; }
 
 /* body figure */
-.body-card svg { display: block; width: 100%; max-width: 220px; margin: 0 auto; }
+/* The body figure fills the card's free height (the card stretches with the
+   vitals card). height: 0 + flex-basis 0 so the drawing itself never makes
+   the card taller; it scales to fit and stays centred (viewBox, "meet"). */
+.body-card { display: flex; flex-direction: column; }
+.body-card svg { display: block; width: 100%; height: 0; flex: 1 1 0; min-height: 340px; margin: 0 auto; }
 .region { cursor: pointer; outline: none; }
 .region > * { fill: var(--body); stroke: #3a3f4c; stroke-width: 1.5; transition: fill .15s; }
 .region[data-region="lungs"] > * { fill: #22325f; }          /* palette blue, darkened */
@@ -175,23 +191,51 @@ a.choice:hover { border-color: var(--accent); }
 .mini .sev-critical .dot { background: var(--sev-critical); }
 
 /* vitals tiles */
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+/* Vitals tiles: tall, and auto-fit so they always stretch across the whole row. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .tile {
-  display: flex; flex-direction: column; gap: 2px; text-align: left;
-  padding: 8px 10px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 8px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 8px; text-align: left;
+  min-height: 132px; padding: 14px 16px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 10px;
 }
 .tile:hover { background: rgba(255,255,255,.06); }
 .tile.dim { opacity: .4; }
 .tile.charted { border-color: var(--accent); }
 .tile.off .t-delta { color: var(--sev-alert); font-weight: 700; }
-.t-label { color: var(--muted); font-size: 12px; }
-.t-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-strong); }
-.t-unit { font-size: 12px; color: var(--muted); font-weight: 400; }
-.t-base { font-size: 12px; }
-.chart-wrap { margin-top: 14px; height: 210px; display: flex; flex-direction: column; }
-.chart-wrap { position: relative; min-width: 0; }
-.chart-wrap canvas { flex: 1; min-height: 0; max-width: 100%; }
-.chart-head { margin-bottom: 4px; }
+.t-label { color: var(--muted); font-size: 13px; }
+.t-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+
+/* Flat vital icons (AHM.vitalIcon in common.js): filled shapes in the vital's
+   colour, details in a darker tone. */
+.vi { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px;
+  background: color-mix(in srgb, currentColor 14%, transparent); }
+.vi svg { width: 24px; height: 24px; fill: currentColor; }
+.vi .d { fill: rgba(11, 11, 11, .55); }
+.vi .ds { fill: none; stroke: rgba(11, 11, 11, .6); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vi .ds-light { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+.vi .m { fill: var(--mars); }
+.vi-heart { color: var(--ic-heart); }
+.vi-spo2  { color: var(--ic-spo2); }
+.vi-resp  { color: var(--ic-resp); }
+.vi-temp  { color: var(--ic-temp); }
+.vi-sleep { color: var(--ic-sleep); }
+.vi-mood  { color: var(--ic-mood); }
+.t-value { font-size: 34px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.t-unit { font-size: 15px; color: var(--muted); font-weight: 400; }
+.t-base { font-size: 13px; }
+/* The vitals card stretches to the body card's height (same grid row); the
+   chart takes all the height left under the tiles. The canvas is absolutely
+   positioned in .chart-box so Chart.js sizes it from the box and can never
+   push the card taller (no resize loop). */
+.vitals-card { display: flex; flex-direction: column; }
+/* On the My health tab the page fills the window: the console grid stretches
+   to the bottom and the chart takes the extra height (body[data-tab] is set by
+   self-check.js; also on the Commander's and doctor's pages). */
+body.selfcheck[data-tab="health"] { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+body.selfcheck[data-tab="health"] #console { flex: 1; }
+.chart-wrap { margin-top: 16px; flex: 1; min-height: 260px; display: flex; flex-direction: column; position: relative; min-width: 0; }
+.chart-wrap .chart-box { position: relative; flex: 1; min-height: 220px; }
+.chart-wrap .chart-box canvas { position: absolute; inset: 0; }
+.chart-head { margin-bottom: 6px; }
 
 /* check-in */
 .checkin { display: grid; gap: 12px; }
@@ -294,8 +338,6 @@ a.choice:hover { border-color: var(--accent); }
   border: 1px dashed var(--line); border-radius: 8px; margin-bottom: 10px; }
 .sleep-gate p { margin: 0; }
 .private-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-bottom: 8px; }
-.tile.masked { cursor: default; }
-.tile.masked .t-value { font-size: 15px; color: var(--muted); padding: 4px 0; }
 
 /* ---- login + area menus --------------------------------------------------- */
 .login-page { display: grid; place-items: center; min-height: 100vh; }
@@ -307,20 +349,63 @@ a.choice:hover { border-color: var(--accent); }
 .login-form button { padding: 8px 14px; }
 
 .user { color: var(--muted); }
-.pick { margin: 20px 0 10px; }
-.areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.area-choice { display: block; color: inherit; text-decoration: none; padding: 20px; border-top: 4px solid var(--line); }
-.area-choice:hover { border-color: var(--accent); }
-.area-choice p { margin: 0; }
-/* Area colours: On board = Mars red (the spacecraft), Ground = palette blue. */
-.area-choice.onboard { border-top-color: var(--mars); }
-.area-choice.ground { border-top-color: var(--blue); }
-.area-choice.onboard:hover { border-color: var(--mars); }
-.area-choice.ground:hover { border-color: var(--accent); }
+.pick { margin: 20px 0 12px; }
+
+/* ---- presenter page: the four profiles, 2 x 2 ------------------------------ */
+/* Area colours: On board = Mars red (the spacecraft), Ground = palette blue.
+   Each card sets --tint / --tint-bg / --tint-fg and the rest follows. */
+/* Every size inside a card is in em, so the whole card scales with one font
+   size (14px by default, the fitted size in fit mode below). */
+.profiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 720px) { .profiles { grid-template-columns: minmax(0, 1fr); } }
+.profile { --tint: var(--mars); --tint-bg: var(--onboard-bg); --tint-fg: var(--onboard-fg);
+  display: flex; flex-direction: column; gap: 1em; padding: 1.55em; color: inherit; text-decoration: none;
+  border-top: 4px solid var(--tint);
+  background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--tint) 14%, transparent), transparent 60%), var(--panel);
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.profile.ground { --tint: var(--blue); --tint-bg: var(--ground-bg); --tint-fg: var(--ground-fg); }
+.profile:hover, .profile:focus-visible { transform: translateY(-2px); border-color: var(--tint);
+  box-shadow: 0 10px 28px -14px var(--tint); outline: none; }
+.profile.ground:hover, .profile.ground:focus-visible { border-color: var(--accent); }
+.p-head { display: flex; gap: 1.15em; align-items: center; }
+.p-icon { flex: none; width: 4.3em; height: 4.3em; border-radius: 1.15em; display: grid; place-items: center;
+  background: var(--tint-bg); color: var(--tint-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint-fg) 22%, transparent); }
+.p-icon svg { width: 2.3em; height: 2.3em; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.profile .area-tag { font-size: .78em; padding: .18em .73em; }
+.profile h2 { font-size: 1.43em; text-transform: none; letter-spacing: 0; margin: .3em 0 .1em; }
+.profile .small { font-size: .86em; }
+.p-who { color: var(--text-strong); font-weight: 600; }
+.p-who .muted { font-weight: 400; }
+.p-text { margin: 0; color: var(--text); }
+.p-tabs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .43em; }
+.p-tabs li { font-size: .86em; padding: .25em .83em; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.p-tabs li.key { border-color: color-mix(in srgb, var(--tint-fg) 45%, transparent); color: var(--tint-fg); background: var(--tint-bg); }
+.p-foot { margin-top: auto; padding-top: .86em; border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center; gap: .57em; }
+.p-open { font-weight: 700; color: var(--tint-fg); }
+.p-open span { display: inline-block; transition: transform .15s ease; }
+.profile:hover .p-open span { transform: translateX(.3em); }
+
+/* Fit mode (screens at least 721 x 521): the page fills the window exactly,
+   no scrolling. The script in index.html sets --fit to the largest font size
+   at which all four cards still fit their quarter, and re-fits on resize.
+   Header, cards and note are all in em of it, so everything scales together. */
+body.presenter.fit { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
+  padding-bottom: .9em; font-size: var(--fit, 14px); }
+body.presenter.fit .bar { padding: .75em 0; }
+body.presenter.fit h1 { font-size: 1.3em; }
+body.presenter.fit .bar .small, body.presenter.fit .bar button.link { font-size: .86em; }
+body.presenter.fit .bar .small button.link { font-size: 1em; }
+body.presenter.fit .pick { margin: .8em 0 .7em; }
+body.presenter.fit .profiles { flex: 1; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 1.15em; }
+body.presenter.fit .profile { overflow: hidden; }
+body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .86em; }
+@media (prefers-reduced-motion: reduce) { .profile, .p-open span { transition: none; } .profile:hover { transform: none; } }
 .area-tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
   padding: 2px 8px; border-radius: 999px; }
-.onboard .area-tag, .area-onboard .area-tag { background: rgba(143, 31, 15, .45); color: #f0a49a; }
-.ground .area-tag, .area-ground .area-tag { background: rgba(27, 58, 138, .5); color: #b9c8f2; }
+.onboard .area-tag, .area-onboard .area-tag { background: var(--onboard-bg); color: var(--onboard-fg); }
+.ground .area-tag, .area-ground .area-tag { background: var(--ground-bg); color: var(--ground-fg); }
 
 /* the menu bar at the top of each area */
 .appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 0;
@@ -345,7 +430,6 @@ a.choice:hover { border-color: var(--accent); }
 /* on-board tabs: a tab with a single card uses the full width */
 .sc-grid > .solo { grid-column: 1 / -1; }
 .checkin-card .checkin { max-width: 640px; }
-.area-choice h2 { font-size: 18px; text-transform: none; letter-spacing: 0; margin: 10px 0 6px; }
 
 /* Body figure: the heart icon has thin vessels, so its selection outline is
    thinner than other regions' or it swallows them. */
@@ -361,6 +445,26 @@ a.choice:hover { border-color: var(--accent); }
 .cap-panel.st-alert { border-top-color: var(--sev-alert); }
 .cap-panel.st-critical { border-top-color: var(--sev-critical); }
 .cap-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+/* Habitat tab (habitat.js): one tall card per crew member, four across */
+.hab-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+@media (max-width: 1100px) { .hab-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .hab-grid { grid-template-columns: minmax(0, 1fr); } }
+.hab-card { display: flex; flex-direction: column; gap: 18px; min-height: 360px; padding: 18px 18px 14px; }
+.hab-card .st-pill { white-space: nowrap; }
+.hab-stat { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; color: var(--text); }
+.hab-big { font-size: 38px; font-weight: 700; line-height: 1; color: var(--text-strong); }
+.hab-delta { font-weight: 600; margin-left: 4px; }
+.hab-delta.low { color: var(--sev-watch); }
+.hab-bar { position: relative; height: 16px; border-radius: 8px; background: rgba(255, 255, 255, .08); }
+.hab-fill { height: 100%; border-radius: 8px; }
+.hab-normal { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--text-strong); }
+.hab-today { width: 100%; margin-top: auto; border-collapse: collapse; }
+.hab-today caption { text-align: left; padding-bottom: 6px; }
+.hab-today th, .hab-today td { padding: 10px 0; border-top: 1px solid var(--line); text-align: left; font-size: 13px; }
+.hab-today th { color: var(--text); font-weight: 400; }
+.hab-today td.num { text-align: right; font-weight: 600; color: var(--text-strong); }
+.hab-today td.num.muted { color: var(--muted); font-weight: 400; }
+
 /* Crew wellbeing / Medications tab: heading row above the panels */
 .tab-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
 .tab-head h2 { margin: 0; }

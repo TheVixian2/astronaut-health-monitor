@@ -78,7 +78,8 @@ this long; default 12 h).
   PHQ safety rules on top, a confidence, and a daily trend. `method()` lists every weight.
   Crew-wide trends never name anyone and need >= 3 people.
 - `location.py` — the habitat's rooms (ids shared with `web/habitat.js`: `q_a1`..`q_a4`,
-  `command`, `lab`, `galley`, `exercise`; `hygiene` has no beacon and is never tracked), room from
+  `command`, `lab`, `galley`, `exercise`, `hygiene`: who is in hygiene is shown only to Mission
+  Control, the commander sees daily hours there; Luca, NASA-STD-3001), room from
   Bluetooth beacons (two scans must agree), simulated schedule, stored stays, daily time with
   crewmates / alone in quarters. Rooms only. `GET /crew/locations` (commander, Mission Control:
   safety) and `GET /astronauts/{id}/rooms` (astronaut, commander) read the same live room and

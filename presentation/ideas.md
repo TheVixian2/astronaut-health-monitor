@@ -377,3 +377,38 @@ to tighten, not final claims.**
   exercise)?" Today the answer is: the Commander and doctor are alerted at
   once, and the watch (Luca's) still decides what the wearer sees. Agree on
   an answer as a team before judging.
+
+## 2026-11-14 — the profile, its weights, and how we know it works (backend)
+
+Replaces the "astronaut first" and demo bullets in the mental-health section above: alerts
+are now **commander first, then released** (Luca's decision, see STATUS).
+
+- **One line:** *"Nine signals, each compared with the astronaut's own normal, weighted into
+  one score, with validated questionnaire rules on top."*
+- **Weights slide (`GET /wellbeing/method`):** watch and station 70: sleep 15, HRV 12, time
+  with crewmates 12, activity 11, body clock 10, resting HR 10. Check-ins 30: PHQ 15, mood
+  8, reaction test 7. *"The weights are a design choice; the cut-offs are validated."*
+- **"How do you know it's accurate?"** We ran it on 30 simulated crews: **0% false
+  "concern"** and 0.8% false "watch" on stable days; a slow decline was caught on 87% of
+  days two weeks in. Say the limit too: *"Simulated data checks the scoring, not clinical
+  accuracy. Next step: an analog mission (HERA, Antarctica)."*
+- **Two-step screening, like clinics:** PHQ-2 (2 questions) every check-in; if it's 2 or
+  more, the PHQ-9 follows. PHQ-2 >= 3 alone: sensitivity 0.72, specificity 0.85 (Levis et
+  al., JAMA 2020, n = 44,318). https://consensus.app/papers/details/w:157a9876-8a4a-412c-9cf2-afaf86faf638/
+- **Personal baselines, not population limits:** Mars-500 crews reacted very differently to
+  the same 520 days (Basner et al., PLoS ONE 2014), so each input is compared with the
+  astronaut's own mission days 7-14.
+  https://consensus.app/papers/details/w:88d789f2-b38a-432e-8a18-bf05940c04ab/
+- **Trends, not snapshots:** a daily score across the mission, a slope over two weeks
+  ("worsening, +12 points a week"), and the first day it was flagged.
+- **Bluetooth beacons, one per room:** time with crewmates vs the astronaut's own normal.
+  Watch + beacon room detection is about 86-92% accurate (Bouse et al., Sensors 2024), so two
+  scans must agree before the room changes. Rooms only, never coordinates; the hygiene
+  module has no beacon. *"More contact isn't automatically better"* (Cantisani et al., PNAS
+  2026): only a change from one's own normal counts.
+- **Ethics answers:** the commander sees the level and areas, never the answers; the
+  astronaut is told within 12 h at the latest; a PHQ-9 answer about self-harm is shown to
+  them with support at once and someone is told; psychological data never goes to a cloud
+  model.
+- **Demo (~30 s):** Commander page → a2 at *watch*, worsening → a2's check-in with PHQ-2 = 3
+  → *concern* → the commander's notice → **Release** → a2 sees it with suggestions.

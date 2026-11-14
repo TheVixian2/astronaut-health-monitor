@@ -3,18 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ground · AHM</title>
+  <title>Ground · Dr. Galactic</title>
   <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="ground">
+<body class="ground" data-viewer="ground">
   <!-- Ground menu. Hidden inside demo.html. -->
   <nav class="appnav area-ground" aria-label="Ground">
-    <a class="brand" data-href="index.html" href="index.html" title="Choose area">AHM</a>
+    <a class="brand" data-href="index.html" href="index.html" title="Choose area">Dr. Galactic</a>
     <span class="area-tag">Ground</span>
     <div class="menu">
       <a data-href="ground.html" href="ground.html" aria-current="page">Crew overview</a>
       <a data-href="history.html" href="history.html">History</a>
+      <a data-href="sources.html" href="sources.html">Data sources</a>
       <a data-href="stream-check.html" href="stream-check.html">Raw stream (debug)</a>
     </div>
     <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
@@ -48,6 +49,15 @@
     <section class="crew" id="crew" aria-label="Crew"><p class="muted">Loading crew…</p></section>
 
     <section class="card">
+      <h2>Habitat <span class="muted">· where the crew is, including the hygiene module</span> <span id="habConn" class="pill pill-wait">loading…</span></h2>
+      <div id="cabin"><p class="muted small">Cabin air: loading live ISS data…</p></div>
+      <svg id="habMap" viewBox="0 0 1000 300" role="img" aria-label="Habitat map with crew positions" style="width:100%;height:auto"></svg>
+      <p class="muted small" id="habUntracked"></p>
+      <p class="muted small">Base operations view: Mission Control sees every module, including hygiene. The Commander
+        sees who is in the hygiene module only as hours per person. Positions shown here are live, not light-delayed (demo simplification).</p>
+    </section>
+
+    <section class="card">
       <h2>Alerts received <span class="muted">· newest first</span></h2>
       <ul id="alerts" class="alerts"><li class="muted">Nothing received yet.</li></ul>
     </section>
@@ -61,5 +71,6 @@
   <script src="mock.js"></script>
   <script src="common.js"></script>
   <script src="ground.js"></script>
+  <script src="habitat.js"></script>
 </body>
 </html>
