@@ -2,6 +2,11 @@
 
 **Owner: NotKaemy.** Only the web owner edits this folder.
 
+**App name: `dr.galactic`** (lowercase, with the dot; renamed by NotKaemy
+2026-11-14). It is in every page's `<title>` ("Commander · dr.galactic"), the
+top-left brand in the menu bar, and the login / presenter / demo headings.
+Internal names (`window.AHM`, `ahm-session`, the repo) stay as they are.
+
 ## Stack
 
 Plain HTML/CSS/JS. **No build step, no framework, no npm.** Chart.js from a CDN
