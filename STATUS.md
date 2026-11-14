@@ -252,6 +252,15 @@ Branch: `web`
   exposed in the vitals, the web will show that instead. The body card has a
   Male | Female slider; sex is not in `GET /crew`, so it is remembered per
   browser. **@Luca:** a `sex` field on `/crew` would be picked up automatically.
+- **Login page first, also on the public demo** (NotKaemy, 2026-11-14; on `web`).
+  Every new visit starts at the login page (session per tab). **@Luca:** on
+  GitHub Pages the login page now shows **"Continue as presenter"**, one click
+  and no password, so the Space Apps "no login" rule still holds; the README's
+  "no login" line could say "no account needed: Continue as presenter". Also new:
+  green-to-red **threshold scales** for every vital on Mission Control
+  (distance from each astronaut's own usual, placeholder steps), and a **`test`
+  account**: Mission Control with a scripted test subject, one vital wrong then
+  good every 10 s.
 - **Bone density and muscle mass are vitals** (NotKaemy, 2026-11-14: the crew
   carries a **portable X-ray machine**, DXA; they replace the earlier "skeletal
   mass"). From a weekly scan: `bone_density_g_cm2` (whole-body bone mineral
