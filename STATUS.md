@@ -35,9 +35,24 @@ Anything that changed in `docs/api-spec.md`, newest at the top.
 
 Branch: `watch`
 
-- **Working:** Xcode project created (Watch-only, watchOS 27.2), builds clean.
-- **Next:** `VitalsSource` / `SimulatedSource` / `APIClient` / `ContentView`.
-- **Blocked on:** nothing.
+- **Working:** Phase 2 step 4 done on branch `watch`. `VitalsSource`,
+  `SimulatedSource` (random walk + exertion ramp), `HealthKitSource` stub,
+  `APIClient` (POST ingest + poll `/alerts`), `MonitorModel`, `ContentView`
+  with HR readout and alert banner. Builds and runs on the watchOS 27.2
+  Simulator; HR updates live; degrades to "offline" with no backend.
+- **Design note for the backend lane:** the watch **polls `GET
+  /astronauts/a1/alerts` every 3 s** rather than holding an SSE connection —
+  much less code on watchOS. The mock needs `/alerts` to return a JSON array
+  (`[]` is fine). Haptic fires only when the newest alert `id` changes.
+- **Next:** `NSAllowsLocalNetworking` (see below), then verify against the real
+  mock once the backend is up.
+- **Blocked on:** backend mock, to confirm ingest actually lands.
+- **Luca TODO — 4 clicks in Xcode, needed before the watch can reach the
+  backend:** select the `AstronautHealthMonitor Watch App` target -> Info tab ->
+  add `App Transport Security Settings` -> inside it add
+  `Allow Local Networking` = YES. Can't be done from disk: the template
+  generates its Info.plist, and ATS is a nested dictionary with no
+  `INFOPLIST_KEY_*` equivalent.
 
 ## Backend — stefanalbu2010-byte (+ Luca later)
 
