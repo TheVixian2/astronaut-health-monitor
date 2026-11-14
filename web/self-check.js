@@ -307,6 +307,7 @@
     if (!window.Chart) { $("chartFallback").hidden = false; $("chart").hidden = true; return; }
     if (chart) chart.destroy();
     const css = getComputedStyle(document.documentElement);
+    const tok = name => css.getPropertyValue(name).trim();   // colours come from style.css tokens
     chart = new window.Chart($("chart"), {
       type: "line",
       data: {
@@ -322,8 +323,8 @@
         animation: false, responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { color: "#8b95ab", maxTicksLimit: 6 }, grid: { color: "#263049" } },
-          y: { ticks: { color: "#8b95ab" }, grid: { color: "#263049" }, grace: "10%" },
+          x: { ticks: { color: tok("--muted"), maxTicksLimit: 6 }, grid: { color: tok("--line") } },
+          y: { ticks: { color: tok("--muted") }, grid: { color: tok("--line") }, grace: "10%" },
         },
       },
     });
