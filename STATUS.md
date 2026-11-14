@@ -243,6 +243,15 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **"Ship's doctor" is now "Crew Medical Officer"** in the web app (NotKaemy,
+  2026-11-14; on `web`), the same name the backend already gives Sara (a3). The
+  login stays `doctor`. **@dbm711:** please use "Crew Medical Officer" in the
+  slides. Also on `web`: the explanation boxes are gone (Commander's "Crew
+  members don't see these warnings", "Sample medication plan", Mission Control's
+  colour key), and every crew member on Crew wellbeing and Medications has an
+  **avatar**: the My health silhouette, male or female. **@Luca:** the `sex`
+  field on `/crew` (below) would set it; until then the web uses a demo default
+  (Elena, Sara female; Mihai, Jonas male) or the My health switch.
 - **My health: HRV and a stress level, Male | Female body** (NotKaemy,
   2026-11-14; on `web`, main merged in). HRV is `hrv_sdnn_ms` from the vitals.
   **The stress level (0-100) is computed in the web** from HRV vs the astronaut's
@@ -341,14 +350,14 @@ Branch: `web`
     default; the astronaut can opt out". Also `card` is shown as an object in
     the spec, but `circadian.py` returns a **string or null** — the web
     accepts both for now; please pick one.
-- **Done on `web` (not merged yet) — login per role + Commander + ship's
-  doctor.** Placeholder logins `crew`, `captain`, `doctor`, `ground`, `demo`
+- **Done on `web` (not merged yet) — login per role + Commander + Crew Medical
+  Officer.** Placeholder logins `crew`, `captain`, `doctor`, `ground`, `demo`
   (presenter, all views), each landing on its own interface. Details in
   `web/CLAUDE.md`.
   - **Commander** (`captain.html`): physical + psychological warnings for every
     crew member, each with advice on how to help. Sees everything (NotKaemy's
     decision).
-  - **Ship's doctor** (`doctor.html`): today's doses (due / overdue / given)
+  - **Crew Medical Officer** (`doctor.html`): today's doses (due / overdue / given)
     and medication suggestions from live alerts — from a **sample** plan in
     `web/meds.js`, labelled as not medical guidance.
   - **Both are crew too:** their pages open on **their own health data** (My
@@ -360,7 +369,7 @@ Branch: `web`
   at all.** "The crew members should not know what happened to them." Their
   console shows their own numbers vs. baseline, chart, check-in and sleep
   log; no banner, verdict, advice, insight, alert history or warning colours.
-  Warnings go only to the Commander, the ship's doctor and Ground. Done on
+  Warnings go only to the Commander, the Crew Medical Officer and Ground. Done on
   `web` (not merged yet). This replaces the "Commander first, then release"
   idea, so that backend ask is **withdrawn**.
   - **Luca — this contradicts two things you own:** (1) root `CLAUDE.md`
