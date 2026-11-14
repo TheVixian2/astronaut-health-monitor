@@ -69,7 +69,7 @@ profile also stores `onboard_action` (one line for the watch) and `body_region`
 | Lane | Owner | Owns |
 |---|---|---|
 | Watch + API spec + integration | **Luca** (has the Mac) | `/watch-app`, `docs/api-spec.md`, merging PRs |
-| Backend | **S1eevee**, joined by Luca once the watch app is done | `/backend`, `/tools` |
+| Backend | **stefanalbu2010-byte**, joined by Luca once the watch app is done | `/backend`, `/tools` |
 | Web | **NotKaemy** | `/web` (both views) |
 
 ## Coordination rules
@@ -79,7 +79,7 @@ profile also stores `onboard_action` (one line for the watch) and `body_region`
    `git pull` and `git log --oneline -15`. Update your own section of
    `STATUS.md` whenever you merge or get blocked — it is the only place a cold
    session learns what the other two have been doing.
-3. **One long-lived branch per lane** — `watch` (Luca), `backend` (S1eevee),
+3. **One long-lived branch per lane** — `watch` (Luca), `backend` (stefanalbu2010-byte),
    `web` (NotKaemy). Work on yours, push to it freely, never commit to `main`.
    **Luca merges to `main`**, roughly every 2-3 hours. **`main` must always run.**
    Because rule 1 keeps each lane inside its own folder, the branches touch

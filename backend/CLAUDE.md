@@ -1,6 +1,6 @@
 # backend — CLAUDE.md
 
-**Owner: S1eevee**, joined by Luca once the watch app is done. Only the backend owner edits this folder.
+**Owner: stefanalbu2010-byte**, joined by Luca once the watch app is done. Only the backend owner edits this folder.
 
 ## Stack
 

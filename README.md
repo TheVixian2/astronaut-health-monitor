@@ -33,7 +33,7 @@ severity, and one pre-written on-board action line.
 
 Thresholds are placeholders pending tuning — see `CLAUDE.md`.
 
-## Getting set up (NotKaemy, S1eevee)
+## Getting set up (NotKaemy, stefanalbu2010-byte)
 
 Three one-time things you have to do yourself:
 
@@ -42,7 +42,7 @@ Three one-time things you have to do yourself:
 3. Authenticate git: `gh auth login`.
 
 Then paste this one line, swapping `backend` for your lane
-(`backend` = S1eevee, `web` = NotKaemy, `watch` = Luca):
+(`backend` = stefanalbu2010-byte, `web` = NotKaemy, `watch` = Luca):
 
 ```sh
 git clone https://github.com/TheVixian2/astronaut-health-monitor.git && cd astronaut-health-monitor && git checkout backend && claude

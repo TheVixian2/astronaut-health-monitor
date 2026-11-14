@@ -31,7 +31,7 @@ Branch: `watch`
 - **Next:** `VitalsSource` / `SimulatedSource` / `APIClient` / `ContentView`.
 - **Blocked on:** nothing.
 
-## Backend — S1eevee (+ Luca later)
+## Backend — stefanalbu2010-byte (+ Luca later)
 
 Branch: `backend`
 
