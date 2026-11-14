@@ -506,9 +506,6 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .th-alert .th-dev { color: var(--alert-ink); font-weight: 650; }
 .th-critical .th-dev { color: var(--crit-ink); font-weight: 700; }
 .th-critical .th-label, .th-alert .th-label { color: var(--text-strong); }
-.th-legend { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; color: var(--muted); font-size: var(--t-sm); }
-.th-legend-bar { width: 56px; height: 8px; border-radius: 4px; flex: none;
-  background: linear-gradient(90deg, var(--ok), var(--sev-watch), var(--sev-alert), var(--sev-critical)); }
 .cvs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .cv { display: flex; flex-direction: column; min-width: 0; }
 .cv-val { font-size: var(--t-md); font-stretch: var(--narrow); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-strong); }
@@ -673,9 +670,6 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 .light-note { color: var(--onboard-fg); font-weight: 600; }
 
 /* ---- Commander + Crew Medical Officer ---------------------------------------- */
-.captain-note, .sample-note { margin: 16px 0; padding: 12px 14px; border-radius: var(--r-plate); max-width: 100ch;
-  background: var(--onboard-bg); border: 1px solid var(--onboard); }
-.sample-note { background: var(--ground-bg); border-color: var(--ground); }
 /* Crew wellbeing: the four crew members 2 x 2, cards in a row the same height. */
 .captain-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 @media (max-width: 900px) { .captain-grid { grid-template-columns: minmax(0, 1fr); } }
