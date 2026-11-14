@@ -114,6 +114,19 @@
          if that endpoint is missing, only the static guidance below is shown. -->
     <section class="card sleep-light">
       <h2>Light &amp; sleep <span id="lightChip" class="light-chip" hidden></span></h2>
+
+      <!-- The console is a shared screen on board, so personal sleep data
+           stays hidden until the astronaut asks for it, and re-hides itself. -->
+      <div id="sleepGate" class="sleep-gate">
+        <p class="muted">Your sleep and lighting details are hidden on this shared console.</p>
+        <button type="button" id="showSleep">Show my sleep data</button>
+      </div>
+
+      <div id="sleepPrivate" hidden>
+      <div class="private-bar small muted">
+        <span>Visible to anyone near this console · hides again in <span id="hideIn">2:00</span></span>
+        <button type="button" id="hideSleep" class="link">Hide now</button>
+      </div>
       <p id="sleepNote" class="sleep-note muted">Waiting for data…</p>
 
       <div id="circLive" hidden>
@@ -125,7 +138,8 @@
         <label class="row share">
           <input type="checkbox" id="circShare"> Share sleep &amp; lighting with ground
         </label>
-        <p id="circShareNote" class="muted small">Off by default. Your sleeping-quarters data stays on board unless you choose otherwise.</p>
+        <p id="circShareNote" class="muted small">The flight surgeon sees this by default. Untick to keep it on board.</p>
+      </div>
       </div>
 
       <details id="tipsBox">
