@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Commander · Dr. Galactic</title>
   <script src="auth.js"></script>
+  <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -24,7 +28,7 @@
       <a href="#crew" data-tab-link="crew">Crew wellbeing <span id="crewCount" class="count" hidden></span></a>
       <a href="#habitat" data-tab-link="habitat">Habitat</a>
     </div>
-    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+    <div class="user small"><span data-user></span><span data-demo-only> <a data-href="index.html" href="index.html">All views</a></span> <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
   <header class="bar">
@@ -34,9 +38,10 @@
     </div>
     <div class="status" aria-live="polite">
       <span id="conn" class="pill pill-wait">connecting…</span>
-      <span><strong>Live</strong> · on board</span>
+      <span><strong>Live</strong> on board</span>
+      <span id="lightNote" class="light-note" hidden>Pre-sleep light: screen dimmed</span>
       <span id="mission"></span>
-      <span>Your data: <strong id="age">—</strong></span>
+      <span>Your data updated <strong id="age">—</strong></span>
     </div>
   </header>
 
@@ -76,9 +81,8 @@
       is weak, so it is shown here and never added to the wellbeing score.</p>
   </section>
 
-  <footer class="foot muted small">Your own tabs show your data against your own baseline. Crew warnings
-    are decision support only, not a diagnosis: keep psychological information confidential and
-    discuss it in private. Medical questions go to the Crew Medical Officer.</footer>
+  <footer class="foot muted small">Crew warnings are decision support, not a diagnosis. Keep psychological
+    information confidential and raise it in private.</footer>
 
   <script src="mock.js"></script>
   <script src="common.js"></script>

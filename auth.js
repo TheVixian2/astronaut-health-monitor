@@ -96,11 +96,27 @@
       document.documentElement.style.zoom = z === 1 ? "" : String(z);
       document.documentElement.style.setProperty("--z", String(z));
       window.AHM_ZOOM = z;
-      if (window.Chart) window.Chart.defaults.devicePixelRatio = (window.devicePixelRatio || 1) * z;   // sharp charts
+      // Charts: the canvas is pinned to its box in style.css, so only the text
+      // needs the zoom (Chart.js draws in the zoomed pixels it measures).
+      if (window.Chart) {
+        window.Chart.defaults.font.family = '"Archivo", system-ui, sans-serif';
+        window.Chart.defaults.font.size = Math.round(12 * z);
+      }
     };
     applyZoom();
     addEventListener("resize", applyZoom);
     addEventListener("DOMContentLoaded", applyZoom);   // Chart.js may load after this script
+  }
+
+  // ---- the console follows the module's lighting (style.css, html[data-light]) ----
+  // self-check.js sets the mode from GET /circadian; here we only restore the
+  // last known mode on console pages (no silver flash in Pre-sleep), or take
+  // ?light=pre_sleep for a demo on any page.
+  {
+    const consolePage = ["self-check.html", "captain.html", "doctor.html"].includes(page);
+    let light = new URLSearchParams(location.search).get("light");
+    if (!light && consolePage) { try { light = sessionStorage.getItem("ahm-light"); } catch { /* none */ } }
+    if (light) document.documentElement.dataset.light = light;
   }
 
   if (page === "login.html") return;

@@ -262,7 +262,7 @@
   // Links marked data-href keep ?mock / ?base / ?aid when moving between pages.
   document.querySelectorAll("a[data-href]").forEach(a => { a.href = linkWithSettings(a.dataset.href); });
   const who = window.AHMAuth && window.AHMAuth.session();
-  document.querySelectorAll("[data-user]").forEach(el => { el.textContent = who ? `Signed in as ${who.user} · ${who.label}` : ""; });
+  document.querySelectorAll("[data-user]").forEach(el => { el.textContent = who ? `Signed in as ${who.user}: ${who.label}` : ""; });
   // "All views" and other presenter-only links.
   if (!who || who.role !== "demo") document.querySelectorAll("[data-demo-only]").forEach(el => { el.hidden = true; });
   document.querySelectorAll("[data-signout]").forEach(b => b.addEventListener("click", () => window.AHMAuth.logout()));
