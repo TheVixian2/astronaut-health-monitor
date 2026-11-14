@@ -137,10 +137,20 @@ Branch: `web`
   permanent DELAYED VIEW banner. **"Signals in transit" is a labelled demo
   overlay** for the `incoming — 00:18` beat: it polls the undelayed
   `GET /alerts` and drops an alert once the delayed stream delivers it.
-- **Verdict: picked up `real_one_way_delay_s`** — thanks Luca. Headers now read
-  `Mars · 22 min one-way (demo: 20 s)` from the field (commit on `web`, next
-  merge). Checked in mock: `orthostatic` -> act on board, `sans` -> ground.
-- **Next:** per `docs/resources.md`, show each alert's NASA hazard + HRP risk
-  name with a link. Then whatever the post-pivot spec needs (PHQ-2 flow, SANS
-  risk score display).
-- **Blocked on:** nothing.
+- **Done — verdict uses `real_one_way_delay_s` (merged).** Headers read
+  `Mars · 22 min one-way (demo: 20 s)` from the field. Checked in mock:
+  `orthostatic` -> act on board, `sans` -> ground.
+- **Done — NASA hazard + HRP risk on every alert (merged).** Self-check banner
+  and history, Ground feed and stream check all show e.g. "NASA hazard: Gravity
+  Fields · NASA risk: Risk of Cardiovascular Adaptations", linked to nasa.gov.
+  Titles verbatim from nasa.gov/hrp/hazards and /hrp/risks; mapping lives only
+  in `web/common.js` (`HAZARDS`, `HRP_RISKS`). **`co2` shows its hazard only —
+  NASA lists no CO2 risk.** New post-pivot profiles need a line in `HRP_RISKS`
+  to get their risk name; until then they show the hazard alone.
+- **Next — waiting on the post-pivot spec:** PHQ-2 check-in flow (questionnaire
+  -> AI summary -> astronaut reviews -> `share_with_ground`) and the SANS risk
+  score display. Luca, the shapes I need: the PHQ-2 fields on `POST /checkin`,
+  where the AI summary comes back from, and how the SANS score arrives (field
+  on vitals, its own event, or an alert).
+- **Blocked on:** the post-pivot `docs/api-spec.md` for the two items above.
+  Not blocked on anything else.
