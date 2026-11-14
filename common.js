@@ -36,6 +36,54 @@
     bone_density_g_cm2: { a1: [1.184, 1.18], a2: [1.236, 1.232], a3: [1.152, 1.148], a4: [1.21, 1.206] },
     muscle_mass_kg:     { a1: [25.4, 25.3], a2: [27.6, 27.5], a3: [23.8, 23.7], a4: [26.3, 26.2] },
   };
+  // ---- menstrual cycle: an opt-in, private adjustment of "usual" ---------------
+  // (owner, 2026-11-14). Every reading is judged against the astronaut's own
+  // usual, which already covers differences between bodies, but not a monthly
+  // rhythm: in the second (luteal) half of the cycle temperature rises about
+  // 0.3-0.5 °C, resting heart rate a few beats and HRV dips a little. With one
+  // fixed usual that would be flagged every month. So an astronaut can switch
+  // this on from their own console: the usual for temperature, heart rate and
+  // HRV then follows their cycle. Only their own console shows the cycle; every
+  // other view just compares readings with the adjusted usual.
+  // Saved in this browser per astronaut ("ahm-cycle"); a real system would keep
+  // it with the astronaut's private data on the backend.
+  // Simplified model: the usual is the first-half (follicular) value; luteal
+  // shifts +0.35 °C, +4 % heart rate, -8 % HRV; ovulation 14 days before the
+  // next period, a 2-day rise after it, half back on the last day.
+  const CYCLE_KEY = "ahm-cycle";
+  const CYCLE_SHIFT = { temp_c: ["abs", 0.35], heart_rate_bpm: ["pct", 4], hrv_sdnn_ms: ["pct", -8] };
+  function cycleSettings() { try { return JSON.parse(localStorage.getItem(CYCLE_KEY) || "{}"); } catch { return {}; } }
+  function cycleFor(aid) { const c = cycleSettings()[aid]; return c && c.start && c.len ? c : null; }
+  function setCycle(aid, c) {
+    try {
+      const all = cycleSettings();
+      if (c) all[aid] = c; else delete all[aid];
+      localStorage.setItem(CYCLE_KEY, JSON.stringify(all));
+    } catch { /* private window: not remembered */ }
+  }
+  // -> { day (1..len), len, luteal (0-1: how far into the second-half shift) } or null
+  function cycleAt(aid, t) {
+    const c = cycleFor(aid);
+    if (!c) return null;
+    const L = Math.max(21, Math.min(40, Math.round(c.len)));
+    const day = ((Math.floor((t - c.start) / 864e5) % L) + L) % L + 1;
+    const ov = L - 14;
+    const luteal = day <= ov ? 0 : day === L ? 0.5 : Math.min(1, (day - ov) / 2);
+    return { day, len: L, luteal };
+  }
+  // A vitals snapshot with its usual shifted for the cycle phase (and `cycle`).
+  function withCycle(v, aid) {
+    if (!v || !v.baseline) return v;
+    const cy = cycleAt(aid, v.timestamp ? Date.parse(v.timestamp) : Date.now());
+    if (!cy) return v;
+    const b = { ...v.baseline };
+    for (const [k, [how, x]] of Object.entries(CYCLE_SHIFT)) {
+      if (typeof b[k] !== "number") continue;
+      b[k] = how === "abs" ? Math.round((b[k] + x * cy.luteal) * 10) / 10 : Math.round(b[k] * (1 + (x / 100) * cy.luteal));
+    }
+    return { ...v, baseline: b, cycle: cy };
+  }
+
   // ---- thresholds: how far a reading is from the astronaut's OWN usual -------
   // For the green-to-red scales on Mission Control (owner, 2026-11-14). Never a
   // population range: every vital is judged against that astronaut's usual.
@@ -367,6 +415,7 @@
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
     withStress, stressBand, withScan, thresholdLevel,
+    withCycle, cycleFor, cycleAt, setCycle, CYCLE_SHIFT,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 

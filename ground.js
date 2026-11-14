@@ -100,7 +100,7 @@
         const pts = window.AHMPattern.series(aid, from, to, SPARK_POINTS);
         const last = pts[pts.length - 1];
         c.hr = pts.map(p => p.v.heart_rate_bpm);
-        c.latest = A.withScan(A.withStress(last.v), aid);
+        c.latest = A.withScan(A.withStress(A.withCycle(last.v, aid)), aid);
         c.at = last.t;
         c.baseHr = last.v.baseline.heart_rate_bpm;
         renderCard(aid);
@@ -113,7 +113,7 @@
   function onVitals(aid, v) {
     const c = crew.get(aid);
     if (!c) return;
-    v = A.withScan(A.withStress(v), aid);   // stress from HRV; simulated X-ray scan until the backend sends one
+    v = A.withScan(A.withStress(A.withCycle(v, aid)), aid);   // cycle-adjusted usual (if on); stress; simulated scan
     c.latest = v;
     c.at = new Date(v.timestamp);
     c.baseHr = v.baseline ? v.baseline.heart_rate_bpm : null;

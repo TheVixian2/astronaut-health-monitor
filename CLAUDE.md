@@ -153,6 +153,16 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   lists all vitals with a green-to-red bar and a marker. `AHM.thresholdLevel`
   (`common.js`, `THRESHOLDS`) measures distance from the astronaut's OWN usual
   (never a population range); watch / alert / critical steps are placeholders.
+- **Cycle-aware usual** (owner, 2026-11-14): personal baselines already cover
+  differences between bodies, but not the menstrual cycle (luteal phase: about
+  +0.3-0.5 °C, a few bpm, HRV a little lower). Opt-in from the astronaut's own
+  console (Cycle button by the body switch, shown with the female figure or when
+  on): first day of the last period + cycle length. `AHM.withCycle` then shifts
+  the usual for temperature (+0.35 °C), heart rate (+4 %) and HRV (-8 %) in the
+  luteal phase; stress follows. Only the own console names the cycle ("cycle
+  usual", "Cycle day N"); Mission Control just uses the adjusted usual. Saved in
+  localStorage `ahm-cycle` per astronaut (would belong with the astronaut's
+  private data on the backend). The demo pattern follows the cycle when it is on.
 - **Presenter sees a pattern, not live data** (owner, 2026-11-14): signed in as
   `demo`, the console, Commander, doctor and Mission Control pages load a
   deterministic pattern for the whole mission (`pattern.js`: station day,

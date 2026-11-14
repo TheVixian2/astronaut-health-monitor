@@ -104,19 +104,28 @@
     setInterval(loadCircadian, CIRC_REFRESH_MS);
   }
 
+  // Derived values for a raw snapshot: the usual shifted for the cycle (when the
+  // astronaut has switched that on), stress from HRV, the X-ray scan.
+  const derive = raw => A.withScan(A.withStress(A.withCycle(raw, cfg.aid)), cfg.aid);
+
+  let period = null;                 // pattern mode: the period on show
+  function showPeriod(p) {
+    period = p;
+    history.length = 0;
+    for (const s of window.AHMPattern.series(cfg.aid, p.from, p.to, MAX_POINTS)) history.push({ t: s.t, raw: s.v, v: derive(s.v) });
+    latest = history[history.length - 1].v;
+    lastVitalsAt = history[history.length - 1].t;
+    renderTiles();
+    rebuildChart();
+    renderSleep(latest);
+    renderAge();
+    renderCycleBtn();
+  }
+
   function startPattern() {
     document.body.classList.add("pattern");
     setConn("pattern", "pill-on");
-    window.AHMPattern.control(document.querySelector("header.bar .status"), ({ from, to }) => {
-      history.length = 0;
-      for (const p of window.AHMPattern.series(cfg.aid, from, to, MAX_POINTS)) history.push({ t: p.t, v: A.withStress(p.v) });
-      latest = history[history.length - 1].v;
-      lastVitalsAt = history[history.length - 1].t;
-      renderTiles();
-      rebuildChart();
-      renderSleep(latest);
-      renderAge();
-    });
+    window.AHMPattern.control(document.querySelector("header.bar .status"), showPeriod);
   }
 
   function startPolling() {
@@ -132,12 +141,11 @@
     setInterval(tick, POLL_MS);
   }
 
-  function onVitals(v) {
-    v = A.withStress(v);             // adds stress_0to100, derived from HRV
-    v = A.withScan(v, cfg.aid);      // simulated X-ray scan until the backend sends one
+  function onVitals(raw) {
+    const v = derive(raw);           // cycle-adjusted usual, stress from HRV, simulated X-ray scan
     latest = v;
     lastVitalsAt = new Date(v.timestamp);
-    history.push({ t: lastVitalsAt, v });
+    history.push({ t: lastVitalsAt, raw, v });
     if (history.length > MAX_POINTS) history.shift();
     renderTiles();
     pushChart();
@@ -191,8 +199,44 @@
     });
     $("body").dataset.sex = sex;
     $(sex === "female" ? "sexF" : "sexM").checked = true;
+    renderCycleBtn();
   }
   setSex(storedSex(), false);      // before the first paint (after the consts above)
+
+  // ---- cycle-aware usual (common.js withCycle): opt-in, own console only ------
+  // The button shows with the female figure, or whenever the setting is on.
+  function renderCycleBtn() {
+    const btn = $("cycleBtn");
+    if (!btn) return;
+    const cy = A.cycleAt(cfg.aid, lastVitalsAt ? +lastVitalsAt : Date.now());
+    btn.hidden = !(cy || $("body").dataset.sex === "female");
+    btn.textContent = cy ? `Cycle day ${cy.day}` : "Cycle";
+    btn.classList.toggle("on", !!cy);
+  }
+  $("cycleBtn").addEventListener("click", () => {
+    const c = A.cycleFor(cfg.aid), f = $("cycleForm");
+    f.start.value = c ? new Date(c.start).toISOString().slice(0, 10) : "";
+    f.len.value = c ? c.len : 28;
+    $("cycleOff").hidden = !c;
+    $("cycleDlg").showModal();
+  });
+  // On the form's submit (fires at once; the dialog's "close" event can wait for
+  // the next frame), then the method="dialog" form closes the dialog itself.
+  $("cycleForm").addEventListener("submit", e => {
+    const how = e.submitter ? e.submitter.value : "save", f = $("cycleForm");
+    if (how === "save" && f.start.value) A.setCycle(cfg.aid, { start: Date.parse(f.start.value), len: Number(f.len.value) || 28 });
+    else if (how === "off") A.setCycle(cfg.aid, null);
+    else return;
+    // Re-derive what is on screen (the pattern itself follows the cycle too).
+    if (PATTERN && period) showPeriod(period);
+    else {
+      history.forEach(p => { p.v = derive(p.raw); });
+      if (history.length) latest = history[history.length - 1].v;
+      renderTiles();
+      rebuildChart();
+    }
+    renderCycleBtn();
+  });
 
   function renderRegionInfo() {
     const fields = FIELDS.filter(f => region === "whole_body" || f.region === region).map(f => f.label);
@@ -218,7 +262,7 @@
       const show = x => (typeof x === "number" && f.dp != null ? x.toFixed(f.dp) : fmt(x));
       const reading = f.key === "stress_0to100"
         ? (now == null ? "needs HRV" : `${A.stressBand(now)}, usual ${fmt(base)}`)
-        : `usual ${show(base)}<span class="t-delta">${delta}</span>`;
+        : `${latest.cycle && A.CYCLE_SHIFT[f.key] ? "cycle usual" : "usual"} ${show(base)}<span class="t-delta">${delta}</span>`;
       const cls = ["tile", inRegion ? "" : "dim", f.key === chartField ? "charted" : ""].join(" ");
       return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">
         <span class="t-top"><span class="t-label">${f.label}</span>${A.vitalIcon(f.key)}</span>
@@ -605,6 +649,7 @@
           <input type="radio" name="sex" id="sexF" value="female"><label for="sexF">Female</label>
           <span class="sex-thumb" aria-hidden="true"></span>
         </div>
+        <button type="button" class="cycle-btn" id="cycleBtn" aria-haspopup="dialog" hidden>Cycle</button>
       </div>
       <svg id="body" viewBox="0 0 200 400" role="group" aria-label="Body regions">
         <!-- Front view of a person standing in the anatomical position, palms
@@ -664,6 +709,23 @@
         </g>
       </svg>
       <div id="regionInfo" class="region-info"></div>
+      <dialog id="cycleDlg" class="cycle-dlg" aria-labelledby="cycleTitle">
+        <form method="dialog" id="cycleForm">
+          <h2 id="cycleTitle">Cycle-aware usual</h2>
+          <p class="small">Temperature, resting heart rate and HRV change over the menstrual cycle. With this on
+            they are compared with your usual for the same phase, so a normal monthly rise is not flagged and a
+            real fever still is.</p>
+          <label>First day of your last period <input type="date" name="start" required></label>
+          <label>Usual cycle length <span class="cycle-len"><input type="number" name="len" min="21" max="40" value="28" required> days</span></label>
+          <p class="muted small">Private: only your own console shows the cycle. Other views compare your readings
+            with the adjusted usual and never show the cycle itself. Saved in this browser.</p>
+          <div class="dlg-actions">
+            <button value="save">Turn on</button>
+            <button value="off" id="cycleOff" class="link" formnovalidate>Turn off</button>
+            <button value="cancel" class="link" formnovalidate>Cancel</button>
+          </div>
+        </form>
+      </dialog>
     </section>
 
     <section class="card vitals-card" data-tab="health">

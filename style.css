@@ -290,6 +290,21 @@ a.home:hover { text-decoration: underline; }
   background: var(--btn-bg); transition: transform .3s ease; }
 .sex-switch:has(#sexF:checked) .sex-thumb { transform: translateX(100%); }
 @media (prefers-reduced-motion: reduce) { .sex-thumb { transition: none; } }
+/* Cycle-aware usual: a small button next to the body switch and its dialog. */
+.cycle-btn { padding: 5px 12px; border-radius: 999px; font-size: var(--t-sm); font-weight: 600;
+  background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.cycle-btn:hover { color: var(--text-strong); background: var(--wash-2); }
+.cycle-btn.on { color: var(--onboard-fg); border-color: var(--onboard); background: var(--onboard-bg); }
+.cycle-dlg { width: min(440px, calc(100vw - 32px)); padding: 22px 24px; border: 1px solid var(--line-strong);
+  border-radius: var(--r-plate); background: var(--panel); color: var(--text); }
+.cycle-dlg::backdrop { background: rgba(0, 0, 0, .6); }
+.cycle-dlg h2 { font-size: var(--t-md); margin: 0 0 10px; }
+.cycle-dlg form { display: grid; gap: 12px; }
+.cycle-dlg p { margin: 0; }
+.cycle-dlg label { display: grid; gap: 4px; color: var(--muted); font-weight: 500; font-size: var(--t-sm); }
+.cycle-len { display: inline-flex; align-items: center; gap: 8px; color: var(--text); }
+.cycle-len input { width: 5em; }
+.dlg-actions { display: flex; align-items: center; gap: 14px; margin-top: 4px; }
 .body-card svg { display: block; width: 100%; height: 0; flex: 1 1 0; min-height: 190px; margin: 0 auto; }
 .region { cursor: pointer; outline: none; }
 /* One solid silhouette: head, torso and limbs are edged in their own fill
