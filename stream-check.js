@@ -58,7 +58,7 @@
   function onVitals(v) {
     log(`vitals ${JSON.stringify(v)}`);
     lastVitalsAt = new Date(v.timestamp);
-    $("vitals").tBodies[0].innerHTML = FIELDS.map(({ key, label, unit }) => {
+    $("vitals").tBodies[0].innerHTML = FIELDS.filter(f => !f.derived).map(({ key, label, unit }) => {
       const now = v[key], base = v.baseline ? v.baseline[key] : null;
       const pct = deltaPct(now, base);
       const delta = pct == null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;

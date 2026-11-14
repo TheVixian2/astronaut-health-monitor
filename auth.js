@@ -87,6 +87,43 @@
   if (window.top !== window.self) document.documentElement.classList.add("embedded");
 
   const page = location.pathname.split("/").pop() || "index.html";
+
+  // ---- bigger interface on big windows (owner's call, 2026-11-14) ----------
+  // Pages are laid out for 1280 x 720. On a bigger window the whole page is
+  // zoomed by the same factor (capped at 1.75) so it fills the window; the
+  // effective layout never drops below 1280 x 720, so breakpoints and the
+  // full-height tabs behave as they do there. Zoom also scales vh, so
+  // style.css divides window heights by --z. Not on the presenter page or
+  // demo.html, which size themselves. Runs here, in <head>, to avoid a jump.
+  if (page !== "index.html" && page !== "demo.html") {
+    const applyZoom = () => {
+      const z = Math.round(Math.max(1, Math.min(innerWidth / 1280, innerHeight / 720, 1.75)) * 100) / 100;
+      document.documentElement.style.zoom = z === 1 ? "" : String(z);
+      document.documentElement.style.setProperty("--z", String(z));
+      window.AHM_ZOOM = z;
+      // Charts: the canvas is pinned to its box in style.css, so only the text
+      // needs the zoom (Chart.js draws in the zoomed pixels it measures).
+      if (window.Chart) {
+        window.Chart.defaults.font.family = '"Archivo", system-ui, sans-serif';
+        window.Chart.defaults.font.size = Math.round(12 * z);
+      }
+    };
+    applyZoom();
+    addEventListener("resize", applyZoom);
+    addEventListener("DOMContentLoaded", applyZoom);   // Chart.js may load after this script
+  }
+
+  // ---- the console follows the module's lighting (style.css, html[data-light]) ----
+  // self-check.js sets the mode from GET /circadian; here we only restore the
+  // last known mode on console pages (no silver flash in Pre-sleep), or take
+  // ?light=pre_sleep for a demo on any page.
+  {
+    const consolePage = ["self-check.html", "captain.html", "doctor.html"].includes(page);
+    let light = new URLSearchParams(location.search).get("light");
+    if (!light && consolePage) { try { light = sessionStorage.getItem("ahm-light"); } catch { /* none */ } }
+    if (light) document.documentElement.dataset.light = light;
+  }
+
   if (page === "login.html") return;
   const s = session();
   if (!s) {

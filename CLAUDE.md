@@ -145,11 +145,56 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - `demo.html` — Commander and Ground side by side (two iframes) for the
   pitch. The Commander pane polls (no SSE) and Ground holds 4 SSE streams,
   under the browser's ~6 per host. Tested against the real backend.
+- **The 6-connection limit is shared by every tab** (bug found 2026-11-14:
+  a Mission Control tab + a demo tab left open starved every new page, stuck
+  on "connecting…" until the backend was restarted). `AHM.openStream` returns
+  a `PausingEventSource` (`common.js`): a stream closes once its tab has been
+  hidden for 15 s and reopens when the tab is shown. Keep every new stream on
+  `openStream`; never `new EventSource` directly.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
+- **Check-in is one question at a time** (Back / Next, "Skip" when
+  unanswered, Submit on the last): mood → sleep hours (± half-hour buttons) →
+  symptoms → the two PHQ-2 items (wording from `GET /checkin/questions`;
+  skipped if that fails, and sent only when both are answered). **No
+  "share with ground" box: check-ins are always sent with
+  `share_with_ground: true`** (NotKaemy, 2026-11-14 — note the spec calls this
+  the astronaut's control; flagged to Luca in STATUS). Form is `novalidate`:
+  a field on a hidden step would otherwise block Submit silently.
+- **Bigger interface on big windows:** `auth.js` zooms every page (except
+  `index.html` / `demo.html`) by `min(width/1280, height/720)`, between 1 and
+  1.75, and sets `--z`. CSS zoom also scales `vh`, so write window heights as
+  `calc(100dvh / var(--z, 1))`. Chart.js gets a matching pixel ratio. My
+  health, Check-in and Sleep & light stretch to the window's height.
 - **Vital icons:** every vital has a flat icon (`AHM.vitalIcon(key)` in
   `common.js`, `VITAL_ICONS`): heart + pulse, blood drop, lungs, thermometer,
-  moon, smiley. Colours are the `--ic-*` tokens in `style.css` (`.vi-*`).
-  Shown on the My health tiles; reuse it wherever a vital is labelled.
+  moon, smiley, pulse trace (HRV), gauge (stress). Colours are the `--ic-*`
+  tokens in `style.css` (`.vi-*`). Shown on the My health tiles; reuse it
+  wherever a vital is labelled.
+- **HRV and stress** (owner, 2026-11-14): ten readings, five per row. HRV is
+  `hrv_sdnn_ms` from the vitals (SDNN, as Apple Watch records it). **Stress
+  (0-100) is derived in the web** (`AHM.withStress` in `common.js`), not sent by
+  the backend: HRV at the astronaut's usual = 30, each 10 % below adds 16;
+  bands 0-25 resting, 26-50 low, 51-75 medium, 76-100 high. Apple Watch keeps
+  no stress score, so the scale is ours and the chart note says so. Fields with
+  `derived: true` are skipped where raw backend fields are listed
+  (`stream-check.js`). If the backend ever sends a stress score, show that.
+- **Body shape** (owner, 2026-11-14): a Male | Female slider on the body card
+  swaps the silhouette (`setSex`, shapes in `bodyShapes()` in `self-check.js`,
+  generated so both share their points and morph). Sex is not in the crew data,
+  so it is a per-viewer choice in localStorage per astronaut (`ahm-body-sex`);
+  a `sex` field on `GET /crew` would be used if added.
+- **Bone density and muscle mass** (owner, 2026-11-14: the crew has a
+  portable X-ray machine; replaced "skeletal mass" the same day). From a
+  weekly DXA scan: `bone_density_g_cm2` (whole-body bone mineral density,
+  3 decimals as DXA reports it) and `muscle_mass_kg` (lean tissue of arms and
+  legs, the scan's stand-in for skeletal muscle). Region "skin" (limbs);
+  change shown to 1 decimal (`dp` / `deltaDp` on the field). **PROVISIONAL
+  bridge:** the backend sends neither yet, so `AHM.withScan` fills in
+  simulated scans per field (`SIM_SCAN`: usual from the days 7-14 scan; bone
+  ~0.35 %/month lower since, LeBlanc et al. 2000; muscle ~0.4 %/month, a
+  placeholder rate) and the chart note says "Simulated scans for now". A field
+  the backend sends wins. Simulating in the web breaks the "simulated
+  server-side" rule on purpose until then.
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict
   logic here only.
@@ -175,11 +220,24 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - **Colour palette** (team decision, 2026-11-14): Light Silver `#C0C6D4`, Mars
   Orange Red `#D62828`, Dark Mars Red `#8F1F0F`, Black `#0B0B0B`, Blue
   `#1B3A8A`. They live as tokens at the top of `style.css`; use the tokens,
-  never raw hex, in new CSS and JS (the chart reads them with
-  `getComputedStyle`). On board = Mars red, Ground = blue. Thin lines and link
-  text use `--accent`, a lighter tint of the blue, because `#1B3A8A` is too
-  dark to read on black. Status colours (ok green, watch yellow, alert orange)
-  stay outside the palette because they carry meaning.
+  never raw hex, in new CSS and JS (charts read them with
+  `getComputedStyle`). On board = Mars red, Ground = blue. Status colours (ok
+  green, watch yellow, alert orange) stay outside the palette because they
+  carry meaning; use `--*-ink` for them as text, the plain ones for fills.
+- **Design system** (frontend-design pass, NotKaemy 2026-11-14; full notes at
+  the top of `style.css`): a dark ship console. **Black is the page**
+  (the owner switched back from the silver day look the same day; that set is
+  in git at 09b4f03), silver is the type, panels are black lifted one step
+  (`--panel`, 6 px radius). **Type is Archivo** (Google Fonts, one family at three
+  widths): 125 % heavy for the wordmark and page titles, 75 % semibold
+  tabular for readouts (vitals, counts, big stats), normal for the rest.
+  Sentence case everywhere: no ALL-CAPS labels, no "A · B · C" strings, no
+  "→" on links. The six vitals are **one instrument strip** (cells divided by
+  rules, charted one marked with a Mars-red top bar), not six cards.
+  **The console follows the module's lighting:** in Pre-sleep or lights off
+  (`GET /circadian` → `lighting.mode`) `html[data-light]` switches to a
+  warm, blue-free set, with "Pre-sleep light: screen dimmed" in the header.
+  Add `?light=pre_sleep` to any URL to show it in a demo.
 - The long Claude explanation (`insight.why` / `trend` / `recommended_action`)
   is shown **here only** — the watch gets just the one-line `onboard_action`.
 - `insight` can be `null`; render the alert without it rather than waiting.

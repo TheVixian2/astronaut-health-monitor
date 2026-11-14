@@ -8,6 +8,9 @@
   const who = window.AHMAuth && window.AHMAuth.session();
   const role = who ? who.role : "demo";
   const $ = id => document.getElementById(id);
+  // Chart colours come from style.css tokens, so the charts follow the light theme.
+  const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const alpha = (hex, a) => { let h = hex.replace("#", ""); if (h.length === 3) h = [...h].map(c => c + c).join(""); const n = parseInt(h, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 
   const FIELDS = [
     { key: "heart_rate_bpm", label: "Heart rate", unit: "bpm", dp: 0 },
@@ -61,20 +64,20 @@
     const data = {
       labels,
       datasets: [
-        { label: "High", data: hi, borderWidth: 0, pointRadius: 0, backgroundColor: "rgba(240,90,120,0.18)", fill: "+1" },
+        { label: "High", data: hi, borderWidth: 0, pointRadius: 0, backgroundColor: alpha(tok("--accent"), 0.18), fill: "+1" },
         { label: "Low", data: lo, borderWidth: 0, pointRadius: 0, fill: false },
-        { label: "Average", data: avg, borderColor: "#f05a78", borderWidth: 2, pointRadius: rows.length > 60 ? 0 : 2, tension: 0.3, fill: false },
-        { label: "Your normal", data: rows.map(() => base), borderColor: "#9aa4b2", borderDash: [5, 5], borderWidth: 1, pointRadius: 0, fill: false },
+        { label: "Average", data: avg, borderColor: tok("--accent"), borderWidth: 2, pointRadius: rows.length > 60 ? 0 : 2, tension: 0.3, fill: false },
+        { label: "Your normal", data: rows.map(() => base), borderColor: tok("--muted"), borderDash: [5, 5], borderWidth: 1, pointRadius: 0, fill: false },
       ],
     };
     const options = {
       responsive: true, maintainAspectRatio: false, animation: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { labels: { filter: i => i.text !== "Low", color: "#c9d1d9" } },
+        legend: { labels: { filter: i => i.text !== "Low", color: tok("--text") } },
         tooltip: { callbacks: { label: c => `${c.dataset.label}: ${num(c.parsed.y, f.dp)} ${f.unit}` } },
       },
-      scales: { x: { ticks: { color: "#9aa4b2", maxTicksLimit: 12 } }, y: { ticks: { color: "#9aa4b2" } } },
+      scales: { x: { ticks: { color: tok("--muted"), maxTicksLimit: 12 } }, y: { ticks: { color: tok("--muted") } } },
     };
     if (window.Chart) {
       if (chart) chart.destroy();
@@ -116,13 +119,13 @@
           data: {
             labels: nights.map(n => new Date(n.night_of + "T12:00:00Z").toLocaleDateString([], { weekday: "short", day: "numeric" })),
             datasets: [
-              { type: "bar", label: "Sleep (h)", data: nights.map(n => n.sleep_h), backgroundColor: "#6c6cf0" },
-              { type: "line", label: "Usual", data: nights.map(() => usual), borderColor: "#9aa4b2", borderDash: [5, 5], pointRadius: 0 },
+              { type: "bar", label: "Sleep (h)", data: nights.map(n => n.sleep_h), backgroundColor: tok("--ic-sleep") },
+              { type: "line", label: "Usual", data: nights.map(() => usual), borderColor: tok("--muted"), borderDash: [5, 5], pointRadius: 0 },
             ],
           },
           options: { responsive: true, maintainAspectRatio: false, animation: false,
             plugins: { legend: { display: false } },
-            scales: { x: { ticks: { color: "#9aa4b2" } }, y: { beginAtZero: true, ticks: { color: "#9aa4b2" } } } },
+            scales: { x: { ticks: { color: tok("--muted") } }, y: { beginAtZero: true, ticks: { color: tok("--muted") } } } },
         });
       }
     } catch (e) {
