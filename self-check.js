@@ -153,7 +153,7 @@
       const delta = p == null ? "" : `${p >= 0 ? "+" : ""}${p.toFixed(0)}%`;
       const cls = ["tile", inRegion ? "" : "dim", f.key === chartField ? "charted" : ""].join(" ");
       return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">
-        <span class="t-label">${f.label}</span>
+        <span class="t-top"><span class="t-label">${f.label}</span>${A.vitalIcon(f.key)}</span>
         <span class="t-value">${fmt(now)}<span class="t-unit"> ${f.unit}</span></span>
         <span class="t-base muted">yours: ${fmt(base)} <span class="t-delta">${delta}</span></span></button>`;
     }).join("");

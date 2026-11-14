@@ -29,6 +29,14 @@
   --ground-bg: rgba(27, 58, 138, .5);     /* palette blue, see-through */
   --ground-fg: #b9c8f2;                   /* palette blue, lightened */
 
+  /* vital icons (common.js vitalIcon): one colour per vital, all from the palette */
+  --ic-heart: var(--mars);
+  --ic-spo2: var(--accent);
+  --ic-resp: var(--ground-fg);
+  --ic-temp: var(--onboard-fg);
+  --ic-sleep: #8e9bc7;                    /* silver-blue, between --silver and --blue */
+  --ic-mood: var(--text-strong);
+
   /* Severity colours stay yellow / orange / red (web/CLAUDE.md); critical
      uses the palette's Mars red. */
   --sev-watch: #f5c542;
@@ -194,6 +202,23 @@ a.home:hover { text-decoration: underline; }
 .tile.charted { border-color: var(--accent); }
 .tile.off .t-delta { color: var(--sev-alert); font-weight: 700; }
 .t-label { color: var(--muted); font-size: 13px; }
+.t-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+
+/* Flat vital icons (AHM.vitalIcon in common.js): filled shapes in the vital's
+   colour, details in a darker tone. */
+.vi { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px;
+  background: color-mix(in srgb, currentColor 14%, transparent); }
+.vi svg { width: 24px; height: 24px; fill: currentColor; }
+.vi .d { fill: rgba(11, 11, 11, .55); }
+.vi .ds { fill: none; stroke: rgba(11, 11, 11, .6); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vi .ds-light { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+.vi .m { fill: var(--mars); }
+.vi-heart { color: var(--ic-heart); }
+.vi-spo2  { color: var(--ic-spo2); }
+.vi-resp  { color: var(--ic-resp); }
+.vi-temp  { color: var(--ic-temp); }
+.vi-sleep { color: var(--ic-sleep); }
+.vi-mood  { color: var(--ic-mood); }
 .t-value { font-size: 34px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
 .t-unit { font-size: 15px; color: var(--muted); font-weight: 400; }
 .t-base { font-size: 13px; }

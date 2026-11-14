@@ -146,6 +146,10 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   pitch. The Commander pane polls (no SSE) and Ground holds 4 SSE streams,
   under the browser's ~6 per host. Tested against the real backend.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
+- **Vital icons:** every vital has a flat icon (`AHM.vitalIcon(key)` in
+  `common.js`, `VITAL_ICONS`): heart + pulse, blood drop, lungs, thermometer,
+  moon, smiley. Colours are the `--ic-*` tokens in `style.css` (`.vi-*`).
+  Shown on the My health tiles; reuse it wherever a vital is labelled.
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict
   logic here only.
