@@ -102,7 +102,22 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
-- **Working:** nothing yet — Phase 2 not started.
-- **Next:** `index.html` connecting to `/astronauts/a1/stream?view=crew` and
-  printing events. Real UI after the mock backend is up.
-- **Blocked on:** backend mock (can start against canned JSON meanwhile).
+- **Done — Phase 2 step 5 (merged to `main`):** `web/index.html` stream check.
+  Connects to `/astronauts/{id}/stream?view=crew|ground`, shows latest vitals vs
+  baseline, upserts alerts **by `id`** (so the insight re-send updates in
+  place), computes the verdict from `GET /mission`, shows active view + data
+  age, logs raw events. `index.html?mock` runs with no backend (`web/mock.js`
+  mirrors the backend mock). Tested in mock mode only — not yet against the
+  real backend.
+- **Luca, please decide — the demo verdict contradicts the rule.** CLAUDE.md:
+  "round trip > `act_within_s` -> Act on board now". With the demo-compressed
+  20 s one-way delay, round trip is 40 s, far under `orthostatic`'s 600 s, so
+  the page says **"Ground will see this in 20 s"** — but `demo-script.md` step 3
+  needs **"Act on board now"**. Options: (a) compute the verdict from the
+  *real* environment delay (Mars 22 min) and compress only the delivery
+  countdown, e.g. a new `verdict_delay_s` or `real_one_way_delay_s` in
+  `GET /mission`; (b) demo with a delay over 300 s. Web currently follows the
+  rule as written; (a) is a one-line change here once the field exists.
+- **Next:** real Self-check view (vitals + trend chart, body figure, check-in
+  form), then Ground.
+- **Blocked on:** nothing.
