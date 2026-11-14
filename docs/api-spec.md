@@ -205,6 +205,15 @@ US Lab + Node 3 ppCO2, Lab ppO2, cabin pressure, cabin air temperature.
   few minutes (`{}` ends it) so the on-board alarm can be shown; while active,
   `demo_override: true` and `source` says "DEMO OVERRIDE, not real ISS data".
 
+## Ask Claude (watch) — **PROVISIONAL**
+
+`POST /astronauts/{id}/ask {question}` → `{answer, source: claude|on_board, note}`.
+The watch's Claude wrapper (Ask page, "Why?" on alerts and the urgent pop-up). Sends
+Claude **only** physical readings vs baseline, cabin air and the light time, never mood
+or check-in answers. No API key, a blackout or any failure → an on-board answer built
+from the same numbers (`source: on_board`). Model: `INSIGHT_MODEL` (default
+`claude-sonnet-5-5`), server-side refusal fallback on.
+
 ## Habitat — **PROVISIONAL** (live in `backend/habitat.py`)
 
 Room per astronaut from a Bluetooth beacon per module (simulated by a fixed daily

@@ -25,10 +25,11 @@ struct ContentView: View {
             }
             .navigationTitle("Vitals")
             .tag(3)
+            AskPage(model: model).tag(4)
         }
         .tabViewStyle(.verticalPage)
         }
-        .sheet(item: $model.urgent) { UrgentView(notice: $0) }
+        .sheet(item: $model.urgent) { UrgentView(notice: $0, model: model) }
         .onAppear { model.start() }
         .onDisappear { model.stop() }
     }
@@ -188,6 +189,8 @@ struct TodayPage: View {
         VStack(spacing: 6) {
             if let alert = model.alert {
                 AlertBanner(alert: alert)
+                WhyButton(model: model,
+                          question: "Why did I get the \(alert.profile.replacingOccurrences(of: "_", with: " ")) alert?")
             }
             ZStack {
                 Ring(fraction: ratio(sleep?.0, sleep?.1), color: .indigo, width: 9)
@@ -390,6 +393,7 @@ struct CabinCard: View {
 
 struct UrgentView: View {
     let notice: UrgentNotice
+    let model: MonitorModel
 
     var body: some View {
         ScrollView {
@@ -401,6 +405,71 @@ struct UrgentView: View {
                 Text("Mission Control is \(notice.roundTripMin) min away (round trip): don't wait for them.")
                     .font(.caption2).foregroundStyle(.orange)
                 Text(notice.detail).font(.system(size: 10)).foregroundStyle(.secondary)
+                WhyButton(model: model, question: "Why is \(notice.title) urgent, and what should I do?")
+            }
+        }
+    }
+}
+
+// MARK: - Claude wrapper: ask by voice, and "Why?"
+
+/// Tap the field to dictate (or scribble) a question about your own body data or the cabin.
+/// The backend asks Claude with physical data only; without a key it answers on board.
+struct AskPage: View {
+    let model: MonitorModel
+    @State private var question = ""
+    @State private var answer: AskAnswer?
+    @State private var busy = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 6) {
+                TextField("Ask about your data…", text: $question)
+                    .onSubmit { Task { await send() } }
+                if busy { ProgressView().frame(maxWidth: .infinity) }
+                if let a = answer {
+                    Text(a.source == "claude" ? "CLAUDE" : a.source == "on_board" ? "ON BOARD (no Claude)" : "OFFLINE")
+                        .font(.system(size: 9)).foregroundStyle(a.source == "claude" ? .teal : .secondary)
+                    Text(a.answer).font(.footnote)
+                }
+                if answer == nil && !busy {
+                    Text("e.g. “Why is my HRV low?” or “Is the cabin air OK?”")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+        .navigationTitle("Ask")
+    }
+
+    private func send() async {
+        let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return }
+        busy = true
+        answer = await model.ask(q)
+        busy = false
+    }
+}
+
+/// "Why?" under an alert or the urgent pop-up: one tap asks Claude to explain it.
+struct WhyButton: View {
+    let model: MonitorModel
+    let question: String
+    @State private var answer: AskAnswer?
+    @State private var busy = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let a = answer {
+                Text(a.answer).font(.caption2)
+                Text(a.source == "claude" ? "Claude" : "On-board summary").font(.system(size: 9)).foregroundStyle(.secondary)
+            } else {
+                Button(busy ? "Asking…" : "Why?") {
+                    busy = true
+                    Task { answer = await model.ask(question); busy = false }
+                }
+                .font(.footnote)
+                .disabled(busy)
             }
         }
     }

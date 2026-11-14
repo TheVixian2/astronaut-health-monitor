@@ -69,6 +69,16 @@ final class MonitorModel {
         source.simulateExertion()
     }
 
+    /// Ask Claude (through the backend) about the wearer's own physical data or the cabin.
+    func ask(_ question: String) async -> AskAnswer {
+        do {
+            return try await api.ask(question)
+        } catch {
+            return AskAnswer(answer: "Can't reach the station computer right now. Try again in a moment.",
+                             source: "offline")
+        }
+    }
+
     private func tick() async {
         let bpm = source.nextSample()
         heartRate = bpm

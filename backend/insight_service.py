@@ -135,6 +135,60 @@ async def generate_insight(
     return response.parsed_output
 
 
+ASK_SYSTEM = """You answer an astronaut's question on their smartwatch during a long Mars mission.
+You get the question and a JSON snapshot: their current physical readings, their personal baseline
+(mission days 7-14), the live cabin air, and the light-time delay to Earth.
+
+Answer in at most three short sentences that fit a watch screen, in plain language, using only the
+numbers given. Compare with THEIR baseline, not population norms. Decision support only: never a
+diagnosis; use suggestive wording ("may", "worth"). If something sounds urgent, say to act on board
+and tell the Crew Medical Officer, because Mission Control is too far away to answer in time.
+You have no data on mood or mental health: if asked about it, say the Crew Medical Officer or a private
+conference is the right place, and do not guess."""
+
+
+async def answer_question(question: str, context: dict, fallback: str) -> tuple[str, str]:
+    """Answer a watch question with Claude. Returns (answer, source): source is "claude" or "on_board".
+
+    Only physical readings, cabin air and mission state are sent: never mood or questionnaire answers.
+    Any failure (no key, timeout, refusal, API error) returns the on-board `fallback` text instead.
+    """
+    client = _get_client()
+    if client is None:
+        return fallback, "on_board"
+    try:
+        response = await client.beta.messages.create(
+            model=MODEL,
+            max_tokens=16000,
+            system=ASK_SYSTEM,
+            messages=[{"role": "user", "content": json.dumps({"question": question, "data": context}, default=str)}],
+            output_config={"effort": "low"},  # three sentences on a watch; keep latency down
+            # On a policy decline, the API retries on a fallback model in the same call.
+            betas=["server-side-fallback-2026-07-01"],
+            fallbacks="default",
+        )
+    except anthropic.APITimeoutError:
+        log.warning("Ask timed out after %ss; on-board answer", TIMEOUT_S)
+        return fallback, "on_board"
+    except anthropic.APIConnectionError as e:
+        log.warning("Ask connection error (%s); on-board answer", e)
+        return fallback, "on_board"
+    except anthropic.RateLimitError:
+        log.warning("Ask rate limited; on-board answer")
+        return fallback, "on_board"
+    except anthropic.APIStatusError as e:
+        log.warning("Ask API error %s: %s; on-board answer", e.status_code, e.message)
+        return fallback, "on_board"
+    except Exception:
+        log.exception("Ask failed unexpectedly; on-board answer")
+        return fallback, "on_board"
+    text = "".join(b.text for b in response.content if b.type == "text").strip()
+    if response.stop_reason == "refusal" or not text:
+        log.warning("Ask not usable (stop_reason=%s); on-board answer", response.stop_reason)
+        return fallback, "on_board"
+    return text, "claude"
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     sample = asyncio.run(generate_insight(

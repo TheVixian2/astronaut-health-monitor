@@ -66,6 +66,12 @@ struct CabinAir: Decodable, Equatable {
     let demoOverride: Bool?
 }
 
+/// An answer from POST /ask.
+struct AskAnswer: Decodable, Equatable {
+    let answer: String
+    let source: String
+}
+
 /// One night from the on-board lighting log (GET /circadian).
 struct SleepNight: Decodable {
     let nightOf: String
@@ -194,6 +200,25 @@ actor APIClient {
         struct Mission: Decodable { let realOneWayDelayS: Int }
         let m: Mission = try await get(Self.baseURL.appendingPathComponent("mission"))
         return m.realOneWayDelayS
+    }
+
+    /// POST /astronauts/{id}/ask — the Claude wrapper: a short answer about the wearer's own
+    /// physical data and the cabin. `source` is "claude", or "on_board" when Claude isn't reachable.
+    func ask(_ question: String) async throws -> AskAnswer {
+        let url = Self.baseURL
+            .appendingPathComponent("astronauts")
+            .appendingPathComponent(astronautID)
+            .appendingPathComponent("ask")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(["question": question])
+        request.timeoutInterval = 25  // Claude may take a few seconds; the backend falls back on its own
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try decoder.decode(AskAnswer.self, from: data)
     }
 
     private func get<T: Decodable>(_ url: URL) async throws -> T {

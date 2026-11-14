@@ -1459,6 +1459,69 @@ async def get_environment() -> CabinEnvironment:
     return CabinEnvironment(**iss_live.snapshot())
 
 
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=300)
+
+
+class AskAnswer(BaseModel):
+    answer: str
+    source: Literal["claude", "on_board"]  # on_board: no API key, blackout, or Claude unavailable
+    note: str
+
+
+PHYSICAL = ("heart_rate_bpm", "hrv_sdnn_ms", "active_min", "sleep_h_last_night", "spo2_pct", "temp_c", "resp_rate_bpm")
+
+
+def _on_board_answer(question: str, v: dict, b: dict, env: dict, reason: str) -> str:
+    """Plain answer from the numbers when Claude can't be used. Picks lines by keyword."""
+    def line(field, label, unit, fmt="{:.0f}"):
+        if v.get(field) is None or not b.get(field):
+            return None
+        d = (v[field] - b[field]) / b[field] * 100
+        return f"{label} {fmt.format(v[field])}{unit} vs your normal {fmt.format(b[field])}{unit} ({d:+.0f}%)."
+    lines = {
+        "sleep": line("sleep_h_last_night", "Sleep last night", " h", "{:.1f}"),
+        "hrv": line("hrv_sdnn_ms", "HRV", " ms"),
+        "heart": line("heart_rate_bpm", "Heart rate", " bpm"),
+        "move": line("active_min", "Activity", " min"),
+        "co2": (f"Cabin CO2 {env['co2_mmhg']} mmHg (NASA limit {env['co2_limit_mmhg']:g})."
+                if env.get("co2_mmhg") is not None else None),
+    }
+    keys = {"sleep": ("sleep", "tired", "rest"), "hrv": ("hrv", "stress", "recovery", "variab"),
+            "heart": ("heart", "pulse", "bpm"), "move": ("activ", "move", "exercise", "step"),
+            "co2": ("co2", "air", "cabin", "headache", "breath")}
+    q = question.lower()
+    picked = [lines[k] for k, words in keys.items() if any(w in q for w in words) and lines[k]]
+    body = " ".join(picked or [x for x in (lines["sleep"], lines["hrv"], lines["heart"]) if x])
+    return f"{body} ({reason}) If you feel unwell, tell the Crew Medical Officer."
+
+
+@app.post("/astronauts/{aid}/ask")
+async def ask(aid: str, body: AskRequest) -> AskAnswer:
+    """The watch's Claude wrapper: a short answer about the wearer's own physical data and the cabin.
+
+    Only physical readings, cabin air and mission state go to Claude, never mood or check-in answers.
+    No key, a blackout or any failure gives an on-board answer from the same numbers."""
+    s = get_state(aid)
+    snap = s.snapshot()
+    v = {f: getattr(snap, f, None) for f in PHYSICAL}
+    b = {f: getattr(snap.baseline, f, None) for f in PHYSICAL}
+    env = iss_live.snapshot()
+    context = {
+        "current": v, "personal_baseline": b,
+        "cabin_air": {k: env[k] for k in ("co2_mmhg", "co2_1h_avg_mmhg", "co2_limit_mmhg", "cabin_temp_c", "status")},
+        "one_way_light_time_s": mission.real_one_way_delay_s,
+    }
+    if blackout_left_s() is not None:
+        return AskAnswer(answer=_on_board_answer(body.question, v, b, env, "Earth is out of contact, so this is the on-board summary."),
+                         source="on_board", note="Communications blackout: nothing leaves the spacecraft.")
+    fallback = _on_board_answer(body.question, v, b, env, "Claude isn't connected, so this is the on-board summary.")
+    answer, source = await insight_service.answer_question(body.question, context, fallback)
+    return AskAnswer(answer=answer, source=source,
+                     note="Claude sees only physical readings and cabin air, never mood or check-in answers. "
+                          "On a real Mars mission the model would run on board; a cloud call takes the light time.")
+
+
 class CabinOverride(BaseModel):
     ppco2_mmhg: Optional[float] = Field(default=None, ge=0, le=20)  # null ends the override
     minutes: float = Field(default=5, gt=0, le=60)
