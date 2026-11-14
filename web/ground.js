@@ -211,7 +211,7 @@
           <span class="muted small">${esc(name)} · ${esc(REGION_NAMES[a.body_region] || a.body_region)}</span></div>
         <div class="verdict">${esc(crewSaw)}</div>
         <div class="small muted">Raised on board ${esc(time(a.started_at))}${delay != null ? ` · reached ground ${dur(delay)} later` : ""} · act-within window ${dur(a.act_within_s)}</div>
-        <div>On-board action: ${esc(a.onboard_action)}</div>${ins}</li>`;
+        <div>On-board action: ${esc(a.onboard_action)}</div>${A.nasaRefs(a)}${ins}</li>`;
     }).join("");
   }
 
