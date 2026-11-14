@@ -12,7 +12,7 @@
   const MOCK_ALERT_EVERY_S = 30; // a bit faster than the backend's 60 s, for dev
   const INSIGHT_DELAY_S = 2;
 
-  const MISSION = { environment: "mars", one_way_delay_s: 20 };
+  const MISSION = { environment: "mars", one_way_delay_s: 20, real_one_way_delay_s: 1320 };
 
   const CREW = [
     { id: "a1", name: "Cmdr. Elena Ionescu", role: "Commander", status: "nominal" },

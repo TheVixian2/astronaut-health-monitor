@@ -21,7 +21,7 @@ from typing import Literal, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 TICK_S = 3
 AUTO_ALERT_EVERY_S = int(os.getenv("MOCK_AUTO_ALERT_S", "60"))  # 0 turns it off
@@ -98,7 +98,14 @@ class Alert(BaseModel):
 
 class Mission(BaseModel):
     environment: Environment
-    one_way_delay_s: int
+    one_way_delay_s: int                         # how long the Ground stream waits (demo-compressed)
+    real_one_way_delay_s: Optional[int] = None   # true light time; the verdict uses this
+
+    @model_validator(mode="after")
+    def _default_real_delay(self):
+        if self.real_one_way_delay_s is None:
+            self.real_one_way_delay_s = self.one_way_delay_s
+        return self
 
 
 class Vision(BaseModel):
@@ -233,7 +240,7 @@ class AstronautState:
 
 crew = {aid: AstronautState(aid) for aid in CREW}
 # Demo default: Mars, compressed to ~20 s one way (real Mars is 180-1320 s).
-mission = Mission(environment="mars", one_way_delay_s=20)
+mission = Mission(environment="mars", one_way_delay_s=20, real_one_way_delay_s=1320)
 subscribers: dict[str, set[asyncio.Queue]] = {aid: set() for aid in CREW}
 background: set[asyncio.Task] = set()
 

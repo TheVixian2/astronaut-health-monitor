@@ -29,7 +29,9 @@ every endpoint and payload shape.
   (configurable). The Ground SSE view is delayed by the one-way light time through
   a queue; the Self-check view and the watch are not. Each condition has
   `act_within_s`: if round-trip time > `act_within_s` the alert says "Act on board
-  now" + the protocol, otherwise "Ground will see this in X min".
+  now" + the protocol, otherwise "Ground will see this in X min". The round trip
+  uses the **real** light time (`real_one_way_delay_s`), never the demo-compressed
+  `one_way_delay_s` — otherwise a compressed demo flips every verdict to "ground".
 - **Radiation:** real NOAA GOES proton data from
   `https://services.swpc.noaa.gov/json/goes/primary/integral-protons-6-hour.json`.
   Event threshold >=10 MeV flux >= 10 pfu -> "Shelter now" for the whole crew +

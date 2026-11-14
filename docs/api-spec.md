@@ -80,8 +80,14 @@ Returns `[Alert]`.
 
 ### `GET /mission`
 ```json
-{ "environment": "iss|moon|mars", "one_way_delay_s": 780 }
+{ "environment": "iss|moon|mars", "one_way_delay_s": 20, "real_one_way_delay_s": 1320 }
 ```
+- `one_way_delay_s` — how long the Ground stream actually holds events back.
+  Compressed for the demo (Mars runs at 20 s).
+- `real_one_way_delay_s` — the true light time for this environment. **The
+  verdict uses this one:** round trip `2 × real_one_way_delay_s` > `act_within_s`
+  → "Act on board now", else "Ground will see this in X". Optional on `PUT`;
+  defaults to `one_way_delay_s` (no compression).
 
 ### `PUT /mission`
 Same shape as the `GET` response.
