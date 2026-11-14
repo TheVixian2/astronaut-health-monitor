@@ -43,8 +43,11 @@
     return null;
   })();
 
+  // The public GitHub Pages demo must open without a login (Space Apps rule), as the presenter.
+  const HOSTED = location.hostname.endsWith("github.io");
+
   function session() {
-    if (!store) return { user: "demo", ...ACCOUNTS.demo, at: Date.now() };
+    if (!store || HOSTED) return { user: "demo", ...ACCOUNTS.demo, at: Date.now() };
     try {
       const s = JSON.parse(store.getItem(KEY) || "null");
       // Sessions from before roles existed have no role: sign in again.

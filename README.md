@@ -3,6 +3,12 @@
 NASA Space Apps Challenge 2026 — *Create Health Monitoring Software for
 Astronauts on Space Missions*.
 
+**Live demo (no login, no install):** https://thevixian2.github.io/astronaut-health-monitor/
+— the web app with simulated live streams and data recorded from a real backend run
+(`tools/snapshot_mock.py`). Run it locally for the full live system.
+Update it after changing `/web`:
+`git push origin $(git subtree split --prefix web main):refs/heads/gh-pages --force`
+
 **Dr. Galactic** watches the **behavioral (mental) health** of a crew of four on
 a long Mars mission. It compares each astronaut's signals (heart rate, sleep,
 mood, a validated two-question depression screen, a reaction-time test) to

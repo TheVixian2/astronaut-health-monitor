@@ -96,7 +96,7 @@
       base: (p.get("base") || "http://localhost:8000").replace(/\/+$/, ""),
       aid: p.get("aid") || "a1",
       view: p.get("view") || "crew",
-      mock: p.has("mock"),
+      mock: p.has("mock") || location.hostname.endsWith("github.io"),   // Pages has no backend
     };
   }
 

@@ -257,6 +257,9 @@
       const aid = p.split("/")[2];
       return Promise.resolve(ALERT_LOG.filter(a => a.astronaut_id === aid).reverse().map(a => ({ ...a })));
     }
+    // Everything else: recorded from a real backend run (tools/snapshot_mock.py).
+    const snap = (window.MOCK_SNAPSHOT || {})[path];
+    if (snap !== undefined) return Promise.resolve(structuredClone(snap));
     return Promise.reject(new Error(`mock: no GET ${p}`));
   }
 
