@@ -425,7 +425,7 @@
   const PSYCH_PROFILES = new Set(["sleep_debt"]);
   const isPsychological = a => a.hazard === "isolation" || PSYCH_PROFILES.has(a.profile);
 
-  // ---- watch the whole crew (Commander, ship's doctor) -------------------------
+  // ---- watch the whole crew (Commander, Crew Medical Officer) -------------------------
   // These roles are on board, so nothing is delayed. Against the real backend
   // they POLL GET /vitals + GET /alerts every 3 s instead of holding 4 SSE
   // streams: a browser allows only ~6 connections per host, and the astronaut

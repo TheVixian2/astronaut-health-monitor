@@ -672,7 +672,7 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 /* Pre-sleep note in the console header (only shown in that light) */
 .light-note { color: var(--onboard-fg); font-weight: 600; }
 
-/* ---- Commander + ship's doctor ---------------------------------------------- */
+/* ---- Commander + Crew Medical Officer ---------------------------------------- */
 .captain-note, .sample-note { margin: 16px 0; padding: 12px 14px; border-radius: var(--r-plate); max-width: 100ch;
   background: var(--onboard-bg); border: 1px solid var(--onboard); }
 .sample-note { background: var(--ground-bg); border-color: var(--ground); }

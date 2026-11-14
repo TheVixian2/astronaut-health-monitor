@@ -69,7 +69,7 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
     `#checkin`, `#sleep`); sections carry `data-tab`.
   - **Commander** (`captain.html` / `captain.js`): *My health · Check-in ·
     Sleep & light · Crew wellbeing* (`#crew`, with a warning count).
-  - **Ship's doctor** (`doctor.html` / `doctor.js`): *My health · Check-in ·
+  - **Crew Medical Officer** (`doctor.html` / `doctor.js`): *My health · Check-in ·
     Sleep & light · Medications* (`#meds`, with a count).
   - The Commander and the doctor are crew too (decided by NotKaemy
     2026-11-14): their first three tabs are **their own data**, the same
@@ -94,10 +94,10 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   their sleep/lighting log. It does **not** subscribe to `alert` events and
   shows no banner, verdict, advice, insight, warning colours, or the
   circadian `card` / `recommendation` / `evidence` texts. Warnings go only to
-  the Commander, the ship's doctor and Ground. Don't add any back without the
+  the Commander, the Crew Medical Officer and Ground. Don't add any back without the
   owner's say-so. (This replaces the earlier "Commander first, then release
   to the crew" mechanism.)
-- **Ship's doctor** — today's doses from the **sample** plan in `meds.js`
+- **Crew Medical Officer** — today's doses from the **sample** plan in `meds.js`
   (`schedule`, station time UTC): due now (−15/+30 min), overdue, upcoming,
   "Mark given" (kept in `localStorage`). Live alerts from the last hour add
   "Consider: …" suggestions from `meds.js` `onAlert`, always the CMO's
