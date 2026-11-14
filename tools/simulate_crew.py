@@ -8,8 +8,9 @@ Run with the backend's virtual environment, from the repo root:
   --reset-db        wipe backend/data/ahm.db (samples, alerts, check-ins)
   --seed-baseline   write six weeks of mission history, so the personal baseline
                     (mission days 7-14) is a real SELECT the moment the server
-                    starts, and a1's SANS risk sits just below its trigger:
-                    one check-in during the demo tips it over
+                    starts. a1's SANS risk sits just below its trigger, and a2's
+                    wellbeing (mood, PHQ-2, reaction time, sleep) declines after the
+                    midpoint to just below "concern": one check-in tips either over
   --run             drive a running backend: scheduled scenarios
                     (--scenario a3:fever:60 = a3 gets fever 60 s after start)
                     and, with --post-hr, heart rate for a2-a4 every 3 s
@@ -34,13 +35,14 @@ STEP_MIN = 10       # one stored sample every 10 min (live ticks are every 3 s)
 CHECKIN_EVERY_DAYS = 2
 ACUITY_BASELINE = {"a1": 9, "a2": 10, "a3": 9, "a4": 10}
 PRIVATE_CHECKINS = {"a2"}  # a2 keeps check-ins private, so the ground view shows redaction
+RT_BASELINE_MS = {"a1": 248, "a2": 262, "a3": 255, "a4": 270}  # reaction test, 3-min PVT-B
 
 
 def _walk(rng, value, target, step, rate=0.3):
     return value + rng.gauss(0, step) + (target - value) * rate
 
 
-def seed(rng: random.Random) -> None:
+def seed(rng: random.Random, seed_value: int = 42) -> None:
     end = datetime.now(timezone.utc).replace(second=0, microsecond=0)
     start = (end - timedelta(days=MISSION_DAYS - 1)).replace(hour=0, minute=0)
     samples, checkins = [], []
@@ -78,6 +80,9 @@ def seed(rng: random.Random) -> None:
                             round(v["resp_rate_bpm"], 1), sleep_h, b["mood_1to5"], round(co2, 2), "simulated"))
             t += timedelta(minutes=STEP_MIN)
 
+        # Check-ins get their own fixed random sequence: the number of vitals samples above depends
+        # on the time of day, and must not change the check-in story between demo runs.
+        rng_ck = random.Random(f"checkins-{aid}-{seed_value}")
         for day in range(CHECKIN_EVERY_DAYS, MISSION_DAYS + 1, CHECKIN_EVERY_DAYS):
             ts = start + timedelta(days=day - 1, hours=8)
             if ts >= end:
@@ -89,9 +94,26 @@ def seed(rng: random.Random) -> None:
                     acuity -= 1
                 if day in (38, 40):
                     symptoms.append("headache")
+            mood = b["mood_1to5"] + rng_ck.choice((0, 0, 0, -1))
+            phq = (rng_ck.choice((0, 0, 0, 1)), 0)
+            rt = rng_ck.gauss(RT_BASELINE_MS[aid], 8)
+            lapses = rng_ck.choice((0, 1, 1, 2))
+            if aid == "a2" and day > MISSION_DAYS // 2:
+                # Behavioral-health story: a slow decline after the mission midpoint (as seen in
+                # HI-SEAS and other analogs), stopping just below the "concern" level.
+                # Fixed (no randomness) so the demo always starts at "watch" and one check-in with
+                # PHQ-2 >= 3 takes it to "concern".
+                weeks_in = (day - MISSION_DAYS // 2) / 7
+                mood = round(b["mood_1to5"] - min(1.0, 0.35 * weeks_in))
+                phq = (1, 1) if day > MISSION_DAYS - 10 else (1, 0)
+                rt = RT_BASELINE_MS[aid] * (1 + min(0.18, 0.06 * weeks_in))
+                lapses = 2 + round(min(3, weeks_in))
             payload = {"timestamp": store.iso(ts), "share_with_ground": aid not in PRIVATE_CHECKINS,
-                       "mood_1to5": max(1, min(5, b["mood_1to5"] + rng.choice((0, 0, 0, -1)))),
-                       "vision": {"amsler_distortion": False, "acuity_line": acuity}}
+                       "mood_1to5": max(1, min(5, mood)),
+                       "vision": {"amsler_distortion": False, "acuity_line": acuity},
+                       "phq2": {"little_interest": phq[0], "feeling_down": phq[1]},
+                       "reaction_test": {"mean_rt_ms": round(rt), "lapses": lapses, "false_starts": 0,
+                                         "duration_s": 180}}
             if symptoms:
                 payload["symptoms"] = symptoms
             checkins.append((aid, store.iso(ts), payload))
@@ -154,7 +176,7 @@ def main() -> None:
         store.reset()
         print(f"Reset {store.DB_PATH}")
     if args.seed_baseline:
-        seed(rng)
+        seed(rng, args.seed)
     if args.run:
         run(args.base, args.scenario, args.post_hr, rng)
 

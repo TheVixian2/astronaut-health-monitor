@@ -15,6 +15,7 @@ Seed:  python ../tools/simulate_crew.py --reset-db --seed-baseline   (before the
 """
 
 import asyncio
+import json
 import logging
 import os
 import random
@@ -30,6 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 
+import behavioral
 import circadian
 import engine
 import horizons
@@ -156,14 +158,48 @@ class CheckinRequest(BaseModel):
     symptoms: Optional[list[str]] = None
     vision: Optional[Vision] = None
     share_with_ground: bool
+    # PROVISIONAL (behavioral health): wording in GET /checkin/questions
+    phq2: Optional[behavioral.Phq2] = None
+    reaction_test: Optional[behavioral.ReactionTest] = None
 
 
 class ScenarioRequest(BaseModel):
     astronaut_id: str
-    scenario: Literal["fever", "co2", "orthostatic", "sans", "sleep_debt", "clear"]
+    # "strain" is PROVISIONAL: injects a behavioral-health check-in that reaches the urgent level
+    scenario: Literal["fever", "co2", "orthostatic", "sans", "sleep_debt", "strain", "clear"]
 
 
 # PROVISIONAL additions (not yet in docs/api-spec.md)
+
+Target = Literal["commander", "ground", "self"]
+
+
+class Notice(BaseModel):
+    id: str
+    astronaut_id: str          # whose wellbeing this is about
+    target: Target
+    level: behavioral.Level
+    reason: Literal["shared_by_astronaut", "automatic_urgent", "told_astronaut"]
+    areas: list[str]           # e.g. ["mood", "sleep"]: never the answers themselves
+    created_at: datetime
+    ground_eta_s: Optional[int] = None
+    message: str
+
+
+class CrewMemberWellbeing(BaseModel):
+    astronaut_id: str
+    name: str
+    role: str
+    level: Optional[behavioral.Level]  # null when the astronaut keeps it private
+    visible_because: Literal["shared", "automatic_urgent", "private"]
+
+
+class CrewWellbeing(BaseModel):
+    view: Literal["commander", "ground"]
+    crew_wide: list[str]       # trends shared by >= 3 crew, without names
+    members: list[CrewMemberWellbeing]
+    suggestions: list[str]
+    note: str
 
 class ConfirmRequest(BaseModel):
     felt: bool
@@ -359,6 +395,13 @@ class AstronautState:
         self.sensors = quality.SensorMonitor()
         self.quality: str = "ok"            # quality flag of the latest reading
         self.muted: dict[str, int] = {}     # profile -> calm ticks; astronaut said "I don't feel it"
+        # Behavioral health (behavioral.py): astronaut first, nothing shared until they choose.
+        self.wb_share = {"commander": False, "ground": False}
+        self.wb_auto_notified = False       # urgent level reached in this episode
+        self.wb_level: str = "steady"
+        self.mood_baseline: Optional[float] = None
+        self.rt_baseline: Optional[tuple[float, float]] = None
+        self.hr_7d: Optional[float] = None
 
     def watch_dropout(self) -> bool:
         loop = asyncio.get_running_loop()
@@ -435,8 +478,10 @@ blackout_resumed_at = 0.0  # loop time when the last blackout ended (held ground
 mission_start = now() - timedelta(days=DEFAULT_MISSION_DAY - 1)
 seeded_until: Optional[str] = None
 light_time: dict = {"live_one_way_delay_s": None, "computed_for": None}
-subscribers: dict[str, set[asyncio.Queue]] = {aid: set() for aid in crew}
+subscribers: dict[str, dict[asyncio.Queue, str]] = {aid: {} for aid in crew}  # queue -> "crew" | "ground"
 background: set[asyncio.Task] = set()
+notices: list[Notice] = []
+COMMANDER_ID = next(aid for aid, (_, role, _) in engine.CREW.items() if role == "Commander")
 
 
 def mission_day(t: datetime) -> int:
@@ -449,9 +494,12 @@ def get_state(aid: str) -> AstronautState:
     return crew[aid]
 
 
-def publish(aid: str, event: str, model: BaseModel) -> None:
+def publish(aid: str, event: str, model: BaseModel, views: Optional[set[str]] = None) -> None:
+    """Send an SSE event to everyone watching this astronaut, or only to the given views."""
     data = model.model_dump_json()
-    for q in subscribers[aid]:
+    for q, view in list(subscribers[aid].items()):
+        if views and view not in views:
+            continue
         try:
             q.put_nowait((event, data))
         except asyncio.QueueFull:
@@ -474,11 +522,16 @@ def _load_store_view(t: datetime) -> dict:
     w0, w1 = store.iso(mission_start + timedelta(days=6)), store.iso(mission_start + timedelta(days=14))
     view = {}
     for aid in crew:
-        acuity = [p["vision"]["acuity_line"] for _, p in store.checkins_between(aid, w0, w1)
+        window = store.checkins_between(aid, w0, w1)
+        acuity = [p["vision"]["acuity_line"] for _, p in window
                   if (p.get("vision") or {}).get("acuity_line") is not None]
+        moods = behavioral.mood_values(window)
         view[aid] = dict(
             baseline=store.baseline(aid, w0, w1),
             acuity=statistics.median(acuity) if acuity else None,
+            mood=statistics.median(moods) if moods else None,
+            rt=behavioral.rt_baseline(window),
+            hr_7d=store.period_stats(aid, store.iso(t - timedelta(days=7)))["heart_rate_bpm"]["avg"],
             co2=store.co2_avg(aid, store.iso(t - timedelta(days=7))),
             checkins=store.checkins_between(aid, store.iso(t - timedelta(days=14))))
     return view
@@ -491,8 +544,136 @@ async def refresh_from_store() -> None:
         s.baseline_stored = d["baseline"] is not None
         s.baseline = Baseline(**_round_baseline(d["baseline"])) if s.baseline_stored else s.configured
         s.baseline_acuity, s.co2_avg_7d = d["acuity"], d["co2"]
+        s.mood_baseline, s.rt_baseline, s.hr_7d = d["mood"], d["rt"], d["hr_7d"]
         newest = d["checkins"][-1][0] if d["checkins"] else ""
         s.checkins = d["checkins"] + [c for c in s.checkins if c[0] > newest]  # keep any not yet read back
+
+
+# --- Behavioral health (behavioral.py) ----------------------------------------------
+
+LEVEL_RANK = {"steady": 0, "watch": 1, "concern": 2, "urgent": 3}
+CREW_WIDE_TEXT = {
+    "sleep": "is sleeping at least 1 h less than usual",
+    "body_clock": "has irregular or drifting bedtimes",
+    "mood": "reports a lower mood than usual",
+    "reaction_time": "has slower reaction times than usual",
+    "resting_heart_rate": "has a higher resting heart rate than usual",
+}  # PHQ-2 is never aggregated: too personal even without names
+
+
+def _signals(s: AstronautState, t: datetime) -> list[behavioral.Signal]:
+    week = store.iso(t - timedelta(days=7))
+    recent = [c for c in s.checkins if c[0] >= week]
+    moods = behavioral.mood_values(recent)
+    circ = circadian.assess(s.id, t, mission.environment).summary
+    return behavioral.signals_for(behavioral.Inputs(
+        phq2=behavioral.latest_phq2(s.checkins), mood_7d=statistics.fmean(moods) if moods else None,
+        mood_baseline=s.mood_baseline, sleep_avg_7n=circ.sleep_avg_h,
+        sleep_baseline=s.baseline.sleep_h_last_night,
+        body_clock_status="watch" if circ.status == "watch" else "steady",
+        rt_latest=behavioral.latest_rt(s.checkins), rt_baseline=s.rt_baseline,
+        hr_7d=s.hr_7d, hr_baseline=s.baseline.heart_rate_bpm))
+
+
+def crew_signals(t: datetime) -> tuple[dict[str, list[behavioral.Signal]], dict[str, int]]:
+    """Every astronaut's signals, marked crew_wide where >= 3 people share them, plus counts."""
+    all_sigs = {aid: _signals(s, t) for aid, s in crew.items()}
+    counts: dict[str, int] = {}
+    for sigs in all_sigs.values():
+        for name in {x.name for x in sigs if x.points > 0}:
+            counts[name] = counts.get(name, 0) + 1
+    shared = {n for n, k in counts.items() if k >= behavioral.CREW_WIDE_MIN and n != "phq2"}
+    for sigs in all_sigs.values():
+        for x in sigs:
+            x.crew_wide = x.name in shared and x.points > 0
+    return all_sigs, counts
+
+
+def wellbeing(s: AstronautState, t: datetime, view: str,
+              all_sigs: Optional[dict[str, list[behavioral.Signal]]] = None) -> behavioral.Wellbeing:
+    sigs = (all_sigs or crew_signals(t)[0])[s.id]
+    score = min(100, round(sum(x.points for x in sigs)))
+    phq = behavioral.latest_phq2(s.checkins)
+    level = behavioral.level_from(sigs, score, phq[0] if phq else None)
+    if s.wb_auto_notified:
+        share_note = ("Because several strong signals added up, your commander and the flight surgeon were told "
+                      "your wellbeing level and which areas are affected, not your answers. This is a wellbeing "
+                      "check, not a diagnosis.")
+    else:
+        share_note = "Nothing is shared unless you choose. Only an urgent level is passed on automatically."
+    wb = behavioral.Wellbeing(
+        astronaut_id=s.id, view=view, mission_day=mission_day(t), level=level, score=score, signals=sigs,
+        phq2=behavioral.Phq2Result(score=phq[0], screen_positive=phq[0] >= behavioral.PHQ2_POSITIVE,
+                                   taken_at=phq[1]) if phq else None,
+        personal_or_shared=behavioral.personal_or_shared(sigs),
+        suggestions=behavioral.suggestions_for(level, sigs),
+        sharing=behavioral.SharingState(commander=s.wb_share["commander"], ground=s.wb_share["ground"],
+                                        auto_notified=s.wb_auto_notified, note=share_note),
+        note="Decision support only, never a diagnosis. Everything except PHQ-2 is compared with your own "
+             "mission days 7-14; PHQ-2 uses its validated screening cut-off.",
+        sources=behavioral.SOURCES)
+    if view != "self" and not s.wb_share["ground" if view == "ground" else "commander"]:
+        # Visible only because of the automatic urgent rule: the level and areas, never the answers.
+        wb.signals = [behavioral.Signal(name=x.name, area=x.area, value=None, baseline=None, points=x.points,
+                                        detail="Kept private by the astronaut.", crew_wide=x.crew_wide)
+                      for x in sigs if x.points > 0]
+        wb.phq2 = None
+        wb.suggestions = ["Consider checking in with them privately; they know you were notified."]
+    return wb
+
+
+def send_notice(s: AstronautState, target: str, level: str, reason: str, areas: list[str]) -> None:
+    if target == "commander" and s.id == COMMANDER_ID:
+        return  # the commander's own wellbeing goes to ground only
+    name = s.name
+    area_text = ", ".join(areas) or "general"
+    message = {
+        "automatic_urgent": f"{name}'s wellbeing check reached the urgent level (areas: {area_text}). They have "
+                            f"been told you were notified. Consider checking in with them privately.",
+        "shared_by_astronaut": f"{name} chose to share their wellbeing check with you: {level} (areas: {area_text}).",
+        "told_astronaut": "Several strong signals added up, so your commander and the flight surgeon were told your "
+                          "wellbeing level and the areas affected, not your answers. This is a wellbeing check, "
+                          "not a diagnosis.",
+    }[reason]
+    n = Notice(id=f"nt-{uuid.uuid4().hex[:8]}", astronaut_id=s.id, target=target, level=level, reason=reason,
+               areas=areas, created_at=now(), ground_eta_s=ground_eta_s() if target == "ground" else None,
+               message=message)
+    notices.append(n)
+    store.save_notice(n.model_dump(mode="json"))
+    if target == "ground":
+        publish(s.id, "notice", n, views={"ground"})          # delayed, and held during a blackout
+    elif target == "commander":
+        publish(COMMANDER_ID, "notice", n, views={"crew"})    # the commander's own console
+    else:
+        publish(s.id, "notice", n, views={"crew"})            # the astronaut themselves
+    log.info("%s: wellbeing notice to %s (%s, %s)", s.id, target, level, reason)
+
+
+def save_wb_state(s: AstronautState) -> None:
+    store.meta_set_async(f"wb_state:{s.id}", json.dumps({"share": s.wb_share, "auto_notified": s.wb_auto_notified}))
+
+
+def evaluate_wellbeing(t: datetime) -> None:
+    all_sigs, _ = crew_signals(t)
+    for s in crew.values():
+        wb = wellbeing(s, t, "self", all_sigs)
+        areas = behavioral.areas(wb.signals)
+        auto_now = False
+        if wb.level == "urgent" and not s.wb_auto_notified:
+            s.wb_auto_notified = auto_now = True  # the safety exception, once per episode
+            for target in ("commander", "ground"):
+                send_notice(s, target, wb.level, "automatic_urgent", areas)
+            send_notice(s, "self", wb.level, "told_astronaut", areas)
+        elif LEVEL_RANK[wb.level] < LEVEL_RANK["concern"] and s.wb_auto_notified:
+            s.wb_auto_notified = False  # episode over
+            save_wb_state(s)
+        if auto_now:
+            save_wb_state(s)
+        if wb.level != s.wb_level and not auto_now:
+            for target in ("commander", "ground"):
+                if s.wb_share[target]:
+                    send_notice(s, target, wb.level, "shared_by_astronaut", areas)
+            s.wb_level = wb.level
 
 
 # --- Alerts ------------------------------------------------------------------------
@@ -622,6 +803,7 @@ async def tick_loop() -> None:
                 await refresh_from_store()
                 for s in crew.values():
                     evaluate_sans(s, t)
+                evaluate_wellbeing(t)
         except Exception:
             log.exception("tick failed; carrying on")  # the demo must keep running
 
@@ -676,6 +858,21 @@ async def lifespan(app: FastAPI):
     t = now()
     for s in crew.values():
         evaluate_sans(s, t)
+    # Behavioral health: restore sharing choices and notices; take today's levels silently
+    # so a restart never re-sends notifications.
+    for n in await asyncio.to_thread(store.load_notices):
+        try:
+            notices.append(Notice(**n))
+        except Exception:
+            continue
+    all_sigs, _ = crew_signals(t)
+    for s in crew.values():
+        saved = await asyncio.to_thread(store.meta_get, f"wb_state:{s.id}")
+        if saved:
+            state = json.loads(saved)
+            s.wb_share.update(state.get("share", {}))
+            s.wb_auto_notified = bool(state.get("auto_notified"))
+        s.wb_level = wellbeing(s, t, "self", all_sigs).level
     spawn(tick_loop())
     spawn(fetch_light_time())
     yield
@@ -720,7 +917,7 @@ def sse(event: str, data: str) -> str:
 async def event_stream(request: Request, aid: str, view: str):
     loop = asyncio.get_running_loop()
     q: asyncio.Queue = asyncio.Queue(maxsize=1000)
-    subscribers[aid].add(q)
+    subscribers[aid][q] = view
     pending: deque = deque()  # (release_at, event, data); ground view holds events back
     try:
         yield f": connected view={view} one_way_delay_s={mission.one_way_delay_s}\n\n"
@@ -753,7 +950,7 @@ async def event_stream(request: Request, aid: str, view: str):
                 _, event, data = pending.popleft()
                 yield sse(event, data)
     finally:
-        subscribers[aid].discard(q)
+        subscribers[aid].pop(q, None)
 
 
 @app.get("/astronauts/{aid}/stream")
@@ -833,6 +1030,7 @@ async def record_checkin(s: AstronautState, body: CheckinRequest) -> None:
     if body.sleep_h is not None:
         s.manual["sleep_h_last_night"] = body.sleep_h
     evaluate_sans(s, now())  # a single check-in can tip the SANS score over
+    evaluate_wellbeing(now())  # ... and the wellbeing level
 
 
 @app.post("/astronauts/{aid}/checkin", status_code=202)
@@ -855,9 +1053,18 @@ async def debug_scenario(body: ScenarioRequest) -> Accepted:
         s.sensors.prev = {}
         for profile in list(s.active):
             clear_alert(s, profile)
-        if seeded_until:  # drop live check-ins so the SANS demo can run again
+        if seeded_until:  # drop live check-ins so the SANS and wellbeing demos can run again
             await asyncio.to_thread(store.delete_checkins_after, s.id, seeded_until)
             s.checkins = [c for c in s.checkins if c[0] <= seeded_until]
+        evaluate_wellbeing(now())
+    elif body.scenario == "strain":
+        # Same path as a real check-in, kept PRIVATE: strong PHQ-2, low mood and a slow reaction test,
+        # enough to reach "urgent", so the automatic notification can be shown.
+        rt, lapses = s.rt_baseline or (260.0, 1.0)
+        await record_checkin(s, CheckinRequest(
+            timestamp=now(), mood_1to5=1, share_with_ground=False,
+            phq2=behavioral.Phq2(little_interest=3, feeling_down=3),
+            reaction_test=behavioral.ReactionTest(mean_rt_ms=round(rt * 1.4), lapses=round(lapses) + 6)))
     elif body.scenario == "sans":
         # Same path as a real astronaut's check-in: headache + Amsler distortion + acuity one line down.
         acuity = round(s.baseline_acuity or 9) - 1
@@ -1051,6 +1258,105 @@ async def get_history(aid: str, hours: float = Query(24, gt=0, le=24 * 60)) -> l
     bucket_s = max(TICK_S, int(hours * 3600 / 300))  # at most ~300 points per chart
     rows = await asyncio.to_thread(store.history, aid, store.iso(now() - timedelta(hours=hours)), bucket_s)
     return [HistoryPoint(**r) for r in rows]
+
+
+# --- PROVISIONAL: behavioral health (behavioral.py) ---------------------------------
+# `viewer` is who is looking: their astronaut id, or "ground". The web login decides it;
+# this is a demo-level check, not security (docs/api-spec.md: "Auth: none").
+
+def _view_for(target: AstronautState, viewer: str) -> str:
+    if viewer == target.id:
+        return "self"
+    if viewer == "ground":
+        return "ground"
+    if viewer == COMMANDER_ID:
+        return "commander"
+    raise HTTPException(403, "Only the astronaut themselves, the commander or ground can see this.")
+
+
+def _can_see(target: AstronautState, view: str) -> bool:
+    return view == "self" or target.wb_share[view] or target.wb_auto_notified
+
+
+@app.get("/checkin/questions")
+async def checkin_questions() -> dict:
+    """Exact wording for the behavioral check-in: validated PHQ-2 items and the reaction test."""
+    return {"phq2": behavioral.PHQ2_QUESTIONS, "reaction_test": behavioral.REACTION_TEST}
+
+
+@app.get("/astronauts/{aid}/wellbeing")
+async def get_wellbeing(aid: str, viewer: str) -> behavioral.Wellbeing:
+    s = get_state(aid)
+    view = _view_for(s, viewer)
+    if not _can_see(s, view):
+        raise HTTPException(403, "Kept private by the astronaut.")
+    return wellbeing(s, now(), view)
+
+
+@app.put("/astronauts/{aid}/wellbeing/sharing")
+async def put_wellbeing_sharing(aid: str, viewer: str, body: behavioral.SharingRequest) -> behavioral.SharingState:
+    """Only the astronaut can choose who sees their wellbeing check."""
+    s = get_state(aid)
+    if viewer != aid:
+        raise HTTPException(403, "Only the astronaut can change who sees their wellbeing check.")
+    t = now()
+    wb = wellbeing(s, t, "self")
+    for target in ("commander", "ground"):
+        new = getattr(body, target)
+        if new is None or new == s.wb_share[target]:
+            continue
+        s.wb_share[target] = new
+        if new:  # sharing turned on: tell them the current level straight away
+            send_notice(s, target, wb.level, "shared_by_astronaut", behavioral.areas(wb.signals))
+    save_wb_state(s)
+    return wellbeing(s, t, "self").sharing
+
+
+@app.get("/crew/wellbeing")
+async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
+    """For the commander and ground: who shared what, plus crew-wide trends without names."""
+    if viewer not in (COMMANDER_ID, "ground"):
+        raise HTTPException(403, "The crew view is for the commander and ground.")
+    view = "ground" if viewer == "ground" else "commander"
+    t = now()
+    all_sigs, counts = crew_signals(t)
+    members = []
+    for s in crew.values():
+        if s.id == viewer:
+            continue
+        shown = "shared" if s.wb_share[view] else "automatic_urgent" if s.wb_auto_notified else "private"
+        members.append(CrewMemberWellbeing(
+            astronaut_id=s.id, name=s.name, role=s.role, visible_because=shown,
+            level=wellbeing(s, t, "self", all_sigs).level if shown != "private" else None))
+    crew_wide = [f"Most of the crew ({n} of {len(crew)}) {CREW_WIDE_TEXT[name]}."
+                 for name, n in counts.items() if n >= behavioral.CREW_WIDE_MIN and name in CREW_WIDE_TEXT]
+    suggestions = []
+    if any(n >= behavioral.CREW_WIDE_MIN for name, n in counts.items() if name in ("sleep", "body_clock")):
+        suggestions.append("Consider reviewing the crew schedule and the lighting plan; a crew rest period may help.")
+    if counts.get("mood", 0) >= behavioral.CREW_WIDE_MIN:
+        suggestions.append("Consider shared crew time or a lighter day; check the environment (CO2, noise, temperature).")
+    if counts.get("reaction_time", 0) >= behavioral.CREW_WIDE_MIN:
+        suggestions.append("Consider moving demanding tasks until the crew is better rested.")
+    if not suggestions:
+        suggestions.append("No crew-wide strain. Individual check-ins stay private unless an astronaut shares them.")
+    return CrewWellbeing(
+        view=view, crew_wide=crew_wide, members=members, suggestions=suggestions,
+        note=f"Crew-wide trends never name anyone and need at least {behavioral.CREW_WIDE_MIN} people. "
+             "Questionnaire answers are never aggregated or shown here.")
+
+
+@app.get("/notifications")
+async def get_notifications(viewer: str) -> list[Notice]:
+    """Wellbeing notices for this viewer, newest first: the commander, ground, or the astronaut themselves."""
+    if viewer == "ground":
+        mine = [n for n in notices if n.target == "ground"]
+    elif viewer == COMMANDER_ID:
+        mine = [n for n in notices if n.target == "commander" or (n.target == "self" and n.astronaut_id == viewer)]
+    elif viewer in crew:
+        mine = [n for n in notices if n.target == "self" and n.astronaut_id == viewer]
+    else:
+        raise HTTPException(403, "Unknown viewer.")
+    return list(reversed(mine))
 
 
 @app.get("/mission/light-time")

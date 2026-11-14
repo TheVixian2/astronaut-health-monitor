@@ -52,6 +52,11 @@ CREATE TABLE IF NOT EXISTS checkins (           -- vision + mood history = the S
   PRIMARY KEY (astronaut_id, ts)
 );
 
+CREATE TABLE IF NOT EXISTS notices (            -- behavioral health: who was told what, and why
+  id TEXT PRIMARY KEY, astronaut_id TEXT NOT NULL, target TEXT NOT NULL,
+  created_at TEXT NOT NULL, notice_json TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
@@ -158,6 +163,21 @@ def mark_artifact(aid: str, start: str, end: str) -> None:
 
 def update_alert(alert: dict) -> None:
     _write("UPDATE alerts SET alert_json = ? WHERE id = ?", (json.dumps(alert), alert["id"]))
+
+
+def meta_set_async(key: str, value: str) -> None:
+    _write("INSERT OR REPLACE INTO meta VALUES (?, ?)", (key, value))
+
+
+def save_notice(notice: dict) -> None:
+    _write("INSERT OR REPLACE INTO notices VALUES (?,?,?,?,?)",
+           (notice["id"], notice["astronaut_id"], notice["target"], notice["created_at"], json.dumps(notice)))
+
+
+def load_notices() -> list[dict]:
+    with _db() as con:
+        rows = con.execute("SELECT notice_json FROM notices ORDER BY created_at").fetchall()
+    return [json.loads(r[0]) for r in rows]
 
 
 def save_alert(alert: dict) -> None:
@@ -290,5 +310,5 @@ def insert_checkins(rows: list[tuple[str, str, dict]]) -> None:
 
 def reset() -> None:
     with _db() as con:
-        for table in ("samples", "alerts", "checkins", "meta"):
+        for table in ("samples", "alerts", "checkins", "notices", "meta"):
             con.execute(f"DELETE FROM {table}")
