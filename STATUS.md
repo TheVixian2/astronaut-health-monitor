@@ -195,6 +195,12 @@ version; the older notes (SANS, fever, orthostatic, astronaut-first sharing) are
   the `VitalRow(label: "Mood", ...)` line). Mood is a check-in answer, and the watch now shows
   no psychological data at all. Keep decoding `mood_1to5` (the vitals shape still has it).
   Your filter on psychological alerts in `MonitorModel.swift` stays as it is.
+- **@NotKaemy: NASA's 3-minute reaction test is built for your check-in,** on branch
+  **`web-reaction-test`** (made from your latest `web`, not pushed to it). New
+  `web/reaction-test.js` plus 4 lines in `self-check.js` and a script tag in 3 pages. It's an
+  optional step after the PHQ-2 and sends `reaction_test` with the check-in. `?rt_s=30` gives a
+  30-second version for the live demo. Not tested in a browser yet: please try it, then merge it
+  into `web` if it looks right.
 - **Team decisions needed:**
   1. **Time with crewmates in the score.** Stefan asked for every input to feed the profile,
      so it carries 12 of 100 points now. Luca's habitat note said display-only (weak evidence).
