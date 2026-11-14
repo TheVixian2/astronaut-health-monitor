@@ -281,3 +281,32 @@ to tighten, not final claims.**
 - **SANS is explainable:** the score shows its parts (mission day, acuity vs your
   own baseline, Amsler grid, headaches, cabin CO2), so a judge can see *why* it
   rose. One check-in takes a1 from 40 to ~73 on stage.
+## 2026-11-14 — judge 3: sensors, blackout, history (see `events/2026-11-14-judge-3-sensors-blackout.md`)
+
+- **Niche, said out loud:** *"We do one thing properly: catching eye problems (SANS) that
+  build up over months in microgravity, with everything around it built so an astronaut can
+  trust it and act on it far from Earth."*
+- **Sensors are not right 100% of the time, and we designed for that.** Every reading is
+  checked for impossible values, sudden jumps, a stuck sensor and a watch that stops
+  sending. An alert asks *"Do you feel this?"*. If the astronaut says no, the readings are
+  marked as a likely sensor error: **flagged, never deleted**, and kept out of the baseline,
+  charts and reports. Line: *"The astronaut is the final sensor check."*
+- **Blackout demo beat (~15 s):** switch on the blackout (solar conjunction, ~2 weeks with no
+  contact) → raise an alert → the app says *"Earth is out of contact for about 13 more days…
+  tell a crewmate or the Crew Medical Officer"* and shows the on-board protocol → the Ground
+  screen shows nothing → end the blackout → the held alert arrives at Ground.
+  *"It keeps the crew safe when nobody on Earth can help."*
+- **Reports from history:** one ~1.3 KB plain-language report for the flight surgeon:
+  vitals vs the astronaut's own baseline, every alert with the astronaut's answer, sensor
+  errors marked and excluded, SANS score, sleep. Small enough for a congested deep-space link.
+- **Speed (her "speeds everything up"):** the report shows **time to action**: in testing
+  the astronaut answered in **3 s**, vs a **44-min** round trip to Earth.
+- **Better than what's on the market (draft, check before saying it):** consumer
+  wearables are built for Earth. They assume a phone, the cloud and a doctor nearby.
+  Some (e.g. Oura) do use personal baselines, so **don't claim that alone is unique.**
+  What they don't have, and we do:
+  1. a verdict that knows the light-time delay ("act now" vs "can wait for Houston")
+  2. a blackout mode that keeps working and forwards data when contact returns
+  3. SANS early warning between OCT scans
+  4. the astronaut confirming or correcting sensor errors in their own history
+  5. explanations and protocols that need no internet

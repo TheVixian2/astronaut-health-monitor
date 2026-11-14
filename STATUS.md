@@ -198,6 +198,35 @@ Branch: `backend`
   the "why". **Circadian sharing default is done on `backend`:** `_shared` now
   defaults to `True`, so Ground gets 200 for everyone, and 403 ("the astronaut has
   opted out…") after `PUT .../circadian/sharing {"share_with_ground": false}`. Tested.
+- **Done: judge 3's points (`events/2026-11-14-judge-3-sensors-blackout.md`), branch
+  `backend`, tested.** All PROVISIONAL and additive; existing fields unchanged.
+  - **Sensor accuracy:** each reading is checked (impossible value / spike / stuck sensor /
+    watch dropout) and stored with `quality` = ok | suspect | implausible | artifact.
+    Vitals gain `quality`. Impossible readings never raise an alert. The baseline uses only
+    `ok`. `GET /astronauts/{id}/sensors` gives per-signal status and last-hour accuracy.
+  - **"Do you feel this?":** vitals alerts gain `confirmation {status: pending|felt|not_felt,
+    question, answered_at, note}` and `data_quality: ok|suspect`. `POST
+    /astronauts/{id}/alerts/{alert_id}/confirm {felt, note?}` returns the alert and re-sends
+    it on SSE with the same id. "No" marks the readings as `artifact` (flagged, never
+    deleted, left out of the baseline/charts/reports), clears the alert, and mutes that
+    episode. SANS alerts have `confirmation: null` (they come from check-ins); confirming
+    one gets 409.
+  - **Blackout:** `PUT /mission/blackout {active, until?, reason?}`, `GET /mission/blackout`.
+    `GET /mission` gains `blackout`. During a blackout, Ground SSE holds every alert plus
+    the latest vitals and delivers them after contact returns (plus the light time).
+    Explanations say "Earth is out of contact… tell a crewmate or the CMO", with no cloud
+    call, and `ground_eta_s` includes the blackout left. `GET /protocols` gives on-board
+    steps per condition.
+  - **Report from history:** `GET /astronauts/{id}/report?days=7&view=crew|ground` returns
+    vitals vs own baseline, alerts with the astronaut's answer, check-ins, SANS, sleep, data
+    quality, **time to action vs the Earth round trip**, a ~1.3 KB `text` packet, and
+    `delivery`. The ground view leaves out private check-ins and opted-out sleep data.
+- **@NotKaemy, UI asks:** Yes/No buttons under `confirmation.question` on an alert; a
+  "sensor check" chip from `vitals.quality`; a blackout banner from `GET /mission`
+  `blackout` (and on Ground: "Out of contact, data will arrive when contact returns");
+  a "Report" panel showing `report.text`.
+- **@Luca:** demo beat for blackout + "do you feel this?" is in `presentation/ideas.md`.
+  New endpoints listed above, for the spec when you have a minute.
 - **Blocked on:** nothing.
 
 ## Presentation — dbm711
