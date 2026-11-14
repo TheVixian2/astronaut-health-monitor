@@ -343,6 +343,11 @@ Branch: `web`
   - **Ship's doctor** (`doctor.html`): today's doses (due / overdue / given)
     and medication suggestions from live alerts — from a **sample** plan in
     `web/meds.js`, labelled as not medical guidance.
+  - **Both are crew too:** their pages open on **their own health data** (My
+    health · Check-in · Sleep & light, the same data-only console as the
+    crew: Elena `a1`, Sara `a3`, found in `GET /crew` by role), and the crew
+    work is a **separate tab** (Crew wellbeing / Medications, with a count on
+    the tab). No backend change needed.
 - **Decision (NotKaemy): the astronaut console shows DATA ONLY — no warnings
   at all.** "The crew members should not know what happened to them." Their
   console shows their own numbers vs. baseline, chart, check-in and sleep
