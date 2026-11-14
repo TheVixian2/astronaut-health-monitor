@@ -42,8 +42,8 @@ otherwise                                   →  "Ground will see this in X min"
 compressed delay makes every condition resolve to "ground will advise" and
 destroys the point of the product.
 
-With the Mars defaults: `orthostatic` and `co2` → act on board; `fever` and
-`sans` → ground will advise. That contrast is the demo.
+With the Mars defaults the round trip is 44 min, so anything that cannot wait
+that long is handled on board (by the astronaut and the commander) first.
 
 ---
 
@@ -72,11 +72,11 @@ Response `202`: `{ "accepted": true }`
 ### `GET /astronauts/{id}/vitals`
 ```json
 {
-  "heart_rate_bpm": 62, "systolic_mmhg": 112, "diastolic_mmhg": 72,
+  "heart_rate_bpm": 62,
   "spo2_pct": 98, "temp_c": 36.5, "resp_rate_bpm": 12,
   "sleep_h_last_night": 7.2, "mood_1to5": 4,
   "timestamp": "2026-11-14T10:31:42Z", "source": "simulated",
-  "baseline": { "heart_rate_bpm": 58, "systolic_mmhg": 112, "diastolic_mmhg": 72,
+  "baseline": { "heart_rate_bpm": 58,
                 "spo2_pct": 98, "temp_c": 36.5, "resp_rate_bpm": 12,
                 "sleep_h_last_night": 7.2, "mood_1to5": 4 }
 }
@@ -107,7 +107,7 @@ The stream opens with a comment line: `: connected view=crew one_way_delay_s=20`
 ### Alert object
 ```json
 {
-  "id": "...", "astronaut_id": "a1", "profile": "orthostatic",
+  "id": "...", "astronaut_id": "a1", "profile": "sleep_debt",
   "severity": "watch|alert|critical",
   "hazard": "radiation|isolation|distance|gravity|environment",
   "body_region": "heart|head|lungs|skin|whole_body",
@@ -132,19 +132,11 @@ Thresholds are **placeholders** pending tuning.
 
 | id | Trigger (vs. personal baseline) | Hazard | Region | act_within_s | Mars verdict |
 |---|---|---|---|---|---|
-| `orthostatic` | HR > +25% **AND** systolic < −15% | gravity | heart | 600 | act on board |
-| `co2` | resp rate > +30% **AND** HR up **AND** (cabin CO2 high **OR** headache) | environment | lungs | 900 | act on board |
-| `fever` | temp > +1.0 °C **AND** HR > +15% | environment | skin | 3600 | ground advises |
-| `sans` | vision trend + cabin CO2 + headache + mission day → **risk score** | distance | head | 86400 | ground advises |
 | `sleep_debt` | < 6 h × 3 nights **AND** mood ≤ 2 **AND** resting HR up | isolation | head | 86400 | ground advises |
 
-**`spe` (solar particle event) is CUT**, and `GET /space-weather` with it. The
-NOAA feed is no longer called. If radiation returns, it comes back as a spec
-change here first.
-
-`sans` is a **risk score, never a diagnosis** — the between-scans early-warning
-layer that says "worth an OCT scan / escalate", not a finding. See
-`presentation/ideas.md`.
+The physical profiles (`orthostatic`, `co2`, `fever`, `sans`, `spe`) were **removed
+2026-11-14** in the pivot to mental health (see Removed below). The main signal is
+now the **wellbeing level** (next section); `sleep_debt` is the one remaining alert.
 
 ---
 
@@ -157,18 +149,52 @@ layer that says "worth an OCT scan / escalate", not a finding. See
   "mood_1to5": 3,
   "sleep_h": 5.5,
   "symptoms": ["headache"],
-  "vision": { "amsler_distortion": false, "acuity_line": 8 },
-  "share_with_ground": true
+  "share_with_ground": true,
+  "phq2": { "little_interest": 0, "feeling_down": 1 },
+  "reaction_test": { "mean_rt_ms": 262, "lapses": 2, "false_starts": 0, "duration_s": 180 }
 }
 ```
 Only `timestamp` and `share_with_ground` are required.
 
-`vision` feeds the `sans` risk score. `symptoms` containing `headache` feeds
-both `co2` and `sans`.
+`phq2` answers are 0-3 each (validated wording: `GET /checkin/questions`); a
+total of 3 or more is a positive screen. `reaction_test` is the 3-minute PVT-B
+(lapse = response over 355 ms). Both feed the wellbeing level.
 
 **`share_with_ground` is the astronaut's control over what the flight surgeon
 sees.** It is a deliberate design position, not a toggle for convenience — see
 `presentation/ideas.md` on under-reporting.
+
+---
+
+## Wellbeing — **PROVISIONAL** (live in `backend/behavioral.py`)
+
+`viewer` = the signed-in astronaut's id, or `ground`. Demo-level, not security.
+
+- `GET /astronauts/{id}/wellbeing?viewer=` → `{astronaut_id, view, mission_day, level,
+  score, signals[{name, area, value, baseline, points, detail, crew_wide}], ...}`.
+  `level` is `steady | watch | concern | urgent`. Signals today: `phq2`, `mood`,
+  `sleep`, `body_clock`, `reaction_time`, `resting_heart_rate`, each vs the
+  astronaut's own mission days 7-14.
+- `PUT /astronauts/{id}/wellbeing/sharing?viewer=` `{commander?, ground?}`
+- `GET /crew/wellbeing?viewer=a1|ground` → members + crew-wide trends (only when
+  ≥ 3 crew share a trend; PHQ-2 is never aggregated).
+- `GET /notifications?viewer=` → `[Notice]`; also pushed live as SSE event `notice`.
+- `GET /checkin/questions` → exact PHQ-2 wording + reaction-test instructions.
+
+### Decided 2026-11-14, NOT built yet
+
+1. **Commander first, then released.** A psychological flag reaches the
+   **commander** first; the commander releases it to the astronaut.
+   `PUT /astronauts/{id}/alerts/{alert_id}/release` (commander, or the deputy) sets
+   `released_to_crew_at`; `view=crew` streams withhold unreleased psychological items.
+   **If the commander is the one flagged, it goes to the deputy (pilot) instead.**
+   Ground always receives it after the light delay. A warning must never stay hidden
+   from the astronaut for good: the challenge asks that astronauts can evaluate and
+   act on their own health.
+2. **Watch-driven stress score.** `POST /ingest` gains optional `hrv_sdnn_ms` and
+   `active_min`. Watch signals (HRV, resting HR, sleep, activity) carry **60-80 %**
+   of the wellbeing score; check-ins (PHQ-2, mood, reaction test) the rest. The
+   weighting is a design choice, not a published value — say so.
 
 ---
 
@@ -220,10 +246,11 @@ mode → verify sleep improved.
 
 ### `POST /debug/scenario` → `202`
 ```json
-{ "astronaut_id": "a1", "scenario": "fever|co2|orthostatic|sans|sleep_debt|clear" }
+{ "astronaut_id": "a1", "scenario": "sleep_debt|strain|clear" }
 ```
-**Currently a stub** — accepts and returns `202` without driving the simulation.
-Wire it up before the demo; it is the fallback if the watch misbehaves on stage.
+Live. `sleep_debt` shifts vitals and sleep; `strain` injects a private check-in
+that reaches `urgent` (commander + ground notified); `clear` resets the astronaut
+and drops live check-ins so the demo can run again. Any other value → `422`.
 
 ---
 
@@ -232,3 +259,6 @@ Wire it up before the demo; it is the fallback if the watch misbehaves on stage.
 | Endpoint | Why |
 |---|---|
 | `GET /space-weather` | `spe` profile cut. Returns `404`. NOAA no longer called. |
+| `GET /astronauts/{id}/sans` | Pivot to mental health, 2026-11-14. Returns `404`. |
+| profiles `orthostatic`, `co2`, `fever`, `sans` | Same pivot. Tag `pre-mental-health-pivot` has them. |
+| vitals `systolic_mmhg`, `diastolic_mmhg`; check-in `vision` | No watch measures blood pressure; vision fed only `sans`. |

@@ -17,9 +17,9 @@ every endpoint and payload shape.
   baseline -> checks condition profiles -> on a NEW match calls the Claude insight
   service -> pushes to the web app over **Server-Sent Events** (not polling, not
   WebSockets).
-- Only heart rate comes from the watch. Blood pressure, SpO2, temperature,
-  respiratory rate, sleep and mood are **simulated server-side**, driven by a
-  per-astronaut scenario state (e.g. "fever" raises temp AND heart rate together).
+- Only heart rate comes from the watch. SpO2, temperature, respiratory rate,
+  sleep and mood are **simulated server-side**, driven by a per-astronaut
+  scenario state. Blood pressure was removed 2026-11-14 (no watch measures it).
 - **There is no physical watch.** All watch data comes from the watchOS Simulator
   via `SimulatedSource`. `HealthKitSource` stays a stub.
 - **Baseline window:** mission days ~7-14 (earlier days are distorted by space
@@ -57,11 +57,11 @@ every endpoint and payload shape.
 
 | id | Profile | Signals vs. personal baseline | Hazard | act_within_s |
 |---|---|---|---|---|
-| `orthostatic` | Cardiovascular deconditioning | HR > baseline +25% AND systolic < baseline -15% | gravity | 600 |
-| `fever` | Fever / possible infection | temp > baseline +1.0 C AND HR > baseline +15% | environment | 3600 |
-| `co2` | CO2 exposure | resp rate > baseline +30% AND HR up AND cabin CO2 (simulated) high OR headache reported | environment | 900 |
 | `sleep_debt` | Sleep debt / behavioural strain | < 6 h sleep 3 nights running AND mood <= 2/5 AND resting HR up | isolation | 86400 |
-| `spe` | Solar particle event | NOAA >=10 MeV flux >= 10 pfu (external) | radiation | 300 |
+
+**2026-11-14 pivot to mental health:** `orthostatic`, `fever`, `co2`, `sans` and `spe`
+were removed (recoverable from tag `pre-mental-health-pivot`). The main signal is now
+the wellbeing level in `backend/behavioral.py` (steady / watch / concern / urgent).
 
 Severity levels: `watch` (yellow), `alert` (orange), `critical` (red). Each
 profile also stores `onboard_action` (one line for the watch) and `body_region`

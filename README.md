@@ -22,14 +22,15 @@ the round-trip light time against the condition's own `act_within_s`.
 
 Only heart rate is real (from the watchOS Simulator — there is no physical
 watch). The other vitals are simulated server-side from a per-astronaut scenario
-so they move together coherently. Radiation uses live NOAA GOES proton data.
+so they move together coherently.
 
-## Condition profiles
+## What it monitors
 
-Cardiovascular deconditioning, fever / possible infection, CO2 exposure, sleep
-debt / behavioural strain, and solar particle events. Each one maps to a space
-hazard (gravity, environment, isolation, radiation, distance), a body region, a
-severity, and one pre-written on-board action line.
+**Behavioral health** of a crew of four on a long Mars mission: a wellbeing level
+per astronaut built from PHQ-2, mood, sleep and body clock, a 3-minute reaction
+test and resting heart rate, each against the astronaut's own baseline, plus a
+`sleep_debt` alert. Each flag maps to a NASA spaceflight hazard and Human Research
+Program risk.
 
 Thresholds are placeholders pending tuning — see `CLAUDE.md`.
 

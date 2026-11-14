@@ -36,7 +36,7 @@ Env vars: `AHM_DB` (database path, default `data/ahm.db`), `AHM_LIVE_LIGHT_TIME=
 - **Everything is compared to the astronaut's own baseline**: the median of stored
   mission days 7-14. Never a population threshold.
 - Vitals other than a1's heart rate are **simulated server-side**, shifted together
-  by a scenario (fever raises temp AND HR). Scenario shifts live in `engine.py`.
+  by a scenario (`sleep_debt`, `strain`). Scenario shifts live in `engine.py`.
 - The condition engine fires an alert only on a **new** match and clears it after
   5 calm ticks. That gate is what limits Claude calls; insights are cached in SQLite.
 - `insight_service.py` must **never** raise into the request path. No key or a failed
@@ -51,7 +51,7 @@ Env vars: `AHM_DB` (database path, default `data/ahm.db`), `AHM_LIVE_LIGHT_TIME=
 ## Layout
 
 - `main.py` — FastAPI app, state, tick loop, alert gate, endpoints.
-- `engine.py` — crew baselines, condition profiles, thresholds, SANS risk score,
+- `engine.py` — crew baselines, the `sleep_debt` profile, thresholds,
   scenario shifts, "do you feel this?" questions, on-board protocols, fallback
   explanations (blackout-aware).
 - `behavioral.py` — **the team's main focus (2026-11-14):** wellbeing profile from PHQ-2,

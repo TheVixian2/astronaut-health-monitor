@@ -19,8 +19,6 @@ struct VitalsAlert: Decodable, Identifiable, Equatable {
 /// Only `heartRateBpm` is real; everything else is simulated server-side.
 struct VitalsSnapshot: Decodable, Equatable {
     let heartRateBpm: Double
-    let systolicMmhg: Double
-    let diastolicMmhg: Double
     let spo2Pct: Double
     let tempC: Double
     let respRateBpm: Double
@@ -36,8 +34,6 @@ struct VitalsSnapshot: Decodable, Equatable {
 
     struct Baseline: Decodable, Equatable {
         let heartRateBpm: Double
-        let systolicMmhg: Double
-        let diastolicMmhg: Double
         let spo2Pct: Double
         let tempC: Double
         let respRateBpm: Double

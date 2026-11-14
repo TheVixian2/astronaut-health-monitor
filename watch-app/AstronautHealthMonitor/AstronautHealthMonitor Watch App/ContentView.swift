@@ -120,9 +120,6 @@ struct VitalsList: View {
                      format: "%.1f°C", mode: .points(warn: 0.5, bad: 1.0))
             VitalRow(label: "Resp", value: snapshot.respRateBpm, baseline: snapshot.baseline.respRateBpm,
                      format: "%.0f", mode: .percent)
-            VitalRow(label: "BP", value: snapshot.systolicMmhg, baseline: snapshot.baseline.systolicMmhg,
-                     format: "%.0f", mode: .percent,
-                     override: "\(Int(snapshot.systolicMmhg))/\(Int(snapshot.diastolicMmhg))")
             VitalRow(label: "Sleep", value: snapshot.sleepHLastNight, baseline: snapshot.baseline.sleepHLastNight,
                      format: "%.1fh", mode: .points(warn: 1.0, bad: 2.0))
             VitalRow(label: "Mood", value: Double(snapshot.mood1To5), baseline: Double(snapshot.baseline.mood1To5),
@@ -140,13 +137,12 @@ struct VitalRow: View {
     let baseline: Double
     let format: String
     let mode: DeviationMode
-    var override: String? = nil
 
     var body: some View {
         HStack(spacing: 4) {
             Text(label).font(.caption2).foregroundStyle(.secondary)
             Spacer(minLength: 2)
-            Text(override ?? String(format: format, value))
+            Text(String(format: format, value))
                 .font(.caption.monospacedDigit())
             Deviation(value: value, baseline: baseline, mode: mode)
                 .font(.system(size: 9).monospacedDigit())

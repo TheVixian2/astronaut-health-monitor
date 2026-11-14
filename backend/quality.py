@@ -14,11 +14,11 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 PLAUSIBLE = {  # what a human body can physically do
-    "heart_rate_bpm": (25, 220), "systolic_mmhg": (60, 250), "diastolic_mmhg": (30, 150),
+    "heart_rate_bpm": (25, 220),
     "spo2_pct": (70, 100), "temp_c": (33.0, 42.0), "resp_rate_bpm": (4, 60),
 }
 MAX_JUMP_PER_TICK = {  # change in one 3 s tick that is more likely a sensor glitch than the body
-    "heart_rate_bpm": 35, "systolic_mmhg": 30, "diastolic_mmhg": 20,
+    "heart_rate_bpm": 35,
     "spo2_pct": 6, "temp_c": 1.0, "resp_rate_bpm": 10,
 }
 FLATLINE_TICKS = 20  # identical watch heart rate for 60 s
