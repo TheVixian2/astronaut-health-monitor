@@ -75,6 +75,12 @@
       try { crew.get(aid).circ = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/circadian?view=crew`, cfg.mock); }
       catch { crew.get(aid).circ = null; }
     }));
+    // Wellbeing level + affected areas for every crew member (commander first:
+    // the Commander always sees these, never the questionnaire answers).
+    try {
+      const wb = await A.getJSON(cfg.base, `/crew/wellbeing?viewer=${encodeURIComponent(ownAid || "a1")}`, cfg.mock);
+      for (const m of wb.members) { const c = crew.get(m.astronaut_id); if (c) c.wb = m; }
+    } catch { /* mock mode or backend down: panels show without the level */ }
     render();
   }
 
@@ -138,6 +144,14 @@
     $("crewCount").hidden = !total;
   }
 
+  const WB_CLASS = { steady: "nominal", watch: "watch", concern: "alert", urgent: "critical" };
+  function wellbeingLine(wb) {
+    if (!wb || !wb.level) return "";
+    const areas = wb.areas && wb.areas.length ? ` · ${esc(wb.areas.join(", "))}` : "";
+    return `<p class="small">Wellbeing check: <span class="st-${WB_CLASS[wb.level] || "nominal"}"><span class="st-pill">${esc(wb.level)}</span></span>${areas}
+      <span class="muted">· level and areas only, never their answers${wb.visible_because === "commander_first" ? "; they haven't been told you can see it" : ""}</span></p>`;
+  }
+
   function panel(aid, c, { name, self, physical, psych }) {
     const all = physical.concat(psych);
     const worst = all.reduce((w, x) => (!w || SEVERITY_RANK[x.severity] > SEVERITY_RANK[w] ? x.severity : w), null);
@@ -151,6 +165,7 @@
       <h3>Physical</h3>
       ${physical.length ? `<ul class="warns">${physical.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
       <h3>Psychological <span class="muted small">· confidential</span></h3>
+      ${wellbeingLine(c.wb)}
       ${psych.length ? `<ul class="warns">${psych.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
     </article>`;
   }

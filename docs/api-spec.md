@@ -181,9 +181,28 @@ sees.** It is a deliberate design position, not a toggle for convenience — see
 - `GET /notifications?viewer=` → `[Notice]`; also pushed live as SSE event `notice`.
 - `GET /checkin/questions` → exact PHQ-2 wording + reaction-test instructions.
 
+- **Commander first (live):** the commander (`viewer=a1`) always sees every crew
+  member's `level` and `areas` (masked signals, never PHQ-2 answers);
+  `GET /crew/wellbeing` members carry `visible_because: commander_first` and `areas`.
+  Mission Control still needs sharing or the urgent level.
+- `GET /astronauts/{id}/history?hours=&bucket_s=` → each point also has `low{}` and
+  `high{}` per field; `bucket_s=3600` = hour by hour.
+
+## Habitat — **PROVISIONAL** (live in `backend/habitat.py`)
+
+Room per astronaut from a Bluetooth beacon per module (simulated by a fixed daily
+schedule). **The hygiene module has no beacon and is never tracked.**
+
+- `GET /habitat` → `[{id, name, kind: shared|private|untracked}]`
+- `GET /crew/locations?viewer=a1|ground` → `[{astronaut_id, name, room|null,
+  room_name, since}]` — safety use (fire, depressurisation).
+- `GET /astronauts/{id}/rooms?viewer=<self>|a1` → `{hours{room: h}, shared_h,
+  private_h, shared_normal_h, shared_so_far_normal_h, shared_7d_avg_h, note}`.
+  Supporting signal only (weak evidence): shown, never added to the wellbeing score.
+
 ### Decided 2026-11-14, NOT built yet
 
-1. **Commander first, then released.** A psychological flag reaches the
+1. **Release step (still to build).** A psychological flag reaches the
    **commander** first; the commander releases it to the astronaut.
    `PUT /astronauts/{id}/alerts/{alert_id}/release` (commander, or the deputy) sets
    `released_to_crew_at`; `view=crew` streams withhold unreleased psychological items.

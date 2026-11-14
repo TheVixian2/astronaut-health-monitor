@@ -34,6 +34,7 @@ from pydantic import BaseModel, Field, model_validator
 import behavioral
 import circadian
 import engine
+import habitat
 import horizons
 import insight_service
 import quality
@@ -183,7 +184,8 @@ class CrewMemberWellbeing(BaseModel):
     name: str
     role: str
     level: Optional[behavioral.Level]  # null when the astronaut keeps it private
-    visible_because: Literal["shared", "automatic_urgent", "private"]
+    visible_because: Literal["shared", "automatic_urgent", "commander_first", "private"]
+    areas: list[str] = []              # which areas raised the level; never the answers
 
 
 class CrewWellbeing(BaseModel):
@@ -534,7 +536,8 @@ def wellbeing(s: AstronautState, t: datetime, view: str,
                       "your wellbeing level and which areas are affected, not your answers. This is a wellbeing "
                       "check, not a diagnosis.")
     else:
-        share_note = "Nothing is shared unless you choose. Only an urgent level is passed on automatically."
+        share_note = ("Your commander sees your wellbeing level and which areas are affected, never your answers. "
+                      "Mission Control sees it only if you share it, or automatically at the urgent level.")
     wb = behavioral.Wellbeing(
         astronaut_id=s.id, view=view, mission_day=mission_day(t), level=level, score=score, signals=sigs,
         phq2=behavioral.Phq2Result(score=phq[0], screen_positive=phq[0] >= behavioral.PHQ2_POSITIVE,
@@ -552,7 +555,10 @@ def wellbeing(s: AstronautState, t: datetime, view: str,
                                         detail="Kept private by the astronaut.", crew_wide=x.crew_wide)
                       for x in sigs if x.points > 0]
         wb.phq2 = None
-        wb.suggestions = ["Consider checking in with them privately; they know you were notified."]
+        wb.suggestions = (["Consider checking in with them privately; they know you were notified."]
+                          if s.wb_auto_notified else
+                          ["They have not been told you can see this. Decide whether and how to raise it: "
+                           "in person, in private."])
     return wb
 
 
@@ -1149,7 +1155,9 @@ def _view_for(target: AstronautState, viewer: str) -> str:
 
 
 def _can_see(target: AstronautState, view: str) -> bool:
-    return view == "self" or target.wb_share[view] or target.wb_auto_notified
+    # Commander first (team decision 2026-11-14): the commander always sees the level and the
+    # areas (never the answers, see wellbeing()); Mission Control only if shared or urgent.
+    return view in ("self", "commander") or target.wb_share[view] or target.wb_auto_notified
 
 
 @app.get("/checkin/questions")
@@ -1198,10 +1206,14 @@ async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
     for s in crew.values():
         if s.id == viewer:
             continue
-        shown = "shared" if s.wb_share[view] else "automatic_urgent" if s.wb_auto_notified else "private"
+        shown = ("shared" if s.wb_share[view] else "automatic_urgent" if s.wb_auto_notified
+                 else "commander_first" if view == "commander" else "private")
+        wb = wellbeing(s, t, "self", all_sigs)
+        visible = shown != "private"
         members.append(CrewMemberWellbeing(
             astronaut_id=s.id, name=s.name, role=s.role, visible_because=shown,
-            level=wellbeing(s, t, "self", all_sigs).level if shown != "private" else None))
+            level=wb.level if visible else None,
+            areas=behavioral.areas(wb.signals) if visible else []))
     crew_wide = [f"Most of the crew ({n} of {len(crew)}) {CREW_WIDE_TEXT[name]}."
                  for name, n in counts.items() if n >= behavioral.CREW_WIDE_MIN and name in CREW_WIDE_TEXT]
     suggestions = []
@@ -1217,6 +1229,79 @@ async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
         view=view, crew_wide=crew_wide, members=members, suggestions=suggestions,
         note=f"Crew-wide trends never name anyone and need at least {behavioral.CREW_WIDE_MIN} people. "
              "Questionnaire answers are never aggregated or shown here.")
+
+
+# --- PROVISIONAL: habitat rooms (habitat.py) -----------------------------------------
+
+class Room(BaseModel):
+    id: str
+    name: str
+    kind: Literal["shared", "private", "untracked"]
+
+
+class Location(BaseModel):
+    astronaut_id: str
+    name: str
+    room: Optional[str]   # null while in the hygiene module: it has no beacon, never tracked
+    room_name: str
+    since: Optional[datetime]
+
+
+class RoomTime(BaseModel):
+    astronaut_id: str
+    day_start: datetime
+    hours: dict[str, float]          # room id -> hours today (hygiene excluded)
+    shared_h: float
+    private_h: float
+    shared_normal_h: float           # average full day in shared rooms, own mission days 7-14
+    shared_so_far_normal_h: float    # the same normal, scaled to the time of day so far
+    shared_7d_avg_h: float           # average full day in shared rooms over the last 7 days
+    note: str
+
+
+@app.get("/habitat")
+async def get_habitat() -> list[Room]:
+    return [Room(id=r, name=n, kind=k) for r, (n, k) in habitat.ROOMS.items()]
+
+
+@app.get("/crew/locations")
+async def get_crew_locations(viewer: str) -> list[Location]:
+    """Where everyone is now: for the commander and Mission Control (safety: fire, depressurisation)."""
+    if viewer not in (COMMANDER_ID, "ground"):
+        raise HTTPException(403, "Crew locations are for the commander and Mission Control.")
+    t = now()
+    out = []
+    for s in crew.values():
+        r = habitat.room_at(s.id, t, mission_start)
+        tracked = habitat.ROOMS[r][1] != "untracked"
+        out.append(Location(astronaut_id=s.id, name=s.name, room=r if tracked else None,
+                            room_name=habitat.ROOMS[r][0] if tracked else "Not tracked",
+                            since=habitat.since(s.id, t, mission_start) if tracked else None))
+    return out
+
+
+@app.get("/astronauts/{aid}/rooms")
+async def get_room_time(aid: str, viewer: str) -> RoomTime:
+    """Hours per room today vs the astronaut's own normal. The astronaut and the commander only."""
+    get_state(aid)
+    if viewer not in (aid, COMMANDER_ID):
+        raise HTTPException(403, "Room time is for the astronaut and the commander.")
+    t = now()
+    start = t.replace(hour=0, minute=0, second=0, microsecond=0)
+    hours = habitat.hours_by_room(aid, start, t, mission_start)
+    kinds = habitat.by_kind(hours)
+    normal = habitat.waking_shared_normal(aid, mission_start)
+    so_far = habitat.by_kind(habitat.hours_by_room(aid, mission_start + timedelta(days=6),
+                                                   mission_start + timedelta(days=6) + (t - start), mission_start))
+    return RoomTime(
+        astronaut_id=aid, day_start=start, hours={r: h for r, h in hours.items() if r != "hygiene"},
+        shared_h=kinds["shared"], private_h=kinds["private"], shared_normal_h=normal,
+        shared_so_far_normal_h=so_far["shared"],
+        shared_7d_avg_h=round(sum(habitat.by_kind(habitat.hours_by_room(
+            aid, start - timedelta(days=d), start - timedelta(days=d - 1), mission_start))["shared"]
+            for d in range(1, 8)) / 7, 1),
+        note="Supporting signal only: time in shared rooms is shown, never added to the wellbeing score. "
+             "The hygiene module has no beacon and is never tracked.")
 
 
 @app.get("/notifications")
