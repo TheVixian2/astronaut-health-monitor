@@ -631,7 +631,7 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 .ground .area-tag, .area-ground .area-tag { background: var(--ground-bg); color: var(--ground-fg); }
 
 /* the menu bar at the top of each area */
-.appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 0;
+.appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0;
   border-bottom: 1px solid var(--line); }
 .appnav .brand { color: var(--text-strong); text-decoration: none; display: inline-flex; align-items: center; }
 /* The palette's four-stripe mark (silver, Mars red, dark Mars red, blue) after
@@ -643,7 +643,7 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
   box-shadow: 0 0 0 1px var(--line-strong);
 }
 .appnav .menu { display: flex; flex-wrap: wrap; gap: 2px; flex: 1; }
-.appnav .menu a { color: var(--muted); text-decoration: none; padding: 7px 12px; border-radius: var(--r-control); font-weight: 500; }
+.appnav .menu a { color: var(--muted); text-decoration: none; padding: 7px 10px; white-space: nowrap; border-radius: var(--r-control); font-weight: 500; }
 .appnav .menu a:hover { color: var(--text-strong); background: var(--wash-2); }
 .appnav .menu a[aria-current="page"] { color: var(--text-strong); background: var(--panel); box-shadow: inset 0 -3px 0 var(--ground); font-weight: 650; }
 .area-onboard .menu a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--onboard); }
@@ -661,8 +661,27 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 .captain-note, .sample-note { margin: 16px 0; padding: 12px 14px; border-radius: var(--r-plate); max-width: 100ch;
   background: var(--onboard-bg); border: 1px solid var(--onboard); }
 .sample-note { background: var(--ground-bg); border-color: var(--ground); }
-.captain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
-.cap-panel { border-top: 4px solid var(--ok); }
+/* Crew wellbeing: the four crew members 2 x 2, cards in a row the same height. */
+.captain-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+@media (max-width: 900px) { .captain-grid { grid-template-columns: minmax(0, 1fr); } }
+.cap-panel { border-top: 4px solid var(--ok); display: flex; flex-direction: column; gap: 14px; }
+.cp-stats { display: flex; border: 1px solid var(--line); border-radius: var(--r-plate); background: var(--wash); }
+.cp-stat { flex: 1; display: grid; gap: 2px; padding: 8px 14px; margin: 0; min-width: 0; }
+.cp-stat + .cp-stat { border-left: 1px solid var(--line); }
+.cp-val { font-size: var(--t-lg); font-stretch: var(--narrow); font-weight: 650; line-height: 1.1; color: var(--text-strong);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cp-val .t-unit { font-size: var(--t-sm); font-stretch: 100%; font-weight: 400; color: var(--muted); }
+.cp-sec { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 6px 14px; align-items: start;
+  padding-top: 12px; border-top: 1px solid var(--line); }
+.cap-panel .cp-sec h3 { margin: 1px 0 0; font-size: var(--t-sm); font-weight: 650; color: var(--text); }
+.cp-sec h3 span { display: block; font-size: var(--t-xs); font-weight: 400; color: var(--muted); }
+.cp-none { margin: 0; font-size: var(--t-sm); color: var(--ok-ink); }
+.cp-none::before { content: "✓"; margin-right: 6px; font-weight: 700; }
+.cp-wb { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: var(--t-sm); }
+.cp-areas { color: var(--text-strong); font-weight: 600; }
+.cp-note { margin: -4px 0 8px; font-size: var(--t-xs); color: var(--muted); }
+.cp-wb + .cp-none, .cp-note + .cp-none { margin-top: 0; }
+@media (max-width: 480px) { .cp-sec { grid-template-columns: minmax(0, 1fr); } }
 .cap-panel.st-watch { border-top-color: var(--sev-watch); }
 .cap-panel.st-alert { border-top-color: var(--sev-alert); }
 .cap-panel.st-critical { border-top-color: var(--sev-critical); }
