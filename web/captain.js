@@ -1,11 +1,9 @@
 // Commander view: every crew member's physical and psychological warnings,
-// each with advice on how the Commander can help. Live (view=crew): the
-// Commander is on board.
+// each with advice on how the Commander can help. On board, so not delayed.
 //
-// Psychological warnings reach the Commander FIRST. They stay hidden on the
-// crew member's own console until the Commander presses "Tell them now"
-// (AHM.releaseToCrew), so a hard message comes from a person, in private.
-// Advice is pre-written decision support, never a diagnosis.
+// Crew members never see warnings on their own console (data only; decision,
+// NotKaemy 2026-11-14), so whether and how to raise anything is the
+// Commander's call. Advice is pre-written decision support, never a diagnosis.
 
 (function () {
   const $ = id => document.getElementById(id);
@@ -24,7 +22,7 @@
     co2: "Have {n} move to a better-ventilated module and check the CO2 scrubber reading there. If others report headaches too, treat it as a cabin problem, not a personal one.",
     sans: "Give {n} time today for the vision check, and agree with the Crew Medical Officer whether an OCT scan should be scheduled.",
     physical: "Check in with {n} and the Crew Medical Officer about this alert.",
-    sleep_debt: "Talk to {n} in private before they see this. Protect their next sleep period: no late tasks, quarters in pre-sleep lighting an hour before bed. Ask how the workload feels.",
+    sleep_debt: "Protect {n}'s next sleep period: no late tasks, quarters in pre-sleep lighting an hour before bed. If you raise it, do it in private and ask how the workload feels.",
     circadian: "Help {n} keep a regular schedule: a similar bedtime each night, pre-sleep lighting in the evening, nothing scheduled late. Raise it privately, as a routine thing.",
     mood: "Find a private, unhurried moment with {n}. Ask open questions and listen rather than fix. Consider a lighter or more meaningful task, extra time for a private call home, and offer a private conference with the flight surgeon.",
     sleep: "Ask {n} how they slept and whether anything is keeping them up. Avoid scheduling them for demanding or late tasks today.",
@@ -57,7 +55,6 @@
     render();
     loadCircadian();
     setInterval(loadCircadian, CIRC_REFRESH_MS);
-    A.onReleaseChange(render);
   }
 
   async function loadCircadian() {
@@ -89,24 +86,23 @@
     for (const a of latestPerProfile(c.alerts)) {
       const w = { severity: a.severity, title: profileName(a.profile), when: a.started_at,
                   detail: `${REGION_NAMES[a.body_region] || a.body_region} · ${a.onboard_action}` };
-      if (A.isPsychological(a)) psych.push({ ...w, key: A.alertKey(a), advice: advise(a.profile, name) });
+      if (A.isPsychological(a)) psych.push({ ...w, advice: advise(a.profile, name) });
       else physical.push({ ...w, advice: advise(ADVICE[a.profile] ? a.profile : "physical", name) });
     }
 
     const v = c.latest, base = v?.baseline || {};
     if (v && typeof v.mood_1to5 === "number" && v.mood_1to5 <= LOW_MOOD) {
       psych.push({ severity: v.mood_1to5 <= 1 ? "alert" : "watch", title: "Low mood",
-                   detail: `Mood ${v.mood_1to5}/5 (usual ${base.mood_1to5 ?? "?"}/5)`, advice: advise("mood", name), ownOnly: true });
+                   detail: `Mood ${v.mood_1to5}/5 (usual ${base.mood_1to5 ?? "?"}/5)`, advice: advise("mood", name) });
     }
     if (v && typeof v.sleep_h_last_night === "number"
         && (v.sleep_h_last_night < SHORT_SLEEP_H || (base.sleep_h_last_night && v.sleep_h_last_night < base.sleep_h_last_night * SHORT_SLEEP_RATIO))) {
       psych.push({ severity: "watch", title: "Short sleep",
-                   detail: `${v.sleep_h_last_night} h last night (usual ${base.sleep_h_last_night ?? "?"} h)`, advice: advise("sleep", name), ownOnly: true });
+                   detail: `${v.sleep_h_last_night} h last night (usual ${base.sleep_h_last_night ?? "?"} h)`, advice: advise("sleep", name) });
     }
     const card = c.circ && A.circadianCardText(c.circ.card);
     if (card) {
-      psych.push({ severity: "watch", title: "Irregular sleep timing", detail: card,
-                   key: A.circadianKey(aid, c.circ), advice: advise("circadian", name) });
+      psych.push({ severity: "watch", title: "Irregular sleep timing", detail: card, advice: advise("circadian", name) });
     }
     return { name, physical, psych };
   }
@@ -116,10 +112,6 @@
   function render() {
     if (!crew.size) return;
     $("crewPanels").innerHTML = [...crew.entries()].map(([aid, c]) => panel(aid, c)).join("");
-    document.querySelectorAll("[data-release]").forEach(b => b.addEventListener("click", () => {
-      A.releaseToCrew(b.dataset.release);
-      render();
-    }));
   }
 
   function panel(aid, c) {
@@ -135,28 +127,17 @@
       </div>
       <h3>Physical</h3>
       ${physical.length ? `<ul class="warns">${physical.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
-      <h3>Psychological <span class="muted small">· you see these first</span></h3>
-      ${psych.length ? `<ul class="warns">${psych.map(w => item(w, name, true)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
+      <h3>Psychological <span class="muted small">· confidential</span></h3>
+      ${psych.length ? `<ul class="warns">${psych.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
     </article>`;
   }
 
-  function item(w, name, isPsych = false) {
-    let gate = "";
-    if (isPsych && w.ownOnly) {
-      gate = `<div class="gate muted small">Only you see this. ${esc(name)} entered or produced these numbers; there is nothing extra to tell them.</div>`;
-    } else if (isPsych) {
-      const at = A.releasedAt(w.key);
-      gate = at
-        ? `<div class="gate released small">Told ${esc(name)} at ${esc(time(at))}: now on their console.</div>`
-        : `<div class="gate held small"><span>Not shown to ${esc(name)} yet.</span>
-             <button type="button" data-release="${esc(w.key)}">Tell ${esc(name)} now</button></div>`;
-    }
+  function item(w, name) {
     return `<li class="warn sev-${esc(w.severity)}">
       <div class="head"><span class="sev">${esc(w.severity)}</span> <strong>${esc(w.title)}</strong>
         ${w.when ? `<span class="muted small">${esc(time(w.when))}</span>` : ""}</div>
       <div class="small muted">${esc(w.detail)}</div>
       <div class="advice"><span class="advice-label">How you can help:</span> ${esc(w.advice)}</div>
-      ${gate}
     </li>`;
   }
 

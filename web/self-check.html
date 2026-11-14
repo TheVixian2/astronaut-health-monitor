@@ -10,8 +10,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="selfcheck">
-  <!-- On-board menu. Each item shows one tab of this page; the alert banner
-       below stays visible whichever tab is open. Hidden inside demo.html. -->
+  <!-- Astronaut console menu. DATA ONLY: no alerts, verdicts or advice here
+       (warnings go to the Commander, the ship's doctor and Ground). Hidden inside demo.html. -->
   <nav class="appnav area-onboard" aria-label="On board">
     <a class="brand" data-href="index.html" href="index.html" title="Choose area">AHM</a>
     <span class="area-tag">On board</span>
@@ -19,7 +19,6 @@
       <a href="#health" data-tab-link="health">My health</a>
       <a href="#checkin" data-tab-link="checkin">Check-in</a>
       <a href="#sleep" data-tab-link="sleep">Sleep &amp; light</a>
-      <a href="#alerts" data-tab-link="alerts">Alerts <span id="alertCount" class="count" hidden></span></a>
     </div>
     <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
@@ -40,8 +39,6 @@
     </div>
   </header>
 
-  <!-- Newest unacknowledged alert. Hidden when there is none. -->
-  <section id="banner" class="banner" hidden aria-live="assertive"></section>
 
   <main class="sc-grid">
     <section class="card body-card" data-tab="health">
@@ -171,11 +168,8 @@
       <p id="sleepNote" class="sleep-note muted">Waiting for data…</p>
 
       <div id="circLive" hidden>
-        <p id="circCard" class="circ-card"></p>
         <div class="nights-head small muted">Last 7 nights · bar = asleep · <span class="lg-bright">■</span> bright light in the last hour before sleep</div>
         <div id="nightsChart" class="nights"></div>
-        <p id="circRec" class="circ-rec"></p>
-        <p id="circEvidence" class="muted small"></p>
         <label class="row share">
           <input type="checkbox" id="circShare"> Share sleep &amp; lighting with ground
         </label>
@@ -206,13 +200,9 @@
       </div>
     </section>
 
-    <section class="card wide" data-tab="alerts">
-      <h2>Alert history</h2>
-      <ul id="history" class="alerts"><li class="muted">No alerts this session.</li></ul>
-    </section>
   </main>
 
-  <footer class="foot muted small">Decision support only — not a diagnosis. If something feels wrong, tell the Crew Medical Officer.</footer>
+  <footer class="foot muted small">Your own data, against your own baseline. If something feels wrong, tell the Crew Medical Officer.</footer>
 
   <script src="mock.js"></script>
   <script src="common.js"></script>

@@ -28,8 +28,8 @@
   </header>
   <main class="demo-split">
     <section class="pane">
-      <div class="pane-label"><strong>On board · Astronaut console</strong><span class="muted small">live</span></div>
-      <iframe id="selfFrame" title="Self-check view"></iframe>
+      <div class="pane-label"><strong>On board · Commander</strong><span class="muted small">live</span></div>
+      <iframe id="selfFrame" title="Commander view"></iframe>
     </section>
     <section class="pane">
       <div class="pane-label"><strong>Ground · Flight surgeon</strong><span class="muted small">delayed by light time</span></div>
@@ -39,7 +39,9 @@
   <script src="common.js"></script>
   <script>
     // Same ?mock / ?base / ?aid for both panes.
-    document.getElementById("selfFrame").src = AHM.linkWithSettings("self-check.html");
+    // Left pane: the Commander, who now learns first on board (crew consoles show
+    // data only, no warnings).
+    document.getElementById("selfFrame").src = AHM.linkWithSettings("captain.html");
     document.getElementById("groundFrame").src = AHM.linkWithSettings("ground.html");
   </script>
 </body>

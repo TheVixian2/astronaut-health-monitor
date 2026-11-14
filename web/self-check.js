@@ -1,14 +1,18 @@
-// Self-check view: the astronaut's own tablet. Live (view=crew), never delayed.
-// Vitals vs. personal baseline, a clickable body figure, a trend chart,
-// the check-in form and this session's alerts.
+// Astronaut console: the crew member's own tablet. Live (view=crew).
+//
+// DATA ONLY, NO WARNINGS (decision, NotKaemy 2026-11-14): crew members see
+// their own numbers against their own baseline, never alerts, verdicts,
+// advice or "something is wrong" wording. Warnings go to the Commander
+// (captain.html), the ship's doctor (doctor.html) and Ground. This page does
+// not even subscribe to `alert` events.
 
 (function () {
   const $ = id => document.getElementById(id);
   const A = window.AHM;
-  const { FIELDS, REGION_NAMES, SEVERITY_RANK, verdict, deltaPct, dur, fmt, esc, profileName } = A;
+  const { FIELDS, REGION_NAMES, deltaPct, dur, fmt, esc } = A;
 
   const cfg = A.settings();
-  cfg.view = "crew";                 // Self-check is never the delayed view
+  cfg.view = "crew";                 // the console is never the delayed view
 
   const MAX_POINTS = 120;            // ~6 min at one vitals event per 3 s
   const STALE_S = 10;
@@ -19,12 +23,6 @@
   let region = "whole_body";         // selected body region
   let chartField = "heart_rate_bpm";
   const history = [];                // [{t, v}] vitals snapshots for the chart
-  const alerts = new Map();          // id -> alert, first-seen order (every alert received)
-  // What this astronaut may see: physical alerts at once; psychological ones
-  // only after the Commander has released them (captain.html), so a hard
-  // message reaches the crew member through a person, not a screen.
-  const shown = () => [...alerts.values()].filter(a => !A.isPsychological(a) || A.isReleased(A.alertKey(a)));
-  const acknowledged = new Set();    // alert ids hidden from the banner
 
   // ---- setup ---------------------------------------------------------------
 
@@ -64,13 +62,11 @@
     source.onerror = () => setConn(source.readyState === 2 ? "disconnected" : "reconnecting…",
                                    source.readyState === 2 ? "pill-off" : "pill-wait");
     source.addEventListener("vitals", e => onVitals(JSON.parse(e.data)));
-    source.addEventListener("alert", e => onAlert(JSON.parse(e.data)));
+    // No "alert" listener on purpose: the crew console shows data only.
 
     selectRegion(region);
     setInterval(renderAge, 1000);
   }
-
-  // ---- events --------------------------------------------------------------
 
   function onVitals(v) {
     latest = v;
@@ -83,9 +79,103 @@
     renderSleep(v);
   }
 
-  // ---- circadian (GET /astronauts/{id}/circadian, PROVISIONAL) --------------
-  // The lighting log comes from the backend. If the endpoint is missing, the
-  // card falls back to the vitals-based note plus the static guidance.
+  // ---- body figure: picks which vitals to focus on -------------------------
+
+  function selectRegion(r) {
+    region = r;
+    const first = FIELDS.find(f => f.region === r && !isMasked(f.key));
+    if (first) chartField = first.key;
+    document.querySelectorAll("#body .region").forEach(g => {
+      g.classList.toggle("selected", g.dataset.region === region);
+      g.setAttribute("aria-pressed", String(g.dataset.region === region));
+    });
+    renderTiles();
+    renderRegionInfo();
+    rebuildChart();
+  }
+
+  function renderRegionInfo() {
+    const fields = FIELDS.filter(f => region === "whole_body" || f.region === region).map(f => f.label);
+    const note = region === "head" ? " Sleep, mood and the vision check (in Check-in) belong here."
+      : region === "skin" ? " Temperature is measured here." : "";
+    $("regionInfo").innerHTML = `<h3>${esc(REGION_NAMES[region])}</h3>
+      <p class="muted small">${fields.length ? `${esc(fields.join(", "))}.` : "No measurements for this region yet."}${esc(note)}</p>`;
+  }
+
+  // ---- vitals tiles + chart ------------------------------------------------
+
+  function renderTiles() {
+    if (!latest) return;
+    $("tiles").innerHTML = FIELDS.map(f => {
+      const now = latest[f.key], base = latest.baseline ? latest.baseline[f.key] : null;
+      const inRegion = region === "whole_body" || f.region === region;
+      if (isMasked(f.key)) {
+        // Shared console: sleep stays hidden until the astronaut reveals it.
+        return `<button type="button" class="tile masked ${inRegion ? "" : "dim"}" data-key="${f.key}" disabled>
+          <span class="t-label">${f.label}</span>
+          <span class="t-value">Hidden</span>
+          <span class="t-base muted">private on this console</span></button>`;
+      }
+      // Plain numbers: the difference from baseline is shown, never coloured as a warning.
+      const p = deltaPct(now, base);
+      const delta = p == null ? "" : `${p >= 0 ? "+" : ""}${p.toFixed(0)}%`;
+      const cls = ["tile", inRegion ? "" : "dim", f.key === chartField ? "charted" : ""].join(" ");
+      return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">
+        <span class="t-label">${f.label}</span>
+        <span class="t-value">${fmt(now)}<span class="t-unit"> ${f.unit}</span></span>
+        <span class="t-base muted">yours: ${fmt(base)} <span class="t-delta">${delta}</span></span></button>`;
+    }).join("");
+  }
+
+  let chart = null;
+
+  function rebuildChart() {
+    const field = FIELDS.find(f => f.key === chartField);
+    $("chartTitle").textContent = `${field.label} (${field.unit})`;
+    if (!window.Chart) { $("chartFallback").hidden = false; $("chart").hidden = true; return; }
+    if (chart) chart.destroy();
+    const css = getComputedStyle(document.documentElement);
+    const tok = name => css.getPropertyValue(name).trim();   // colours come from style.css tokens
+    chart = new window.Chart($("chart"), {
+      type: "line",
+      data: {
+        labels: history.map(p => time(p.t)),
+        datasets: [
+          { label: field.label, data: history.map(p => p.v[chartField]), borderColor: tok("--accent"),
+            pointRadius: 0, borderWidth: 2, tension: 0.3 },
+          { label: "Your baseline", data: history.map(p => p.v.baseline?.[chartField]), borderColor: tok("--muted"),
+            borderDash: [5, 5], pointRadius: 0, borderWidth: 1.5 },
+        ],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: tok("--muted"), maxTicksLimit: 6 }, grid: { color: tok("--line") } },
+          y: { ticks: { color: tok("--muted") }, grid: { color: tok("--line") }, grace: "10%" },
+        },
+      },
+    });
+  }
+
+  function pushChart() {
+    if (!chart) { rebuildChart(); return; }
+    const p = history[history.length - 1];
+    chart.data.labels.push(time(p.t));
+    chart.data.datasets[0].data.push(p.v[chartField]);
+    chart.data.datasets[1].data.push(p.v.baseline?.[chartField]);
+    while (chart.data.labels.length > MAX_POINTS) {
+      chart.data.labels.shift();
+      chart.data.datasets.forEach(d => d.data.shift());
+    }
+    chart.update("none");
+  }
+
+  // ---- sleep & light: data only --------------------------------------------
+  // From GET /astronauts/{id}/circadian (PROVISIONAL): the lighting mode and the
+  // 7-night bedtime log. The backend's `card` / `recommendation` / `evidence`
+  // texts are warnings and advice, so they are NOT shown here (the Commander
+  // sees them). Without the endpoint only last night's hours are shown.
 
   const CIRC_REFRESH_MS = 60000;
   const CHART_START_H = 20, CHART_SPAN_MIN = 14 * 60;   // 20:00 -> 10:00 station time (UTC)
@@ -104,8 +194,7 @@
     const live = !!circ;
     $("circLive").hidden = !live;
     $("lightChip").hidden = !live || !sleepRevealed;   // quarters' lighting is personal too
-    $("staticEvidence").hidden = live;   // the live card carries its own evidence line
-    if (!live) { $("tipsBox").open = true; return; }
+    if (!live) return;
 
     const L = circ.lighting || {};
     const since = L.since ? ` · since ${utcTime(L.since)}` : "";
@@ -113,25 +202,19 @@
       : `${A.LIGHTING_NAMES[L.mode] || L.mode} · ${L.cct_k} K${since}`;
     $("lightChip").className = `light-chip lc-${L.mode}`;
 
-    const cardText = A.circadianCardText(circ.card);
-    // The irregular-sleep warning is psychological: held until the Commander releases it.
-    const held = cardText && !A.isReleased(A.circadianKey(cfg.aid, circ));
-    const el = $("circCard");
-    el.hidden = !!held;
-    el.textContent = cardText || `Nothing stands out over the last ${circ.summary?.nights ?? 7} nights.`;
-    el.className = `circ-card ${cardText ? "watch" : "muted"}`;
-
     $("nightsChart").innerHTML = (circ.nights || []).map(nightRow).join("") + axisRow();
-
-    const rec = circ.recommendation;
-    $("circRec").innerHTML = rec ? `${esc(rec.text)} <a href="${esc(rec.source_url)}" target="_blank" rel="noopener" class="small">${esc(rec.source)}</a>` : "";
-    const ev = circ.evidence;
-    $("circEvidence").innerHTML = ev ? `${esc(ev.text)} <a href="${esc(ev.source_url)}" target="_blank" rel="noopener">${esc(ev.source)}</a>` : "";
 
     $("circShare").checked = !!circ.share_with_ground;
     $("circShareNote").textContent = circ.share_with_ground
       ? "Shared with the flight surgeon (the default). Untick to keep it on board."
       : "Not shared: the flight surgeon can't see your sleep and lighting summary. Tick to share again.";
+  }
+
+  // Last night's hours next to the astronaut's usual, as plain numbers.
+  function renderSleep(v) {
+    const h = v.sleep_h_last_night, base = v.baseline?.sleep_h_last_night;
+    $("sleepNote").textContent = typeof h !== "number" ? "No sleep data yet."
+      : `Last night: ${h} h${typeof base === "number" ? ` · your usual: ${base} h` : ""}`;
   }
 
   // ---- shared-console privacy ----------------------------------------------
@@ -217,188 +300,6 @@
   loadCircadian();
   setInterval(loadCircadian, CIRC_REFRESH_MS);
 
-  // Light & sleep card: compare last night against this astronaut's own usual.
-  function renderSleep(v) {
-    const h = v.sleep_h_last_night, base = v.baseline?.sleep_h_last_night;
-    const el = $("sleepNote");
-    if (typeof h !== "number") { el.textContent = "No sleep data yet."; el.className = "sleep-note muted"; return; }
-    const usual = typeof base === "number" ? ` (your usual: ${base} h)` : "";
-    const short = h < 6 || (typeof base === "number" && h < base * 0.85);
-    el.className = `sleep-note ${short ? "short" : "muted"}`;
-    el.textContent = short
-      ? `Last night: ${h} h${usual}, shorter than usual. Tonight, protect the hour before sleep.`
-      : `Last night: ${h} h${usual}, close to your usual. Keep the routine.`;
-  }
-
-  function onAlert(a) {
-    alerts.set(a.id, a);  // same id = same alert, now with insight filled in
-    renderBanner();
-    renderHistory();
-    renderBody();
-    renderRegionInfo();
-  }
-
-  // ---- body figure ---------------------------------------------------------
-
-  function selectRegion(r) {
-    region = r;
-    const first = FIELDS.find(f => f.region === r && !isMasked(f.key));
-    if (first) chartField = first.key;
-    renderBody();
-    renderTiles();
-    renderRegionInfo();
-    rebuildChart();
-  }
-
-  // Highest severity among this session's alerts, per body region.
-  function regionSeverity() {
-    const out = {};
-    for (const a of shown()) {
-      if (!out[a.body_region] || SEVERITY_RANK[a.severity] > SEVERITY_RANK[out[a.body_region]]) out[a.body_region] = a.severity;
-    }
-    return out;
-  }
-
-  function renderBody() {
-    const sev = regionSeverity();
-    document.querySelectorAll("#body .region").forEach(g => {
-      const r = g.dataset.region;
-      g.classList.toggle("selected", r === region);
-      g.classList.remove("sev-watch", "sev-alert", "sev-critical");
-      if (sev[r]) g.classList.add(`sev-${sev[r]}`);
-      g.setAttribute("aria-pressed", String(r === region));
-    });
-  }
-
-  function renderRegionInfo() {
-    const list = shown().filter(a => region === "whole_body" || a.body_region === region);
-    const hint = region === "head"
-      ? '<p class="muted small">Eyes and sleep live here. Use the vision check in the check-in form.</p>' : "";
-    $("regionInfo").innerHTML = `<h3>${esc(REGION_NAMES[region])}</h3>${hint}` + (list.length
-      ? `<ul class="mini">${list.slice().reverse().map(a =>
-          `<li class="sev-${esc(a.severity)}"><span class="dot"></span>${esc(profileName(a.profile))}
-           <span class="muted small">${esc(time(a.started_at))}</span></li>`).join("")}</ul>`
-      : '<p class="muted small">Nothing flagged here this session.</p>');
-  }
-
-  // ---- vitals tiles + chart ------------------------------------------------
-
-  function renderTiles() {
-    if (!latest) return;
-    $("tiles").innerHTML = FIELDS.map(f => {
-      const now = latest[f.key], base = latest.baseline ? latest.baseline[f.key] : null;
-      const pct = deltaPct(now, base);
-      const off = pct != null && Math.abs(pct) >= 10;
-      const inRegion = region === "whole_body" || f.region === region;
-      if (isMasked(f.key)) {
-        // Shared console: sleep stays hidden until the astronaut reveals it.
-        return `<button type="button" class="tile masked ${inRegion ? "" : "dim"}" data-key="${f.key}" disabled>
-          <span class="t-label">${f.label}</span>
-          <span class="t-value">Hidden</span>
-          <span class="t-base muted">private on this console</span></button>`;
-      }
-      const cls = ["tile", inRegion ? "" : "dim", off ? "off" : "", f.key === chartField ? "charted" : ""].join(" ");
-      const delta = pct == null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
-      return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">
-        <span class="t-label">${f.label}</span>
-        <span class="t-value">${fmt(now)}<span class="t-unit"> ${f.unit}</span></span>
-        <span class="t-base muted">yours: ${fmt(base)} <span class="t-delta">${delta}</span></span></button>`;
-    }).join("");
-  }
-
-  let chart = null;
-
-  function rebuildChart() {
-    const field = FIELDS.find(f => f.key === chartField);
-    $("chartTitle").textContent = `${field.label} (${field.unit})`;
-    if (!window.Chart) { $("chartFallback").hidden = false; $("chart").hidden = true; return; }
-    if (chart) chart.destroy();
-    const css = getComputedStyle(document.documentElement);
-    const tok = name => css.getPropertyValue(name).trim();   // colours come from style.css tokens
-    chart = new window.Chart($("chart"), {
-      type: "line",
-      data: {
-        labels: history.map(p => time(p.t)),
-        datasets: [
-          { label: field.label, data: history.map(p => p.v[chartField]), borderColor: css.getPropertyValue("--accent").trim(),
-            pointRadius: 0, borderWidth: 2, tension: 0.3 },
-          { label: "Your baseline", data: history.map(p => p.v.baseline?.[chartField]), borderColor: css.getPropertyValue("--muted").trim(),
-            borderDash: [5, 5], pointRadius: 0, borderWidth: 1.5 },
-        ],
-      },
-      options: {
-        animation: false, responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: tok("--muted"), maxTicksLimit: 6 }, grid: { color: tok("--line") } },
-          y: { ticks: { color: tok("--muted") }, grid: { color: tok("--line") }, grace: "10%" },
-        },
-      },
-    });
-  }
-
-  function pushChart() {
-    if (!chart) { rebuildChart(); return; }
-    const p = history[history.length - 1];
-    chart.data.labels.push(time(p.t));
-    chart.data.datasets[0].data.push(p.v[chartField]);
-    chart.data.datasets[1].data.push(p.v.baseline?.[chartField]);
-    while (chart.data.labels.length > MAX_POINTS) {
-      chart.data.labels.shift();
-      chart.data.datasets.forEach(d => d.data.shift());
-    }
-    chart.update("none");
-  }
-
-  // ---- alerts --------------------------------------------------------------
-
-  function renderBanner() {
-    const open = shown().filter(a => !acknowledged.has(a.id));
-    const el = $("banner");
-    if (!open.length) { el.hidden = true; return; }
-    const a = open[open.length - 1];
-    const v = verdict(a, mission);
-    el.className = `banner sev-${a.severity}`;
-    el.innerHTML = `
-      <div class="b-main">
-        <div class="b-top"><span class="sev">${esc(a.severity)}</span>
-          <strong class="b-name">${esc(profileName(a.profile))}</strong>
-          <span class="muted small">${esc(REGION_NAMES[a.body_region] || a.body_region)} · ${esc(time(a.started_at))}</span></div>
-        <div class="b-verdict ${v.onboard ? "onboard" : ""}">${esc(v.text)}</div>
-        <div class="b-action">${esc(a.onboard_action)}</div>
-        ${A.nasaRefs(a)}
-        ${insightBlock(a)}
-      </div>
-      <button type="button" class="ack" data-id="${esc(a.id)}">Got it</button>`;
-    el.querySelector(".ack").addEventListener("click", () => { acknowledged.add(a.id); renderBanner(); });
-    el.hidden = false;
-  }
-
-  function insightBlock(a) {
-    if (!a.insight) return '<p class="muted small">Working out an explanation…</p>';
-    return `<details><summary>Why was this flagged?</summary><dl>
-      <dt>Why</dt><dd>${esc(a.insight.why)}</dd>
-      <dt>Trend</dt><dd>${esc(a.insight.trend)}</dd>
-      <dt>Suggested</dt><dd>${esc(a.insight.recommended_action)}</dd></dl></details>`;
-  }
-
-  function renderHistory() {
-    const ul = $("history");
-    $("alertCount").textContent = shown().length;   // badge on the "Alerts" menu item
-    $("alertCount").hidden = !shown().length;
-    if (!shown().length) { ul.innerHTML = '<li class="muted">No alerts this session.</li>'; return; }
-    ul.innerHTML = shown().reverse().map(a => `
-      <li class="alert sev-${esc(a.severity)}">
-        <div class="head"><span class="sev">${esc(a.severity)}</span>
-          <strong>${esc(profileName(a.profile))}</strong>
-          <span class="muted small">${esc(time(a.started_at))}</span></div>
-        <div class="verdict">${esc(verdict(a, mission).text)}</div>
-        <div>${esc(a.onboard_action)}</div>
-        ${A.nasaRefs(a)}
-        ${insightBlock(a)}
-      </li>`).join("");
-  }
-
   // ---- check-in ------------------------------------------------------------
 
   async function onCheckin(e) {
@@ -455,11 +356,10 @@
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
 
-  // ---- on-board menu: one tab visible at a time ----------------------------
-  // The URL hash is the tab (#health, #checkin, #sleep, #alerts), so a tab can
-  // be linked to and the browser's back button works. Kept at the end of the
-  // file: it touches `chart`, which must already be declared.
-  const TABS = ["health", "checkin", "sleep", "alerts"];
+  // ---- console menu: one tab visible at a time ------------------------------
+  // The URL hash is the tab (#health, #checkin, #sleep), so a tab can be linked
+  // to. Kept at the end of the file: it touches `chart`, declared above.
+  const TABS = ["health", "checkin", "sleep"];
 
   function showTab() {
     const want = location.hash.slice(1);
@@ -473,9 +373,5 @@
   }
 
   window.addEventListener("hashchange", showTab);
-
-  // The Commander released a psychological warning (another tab or pane on
-  // this machine): show it now.
-  A.onReleaseChange(() => { renderBanner(); renderHistory(); renderBody(); renderRegionInfo(); renderCircadian(); });
   showTab();
 })();
