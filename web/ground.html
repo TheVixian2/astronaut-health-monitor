@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ground · AHM</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="ground">
+  <header class="bar">
+    <div>
+      <h1><a href="index.html" class="home">Astronaut Health Monitor</a> <span class="muted">· Ground</span></h1>
+      <div class="muted">Flight surgeon · whole crew</div>
+    </div>
+    <div class="status" aria-live="polite">
+      <span id="conn" class="pill pill-wait">connecting…</span>
+      <span id="missionReal"></span>
+    </div>
+  </header>
+
+  <!-- Always visible: this view is old by design. -->
+  <section class="delay-banner" id="delayBanner">
+    <strong>DELAYED VIEW</strong>
+    <span id="delayText">Everything here is at least one light-time old.</span>
+  </section>
+
+  <!-- Demo overlay: alerts raised on board that have not reached ground yet.
+       Ground cannot really know this; it is here so the audience can see the gap. -->
+  <section class="card transit" id="transit" hidden>
+    <h2>Signals in transit <span class="muted">· demo overlay — ground can't see these yet</span></h2>
+    <ul id="transitList" class="transit-list"></ul>
+  </section>
+
+  <main class="ground-grid">
+    <section class="crew" id="crew" aria-label="Crew"><p class="muted">Loading crew…</p></section>
+
+    <section class="card">
+      <h2>Alerts received <span class="muted">· newest first</span></h2>
+      <ul id="alerts" class="alerts"><li class="muted">Nothing received yet.</li></ul>
+    </section>
+  </main>
+
+  <footer class="foot muted small">
+    Decision support only — not a diagnosis.
+    <label class="check"><input type="checkbox" id="showTransit" checked> Show in-transit overlay (demo)</label>
+  </footer>
+
+  <script src="mock.js"></script>
+  <script src="common.js"></script>
+  <script src="ground.js"></script>
+</body>
+</html>
