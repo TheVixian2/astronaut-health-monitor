@@ -100,8 +100,8 @@ Branch: `backend`
   habits. **Only `a2` is irregular** (bedtime spread ~2 h, bright light before sleep
   on 4 of 7 nights), so that's the demo story. `sleep_h_last_night` in vitals now
   comes from this log.
-  - **Ethics, built in:** private by default (the ground view gets **403** until
-    the astronaut shares), suggestive wording only (tested: no "must", no
+  - **Ethics, built in:** shared with ground by default (NotKaemy's decision; the
+    ground view gets **403** once the astronaut opts out), suggestive wording only (tested: no "must", no
     diagnosis), the app **never changes the lights itself**, no comparison between
     crew, and it doesn't touch crew status or alerts.
   - **Luca, proposed for the spec (already working, provisional):**
@@ -195,8 +195,9 @@ Branch: `backend`
     under **altered gravity**. Backend follows the spec for now.
 - **@NotKaemy:** charts can now load weeks of real history from `/history`, and the
   SANS view can draw `vision_checks` as a trend line with the `components` as
-  the "why". Circadian sharing default: **waiting on stefanalbu2010-byte**
-  (see the decision above).
+  the "why". **Circadian sharing default is done on `backend`:** `_shared` now
+  defaults to `True`, so Ground gets 200 for everyone, and 403 ("the astronaut has
+  opted out…") after `PUT .../circadian/sharing {"share_with_ground": false}`. Tested.
 - **Blocked on:** nothing.
 
 ## Presentation — dbm711
