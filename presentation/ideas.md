@@ -131,5 +131,11 @@ Append freely. Dated bullets. Unsorted is fine.
 - **Many teams are on this challenge and already use OSDR RadLab + NOAA.** NASA data is
   the minimum. What sets us apart is SANS, the act-now verdict and astronaut-controlled
   sharing.
-- **Still TODO:** the challenge page's own Resources list needs to be copied from a
-  browser (scripts fail the site's certificate check).
+- **Official challenge resources found** (now at the top of `docs/resources.md`): NASA's
+  *5 Hazards*, *Risks of Human Spaceflight*, *Ongoing HRP Research*, plus two CSA pages
+  (radiation monitoring, why science in space). **Name them on a slide and in the
+  submission form.** Every alert shows its NASA hazard and HRP risk, so it's easy to
+  point at them in the demo.
+- **The only targeted partner resource is CSA radiation monitoring.** Cutting `spe`
+  completely would drop it. A light radiation display (dose per environment, OSDR RadLab)
+  keeps it in.
