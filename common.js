@@ -11,6 +11,32 @@
     { key: "mood_1to5", label: "Mood", unit: "/5", region: "head" },
   ];
 
+  // Flat icon per vital (24 x 24, filled shapes). Colour comes from CSS:
+  // .vi-<name> sets `color` (tokens --ic-*), .d paths are the darker detail
+  // tone, .m the thermometer's mercury. Use AHM.vitalIcon(key) for the HTML.
+  const VITAL_ICONS = {
+    heart_rate_bpm: ["heart", `<path d="M12 20.6c-.3 0-.5-.1-.7-.3C7.4 17 3 13.4 3 9.2 3 6.3 5.2 4 8 4c1.6 0 3.1.8 4 2 .9-1.2 2.4-2 4-2 2.8 0 5 2.3 5 5.2 0 4.2-4.4 7.8-8.3 11.1-.2.2-.4.3-.7.3z"/>
+      <path class="ds" d="M4.5 11.3h3.6l1.5-2.6 2.4 5.2 1.9-3.9 1.1 1.3h4.5"/>`],
+    spo2_pct: ["spo2", `<path d="M12 2.6c-.3 0-.5.1-.7.4C9.6 5.5 5.5 11 5.5 14.6a6.5 6.5 0 0 0 13 0C18.5 11 14.4 5.5 12.7 3c-.2-.3-.4-.4-.7-.4z"/>
+      <circle class="d" cx="10" cy="15.6" r="1.9"/><circle class="d" cx="14.3" cy="13" r="1.2"/><circle class="d" cx="13.6" cy="17.6" r=".9"/>`],
+    resp_rate_bpm: ["resp", `<rect x="11.1" y="2.5" width="1.8" height="8.5" rx=".9"/>
+      <path d="M10.4 8.6V18c0 1.5-1.1 2.6-2.6 2.6-2.4 0-4.4-1.3-4.4-4.1 0-4 1.6-8.6 4-9.7 1.6-.7 3 .2 3 1.8z"/>
+      <path d="M13.6 8.6V18c0 1.5 1.1 2.6 2.6 2.6 2.4 0 4.4-1.3 4.4-4.1 0-4-1.6-8.6-4-9.7-1.6-.7-3 .2-3 1.8z"/>
+      <path class="ds" d="M7.5 12.5l1.6 1.4M7 16.2l2-.6M16.5 12.5l-1.6 1.4M17 16.2l-2-.6"/>`],
+    temp_c: ["temp", `<rect x="9.4" y="2.4" width="5.2" height="13" rx="2.6"/><circle cx="12" cy="17.6" r="4.1"/>
+      <rect class="m" x="11.1" y="7" width="1.8" height="9" rx=".9"/><circle class="m" cx="12" cy="17.6" r="2.4"/>
+      <path class="ds-light" d="M16.3 5h2M16.3 8h1.4M16.3 11h2"/>`],
+    sleep_h_last_night: ["sleep", `<path d="M20.2 14.6A8.4 8.4 0 1 1 9.4 3.8a6.8 6.8 0 0 0 10.8 10.8z"/>
+      <path d="M16.6 3.2l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/><path d="M20.4 7.6l.4.9.9.4-.9.4-.4.9-.4-.9-.9-.4.9-.4z"/>`],
+    mood_1to5: ["mood", `<circle cx="12" cy="12" r="9.2"/>
+      <circle class="d" cx="9" cy="10" r="1.3"/><circle class="d" cx="15" cy="10" r="1.3"/>
+      <path class="ds" d="M8.3 14.2c.9 1.6 2.2 2.4 3.7 2.4s2.8-.8 3.7-2.4"/>`],
+  };
+  function vitalIcon(key) {
+    const ic = VITAL_ICONS[key];
+    return ic ? `<span class="vi vi-${ic[0]}" aria-hidden="true"><svg viewBox="0 0 24 24">${ic[1]}</svg></span>` : "";
+  }
+
   // Display names for condition profiles. Unknown ids fall back to the raw id,
   // so post-pivot profiles still render before they are added here.
   const PROFILE_NAMES = {
@@ -162,7 +188,7 @@
   const profileName = id => PROFILE_NAMES[id] || id;
 
   window.AHM = {
-    FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES,
+    FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES, vitalIcon,
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
