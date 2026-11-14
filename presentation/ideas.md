@@ -66,3 +66,25 @@ Append freely. Dated bullets. Unsorted is fine.
   https://pmc.ncbi.nlm.nih.gov/articles/PMC6043524 ·
   https://pmc.ncbi.nlm.nih.gov/articles/PMC8085766 ·
   https://cm.healio.com/news/ophthalmology/20180515/nasa-research-progresses-toward-understanding-ocular-consequences-of-longduration-spaceflights
+
+## 2026-11-14 — behavioural health check-in
+
+- **The AI's job is compression, not assessment.** Deep-space comms are
+  bandwidth-constrained, so the questionnaire is summarised before transmission
+  rather than sent raw. That is a real operational practice and a defensible
+  reason for an LLM to be in the loop at all.
+- **The astronaut reviews the summary and decides what goes to ground.**
+  Flow is: questionnaire -> AI summary -> astronaut reviews -> astronaut
+  chooses -> transmit. `share_with_ground` already exists in `POST /checkin`.
+- **Why that matters — the strongest point here.** Mental health is the one area
+  where crew have a real incentive to underreport: in aerospace medicine,
+  disclosing psychological symptoms can affect flight status, so people don't
+  disclose. A system where the crew member controls what goes down may produce
+  *more* honest reporting than one that transmits automatically. Non-obvious,
+  and it shows we understood the domain rather than just built a form.
+- **Use PHQ-2** — two validated screening questions — not invented ones. Free,
+  and anyone clinical in the room will notice the difference.
+- **Seed six weeks of history** via `--seed-baseline` so a declining trend is
+  visible immediately. Bi-weekly cadence is otherwise undemoable in a 2-day event.
+- Decision support bites hardest here: the summary describes what was reported
+  and how it is trending. It never names a condition.
