@@ -9,14 +9,15 @@
   <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <!-- Loaded without blocking: a slow or missing network (offline on board) must never hold up the page's scripts. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="login-page">
   <main class="login-box card">
     <h1><span class="app-name">Dr. Galactic</span> <span class="stripe-mark" aria-hidden="true"></span></h1>
     <p class="muted">Astronaut health monitoring. Sign in to continue.</p>
-    <form id="login" class="login-form" autocomplete="off">
+    <form id="login" class="login-form" autocomplete="off" onsubmit="return false">
       <label>Username <input name="user" required autofocus autocapitalize="none" spellcheck="false"></label>
       <label>Password <input name="password" type="password" required></label>
       <button type="submit">Sign in</button>
