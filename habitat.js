@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Commander, "Habitat" tab: a concept layout of the habitat with a live dot per
 // crew member (GET /crew/locations, every 5 s) and, per person, time in shared
 // rooms vs their own normal (GET /astronauts/{id}/rooms, every 60 s).

@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Ground view: Mission Control. Whole crew at once, every stream opened with
 // view=ground, so everything arrives one light-time late (the backend delays it).
 //
@@ -252,7 +253,7 @@
       const crewSaw = v.onboard === true ? "Crew was told: act on board now"
         : v.onboard === false ? "Crew was told: ground will advise" : `Act within ${dur(a.act_within_s)}`;
       const ins = a.insight
-        ? `<details><summary>Insight</summary><dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd>
+        ? `<details><summary>Insight · ${a.insight.source === "claude" ? "AI-generated (Claude)" : "On board"}</summary><dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd>
            <dt>Trend</dt><dd>${esc(a.insight.trend)}</dd><dt>Suggested</dt><dd>${esc(a.insight.recommended_action)}</dd></dl></details>`
         : '<p class="muted small">Insight not received yet.</p>';
       return `<li class="alert sev-${esc(a.severity)}">

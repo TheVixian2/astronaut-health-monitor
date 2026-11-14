@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Health history: hour-by-hour average, high and low for each vital, plus
 // sleep, alerts and the Mission Control report. Data: GET /astronauts/{id}/history
 // (avg + low + high per bucket), /vitals (baseline), /circadian, /alerts, /report.

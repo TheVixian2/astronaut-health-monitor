@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Shared helpers for every web view. Field names follow docs/api-spec.md.
 // Exposes window.AHM.
 

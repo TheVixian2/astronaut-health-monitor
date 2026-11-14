@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Ship's doctor, "Medications" tab: medication warnings for the whole crew.
 // The page's other tabs are the doctor's own data (self-check.js).
 // - Scheduled doses from the SAMPLE plan in meds.js: due now, overdue, upcoming.

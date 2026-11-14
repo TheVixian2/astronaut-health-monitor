@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Login gate and roles for every page. Load it in <head>, before anything else,
 // so a signed-out visitor is redirected before the page draws.
 //
