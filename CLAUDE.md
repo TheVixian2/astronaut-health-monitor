@@ -96,6 +96,13 @@ profile also stores `onboard_action` (one line for the watch) and `body_region`
 4. Never edit `docs/api-spec.md` unless the owner asks.
 5. This file holds stable decisions only — not progress. Progress lives in the
    team's plan doc checklist.
+6b. **`/events` is shared too** — what judges, mentors and organisers actually
+   said to us. Write it down within ten minutes of them walking away, in their
+   words, one file per visit (copy `events/_template.md`). Every point they make
+   gets a decision: actioned, rejected with a reason, or open. Keep it separate
+   from `presentation/ideas.md` — that folder is our thinking, this one is their
+   reaction, and a question two judges both ask is a signal you'll miss if the
+   two are mixed.
 6. **`/presentation` is shared — everyone writes there** (the one exception to
    rule 1). If an idea belongs in the pitch rather than the code — a framing, a
    number worth quoting, a demo beat — append it to `presentation/ideas.md`
