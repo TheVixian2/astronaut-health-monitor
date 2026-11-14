@@ -57,12 +57,25 @@
           <rect x="88" y="72" width="24" height="18" rx="4"/>
           <rect x="58" y="86" width="84" height="142" rx="22"/>
         </g>
+        <!-- Front view, so the astronaut's left is the viewer's right.
+             Lungs: narrow rounded apex under the collarbone, broad base curving
+             over the diaphragm dome (~y 168), straight inner (medial) border.
+             The astronaut's left lung (viewer's right) is narrower and has the
+             cardiac notch where the heart sits. -->
         <g class="region" data-region="lungs" tabindex="0" role="button" aria-label="Lungs">
-          <ellipse cx="82" cy="135" rx="15" ry="30"/>
-          <ellipse cx="118" cy="135" rx="15" ry="30"/>
+          <!-- right lung (viewer's left): larger -->
+          <path d="M84 96 C74 100 66 120 65 145 C64 158 65 166 68 170 Q81 158 94 166
+                   C96 150 95 120 93 104 C91 98 88 95 84 96 Z"/>
+          <!-- left lung (viewer's right): narrower, with the cardiac notch -->
+          <path d="M116 96 C126 100 134 120 135 145 C136 158 135 166 132 170 Q124 161 117 166
+                   C119 158 121 148 117 140 C111 134 107 124 107 104 C109 98 112 95 116 96 Z"/>
         </g>
+        <!-- Heart: lower middle of the chest behind the sternum, about two-thirds
+             left of the midline (viewer's right), resting on the diaphragm, apex
+             pointing down and to the astronaut's left. -->
         <g class="region" data-region="heart" tabindex="0" role="button" aria-label="Heart">
-          <path d="M110 152 c-8 -9 -20 -2 -14 8 l14 14 l14 -14 c6 -10 -6 -17 -14 -8z"/>
+          <path transform="rotate(-30 108 154)"
+                d="M108 144 c-7 -8 -18 -2 -12 7 l12 13 l12 -13 c6 -9 -5 -15 -12 -7z"/>
         </g>
         <g class="region" data-region="head" tabindex="0" role="button" aria-label="Head">
           <circle cx="100" cy="42" r="30"/>
