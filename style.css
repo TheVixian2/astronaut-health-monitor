@@ -230,24 +230,52 @@ a.home:hover { text-decoration: underline; }
 /* On the My health tab the page fills the window: the console grid stretches
    to the bottom and the chart takes the extra height (body[data-tab] is set by
    self-check.js; also on the Commander's and doctor's pages). */
-body.selfcheck[data-tab="health"] { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
-body.selfcheck[data-tab="health"] #console { flex: 1; }
+body.selfcheck[data-tab="health"], body.selfcheck[data-tab="checkin"], body.selfcheck[data-tab="sleep"] {
+  min-height: 100vh; min-height: calc(100dvh / var(--z, 1)); display: flex; flex-direction: column; }
+body.selfcheck[data-tab="health"] #console, body.selfcheck[data-tab="checkin"] #console,
+body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .chart-wrap { margin-top: 16px; flex: 1; min-height: 260px; display: flex; flex-direction: column; position: relative; min-width: 0; }
 .chart-wrap .chart-box { position: relative; flex: 1; min-height: 220px; }
 .chart-wrap .chart-box canvas { position: absolute; inset: 0; }
 .chart-head { margin-bottom: 6px; }
 
 /* check-in */
-.checkin { display: grid; gap: 12px; }
-.checkin fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0; padding: 8px 10px; }
-.checkin legend { color: var(--muted); padding: 0 4px; }
-.checkin .row { display: flex; gap: 8px; align-items: center; }
-.checkin input[type=number] { width: 5em; }
-.scale, .chips { display: flex; flex-wrap: wrap; gap: 6px 12px; }
-.scale label, .chips label { display: flex; gap: 4px; align-items: center; }
-.share { font-weight: 600; }
-.checkin p { margin: -8px 0 0; }
-.checkin button { justify-self: start; padding: 8px 14px; }
+/* Check-in wizard: one question at a time (self-check.js, "check-in"). */
+.checkin-card { display: flex; flex-direction: column; }
+.ci-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ci-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; margin-bottom: 8px; }
+#ciBarFill { height: 100%; width: 0; background: var(--mars); transition: width .2s ease; }
+.ci-wizard, .ci-done { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 24px;
+  width: 100%; max-width: 860px; margin: 0 auto; padding: 24px 0; }
+.ci-done { align-items: flex-start; }
+.ci-step { display: flex; flex-direction: column; gap: 16px; }
+.ci-q { margin: 0; font-size: 28px; font-weight: 600; line-height: 1.25; color: var(--text-strong); }
+.ci-hint { margin: 0; font-size: 15px; }
+.ci-source { margin: 0; }
+.ci-options { display: grid; gap: 12px; }
+.ci-five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ci-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ci-chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { .ci-five, .ci-four, .ci-chips { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ci-options label { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 72px; padding: 14px 10px; text-align: center; cursor: pointer; font-size: 17px;
+  border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); transition: background .12s, border-color .12s; }
+.ci-options label:hover { background: rgba(255, 255, 255, .07); }
+.ci-options input { position: absolute; opacity: 0; pointer-events: none; }
+.ci-options label:has(input:checked) { border-color: var(--mars); background: var(--onboard-bg); color: var(--text-strong); }
+.ci-options label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ci-num { font-size: 32px; font-weight: 700; line-height: 1; color: var(--text-strong); }
+.ci-cap { font-size: 13px; color: var(--muted); }
+.ci-number { display: flex; align-items: center; gap: 14px; }
+.ci-number input { width: 4.5em; font-size: 36px; font-weight: 700; text-align: center; padding: 8px; }
+.ci-unit { font-size: 22px; color: var(--muted); }
+.ci-step-btn { width: 56px; height: 56px; font-size: 28px; line-height: 1; border-radius: 12px; }
+.ci-nav { display: flex; gap: 12px; align-items: center; }
+.ci-nav button { min-width: 140px; padding: 12px 22px; font-size: 16px; border-radius: 10px; }
+.ci-nav #ciNext, .ci-nav #ciSubmit { margin-left: auto; }
+.ci-nav .ci-secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
+.ci-result { margin: 0; min-height: 1.4em; }
+.ci-done button { padding: 12px 22px; font-size: 16px; border-radius: 10px; }
 
 .foot { padding-top: 20px; }
 
@@ -340,7 +368,7 @@ body.selfcheck[data-tab="health"] #console { flex: 1; }
 .private-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-bottom: 8px; }
 
 /* ---- login + area menus --------------------------------------------------- */
-.login-page { display: grid; place-items: center; min-height: 100vh; }
+.login-page { display: grid; place-items: center; min-height: 100vh; min-height: calc(100dvh / var(--z, 1)); }
 .login-box { width: min(360px, 100%); }
 .login-box h1 { margin-bottom: 4px; }
 .login-form { display: grid; gap: 12px; margin: 16px 0; }
@@ -429,7 +457,6 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .86em; }
 
 /* on-board tabs: a tab with a single card uses the full width */
 .sc-grid > .solo { grid-column: 1 / -1; }
-.checkin-card .checkin { max-width: 640px; }
 
 /* Body figure: the heart icon has thin vessels, so its selection outline is
    thinner than other regions' or it swallows them. */

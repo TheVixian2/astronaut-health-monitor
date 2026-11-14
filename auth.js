@@ -82,6 +82,27 @@
   if (window.top !== window.self) document.documentElement.classList.add("embedded");
 
   const page = location.pathname.split("/").pop() || "index.html";
+
+  // ---- bigger interface on big windows (owner's call, 2026-11-14) ----------
+  // Pages are laid out for 1280 x 720. On a bigger window the whole page is
+  // zoomed by the same factor (capped at 1.75) so it fills the window; the
+  // effective layout never drops below 1280 x 720, so breakpoints and the
+  // full-height tabs behave as they do there. Zoom also scales vh, so
+  // style.css divides window heights by --z. Not on the presenter page or
+  // demo.html, which size themselves. Runs here, in <head>, to avoid a jump.
+  if (page !== "index.html" && page !== "demo.html") {
+    const applyZoom = () => {
+      const z = Math.round(Math.max(1, Math.min(innerWidth / 1280, innerHeight / 720, 1.75)) * 100) / 100;
+      document.documentElement.style.zoom = z === 1 ? "" : String(z);
+      document.documentElement.style.setProperty("--z", String(z));
+      window.AHM_ZOOM = z;
+      if (window.Chart) window.Chart.defaults.devicePixelRatio = (window.devicePixelRatio || 1) * z;   // sharp charts
+    };
+    applyZoom();
+    addEventListener("resize", applyZoom);
+    addEventListener("DOMContentLoaded", applyZoom);   // Chart.js may load after this script
+  }
+
   if (page === "login.html") return;
   const s = session();
   if (!s) {
