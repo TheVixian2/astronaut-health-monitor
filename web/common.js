@@ -171,10 +171,101 @@
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 
+  // ---- psychological warnings: Commander first --------------------------------
+  // Decision (NotKaemy, 2026-11-14): a psychological warning reaches the
+  // Commander before the crew member, so the Commander can decide how and when
+  // to tell them instead of the person learning it from a screen. Physical
+  // alerts are never held back.
+  //
+  // The "released" state lives in localStorage, so it only crosses tabs/panes
+  // on ONE machine (fine for the demo). A real ship needs it in the backend.
+  const PSYCH_PROFILES = new Set(["sleep_debt"]);
+  const isPsychological = a => a.hazard === "isolation" || PSYCH_PROFILES.has(a.profile);
+  const alertKey = a => `alert:${a.id}`;
+  // One key per astronaut per night: a new night's sleep warning needs a new release.
+  const circadianKey = (aid, circ) => `circ:${aid}:${circ?.nights?.[circ.nights.length - 1]?.night_of || ""}`;
+  const RELEASE_KEY = "ahm-psych-released";
+
+  function releasedMap() {
+    try { return JSON.parse(localStorage.getItem(RELEASE_KEY) || "{}"); } catch { return {}; }
+  }
+  const releasedAt = key => releasedMap()[key] || null;
+  const isReleased = key => !!releasedAt(key);
+  function releaseToCrew(key) {
+    const m = releasedMap();
+    m[key] = Date.now();
+    try { localStorage.setItem(RELEASE_KEY, JSON.stringify(m)); } catch { /* demo only */ }
+  }
+  // Fires in OTHER tabs/panes when the Commander releases something.
+  function onReleaseChange(fn) {
+    window.addEventListener("storage", e => { if (e.key === RELEASE_KEY) fn(); });
+  }
+
+  // ---- watch the whole crew (Commander, ship's doctor) -------------------------
+  // These roles are on board, so nothing is delayed. Against the real backend
+  // they POLL GET /vitals + GET /alerts every 3 s instead of holding 4 SSE
+  // streams: a browser allows only ~6 connections per host, and the astronaut
+  // console (1) + Ground (4) already need 5 when the demo runs on one machine.
+  // Mock mode keeps in-page streams (they use no connections).
+  const POLL_MS = 3000;
+
+  async function watchCrew(cfg, opts = {}) {
+    const list = await getJSON(cfg.base, "/crew", cfg.mock);
+    if (cfg.mock) return streamCrew(cfg, list, opts);
+    const { onVitals, onAlert, onConn } = opts;
+    const lastTs = {};
+    const poll = async () => {
+      let ok = 0;
+      await Promise.all(list.map(async c => {
+        const p = `/astronauts/${encodeURIComponent(c.id)}`;
+        try {
+          if (onVitals) {
+            const v = await getJSON(cfg.base, `${p}/vitals`, false);
+            if (v.timestamp !== lastTs[c.id]) { lastTs[c.id] = v.timestamp; onVitals(c.id, v); }
+          }
+          if (onAlert) (await getJSON(cfg.base, `${p}/alerts`, false)).slice().reverse().forEach(onAlert);   // oldest first
+          ok++;
+        } catch { /* counted below */ }
+      }));
+      if (onConn) {
+        if (ok === list.length) onConn("connected", "pill-on");
+        else onConn(ok ? `${ok}/${list.length} reachable` : "offline", ok ? "pill-wait" : "pill-off");
+      }
+    };
+    poll();
+    setInterval(poll, POLL_MS);
+    return list;
+  }
+
+  function streamCrew(cfg, list, { onVitals, onAlert, onConn } = {}) {
+    const sources = [];
+    const update = () => {
+      const live = sources.filter(s => s.readyState === 1).length;
+      if (!onConn) return;
+      if (live === sources.length) onConn(cfg.mock ? "connected (mock)" : "connected", "pill-on");
+      else onConn(live ? `${live}/${sources.length} streams` : "connecting…", "pill-wait");
+    };
+    for (const c of list) {
+      const { source } = openStream({ ...cfg, aid: c.id, view: "crew" });
+      sources.push(source);
+      source.onopen = update;
+      source.onerror = update;
+      if (onVitals) source.addEventListener("vitals", e => onVitals(c.id, JSON.parse(e.data)));
+      if (onAlert) source.addEventListener("alert", e => onAlert(JSON.parse(e.data)));
+    }
+    return list;
+  }
+
+  Object.assign(window.AHM, {
+    isPsychological, alertKey, circadianKey, releasedAt, isReleased, releaseToCrew, onReleaseChange, watchCrew,
+  });
+
   // ---- page chrome shared by every page (menus, user, sign-out) -------------
   // Links marked data-href keep ?mock / ?base / ?aid when moving between pages.
   document.querySelectorAll("a[data-href]").forEach(a => { a.href = linkWithSettings(a.dataset.href); });
   const who = window.AHMAuth && window.AHMAuth.session();
-  document.querySelectorAll("[data-user]").forEach(el => { el.textContent = who ? `Signed in as ${who.user}` : ""; });
+  document.querySelectorAll("[data-user]").forEach(el => { el.textContent = who ? `Signed in as ${who.user} · ${who.label}` : ""; });
+  // "All views" and other presenter-only links.
+  if (!who || who.role !== "demo") document.querySelectorAll("[data-demo-only]").forEach(el => { el.hidden = true; });
   document.querySelectorAll("[data-signout]").forEach(b => b.addEventListener("click", () => window.AHMAuth.logout()));
 })();

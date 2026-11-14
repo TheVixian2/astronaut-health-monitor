@@ -8,28 +8,45 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Presenter ("demo" account) only: every other role is sent straight to
+       its own interface by auth.js. -->
   <header class="bar">
     <h1>Astronaut Health Monitor <span class="stripe-mark" aria-hidden="true"></span></h1>
     <div class="user small"><span data-user></span> · <button type="button" class="link" data-signout>Sign out</button></div>
   </header>
 
-  <p class="muted pick">Where are you working from?</p>
+  <p class="muted pick">Presenter: open any interface.</p>
   <main class="areas">
     <a class="card area-choice onboard" data-href="self-check.html" href="self-check.html">
       <span class="area-tag">On board</span>
       <h2>Astronaut console</h2>
-      <p>On the spacecraft. Your own vitals against your baseline, live: alerts,
-        check-in, sleep &amp; light.</p>
+      <p>Your own vitals against your baseline, live: alerts, check-in, sleep &amp; light.</p>
+      <p class="muted small">Login: <code>crew</code></p>
+    </a>
+    <a class="card area-choice onboard" data-href="captain.html" href="captain.html">
+      <span class="area-tag">On board</span>
+      <h2>Commander</h2>
+      <p>Physical and psychological warnings for every crew member, with advice
+        on how to help. Psychological ones reach the Commander first.</p>
+      <p class="muted small">Login: <code>captain</code></p>
+    </a>
+    <a class="card area-choice onboard" data-href="doctor.html" href="doctor.html">
+      <span class="area-tag">On board</span>
+      <h2>Ship's doctor</h2>
+      <p>Medication warnings: doses due, overdue and suggested by alerts, for the
+        whole crew.</p>
+      <p class="muted small">Login: <code>doctor</code></p>
     </a>
     <a class="card area-choice ground" data-href="ground.html" href="ground.html">
       <span class="area-tag">Ground</span>
       <h2>Flight surgeon</h2>
       <p>Mission control. The whole crew at once, arriving one light-time late.</p>
+      <p class="muted small">Login: <code>ground</code></p>
     </a>
   </main>
 
   <p class="muted small landing-note">
-    For the pitch: <a data-href="demo.html" href="demo.html">live demo, both side by side</a>.
+    For the pitch: <a data-href="demo.html" href="demo.html">live demo, astronaut and ground side by side</a>.
     No backend running? <a href="index.html?mock">Use mock data</a>.
   </p>
   <script src="common.js"></script>
