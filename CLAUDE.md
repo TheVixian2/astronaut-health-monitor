@@ -32,6 +32,14 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - `self-check.html` / `self-check.js` — the astronaut view: alert banner with
   verdict, clickable body figure, vitals tiles vs baseline, Chart.js trend,
   check-in form (`share_with_ground` off by default), alert history.
+- **Circadian (PROVISIONAL in the spec):** Self-check's Light & sleep card
+  reads `GET /circadian?view=crew` — lighting chip, `card` text, 7-night
+  bedtime chart, `recommendation` + source, and the share toggle
+  (`PUT /circadian/sharing`, off by default). Ground shows one line per
+  astronaut from `view=ground`: a **403 means "kept private by the
+  astronaut"**, 404 shows nothing. Without the endpoint the card falls back to
+  the static guidance. `card` is accepted as a string (backend) or an object
+  (spec) via `AHM.circadianCardText()`.
 - `ground.html` / `ground.js` — the flight surgeon: one `view=ground` stream
   per astronaut, crew cards (status from received alerts, vitals vs baseline,
   HR sparkline, data age), received-alerts feed, real light time always in the

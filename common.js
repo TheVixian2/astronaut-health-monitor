@@ -91,11 +91,27 @@
     return { url, source: mock ? new window.Mock.EventSource(url) : new EventSource(url) };
   }
 
+  // Errors carry .status so callers can tell 403 (private) from 404 (missing).
+  function httpError(path, status) {
+    const err = new Error(`${path} → HTTP ${status}`);
+    err.status = status;
+    return err;
+  }
+
   async function getJSON(base, path, mock) {
     if (mock) return window.Mock.get(path);
     const r = await fetch(base + path);
-    if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`);
+    if (!r.ok) throw httpError(path, r.status);
     return r.json();
+  }
+
+  async function putJSON(base, path, body, mock) {
+    if (mock) return window.Mock.put(path, body);
+    const r = await fetch(base + path, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    if (!r.ok) throw httpError(path, r.status);
+    return r.json().catch(() => ({}));
   }
 
   async function postJSON(base, path, body, mock) {
@@ -103,8 +119,19 @@
     const r = await fetch(base + path, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-    if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`);
+    if (!r.ok) throw httpError(path, r.status);
     return r.json().catch(() => ({}));
+  }
+
+  // SSLA lighting modes (GET /astronauts/{id}/circadian -> lighting.mode).
+  const LIGHTING_NAMES = { general: "General", pre_sleep: "Pre-sleep", phase_shift: "Phase-shift", off: "Lights off" };
+
+  // Spec shows `card` as an object, backend/circadian.py returns a string or
+  // null. Accept both until the shape settles.
+  function circadianCardText(card) {
+    if (card == null) return null;
+    if (typeof card === "string") return card;
+    return card.text || card.message || null;
   }
 
   // CLAUDE.md: round trip > act_within_s -> "Act on board now", else "Ground will see this in X".
@@ -138,7 +165,8 @@
 
   window.AHM = {
     FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES,
-    settings, linkWithSettings, openStream, getJSON, postJSON,
+    settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
+    LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
     HAZARDS, HRP_RISKS, nasaRefs,
   };

@@ -109,11 +109,27 @@
       </form>
     </section>
 
-    <!-- Light & sleep: suggestion from our mentor/judge (presentation/ideas.md).
-         Text only; uses sleep_h_last_night vs. the personal baseline. -->
+    <!-- Light & sleep: suggestion from our mentor/judge (events/2026-11-14-mentor-judges.md).
+         Live data from GET /astronauts/{id}/circadian (PROVISIONAL in the spec);
+         if that endpoint is missing, only the static guidance below is shown. -->
     <section class="card sleep-light">
-      <h2>Light &amp; sleep</h2>
+      <h2>Light &amp; sleep <span id="lightChip" class="light-chip" hidden></span></h2>
       <p id="sleepNote" class="sleep-note muted">Waiting for data…</p>
+
+      <div id="circLive" hidden>
+        <p id="circCard" class="circ-card"></p>
+        <div class="nights-head small muted">Last 7 nights · bar = asleep · <span class="lg-bright">■</span> bright light in the last hour before sleep</div>
+        <div id="nightsChart" class="nights"></div>
+        <p id="circRec" class="circ-rec"></p>
+        <p id="circEvidence" class="muted small"></p>
+        <label class="row share">
+          <input type="checkbox" id="circShare"> Share sleep &amp; lighting with ground
+        </label>
+        <p id="circShareNote" class="muted small">Off by default. Your sleeping-quarters data stays on board unless you choose otherwise.</p>
+      </div>
+
+      <details id="tipsBox">
+        <summary>How the station's lighting modes work</summary>
       <ul class="tips">
         <li><strong>1 h before sleep:</strong> switch your module lights to
           <em>Pre-sleep</em> mode (about 2700 K, blue-depleted). Blue light around
@@ -126,7 +142,8 @@
           sunrises a day, so its lights are your clock. A disrupted clock is
           associated with weaker immune defence.</li>
       </ul>
-      <p class="muted small">Evidence on light, sleep timing and immunity is still
+      </details>
+      <p id="staticEvidence" class="muted small">Evidence on light, sleep timing and immunity is still
         emerging, much of it from animal studies. Suggestions, not a diagnosis.</p>
       <div class="nasa-ref small">
         Sources: <a href="https://ntrs.nasa.gov/citations/20160005080" target="_blank" rel="noopener">NASA ISS Solid-State Lighting Assembly (NTRS)</a>
