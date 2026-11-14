@@ -323,6 +323,14 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **Check-in: one question at a time, and no "share with ground" box**
+  (NotKaemy, 2026-11-14; on `web`, not merged yet). Steps: mood → sleep →
+  symptoms → the two PHQ-2 items from `GET /checkin/questions`. **Every
+  check-in is now sent with `share_with_ground: true`.** **Luca:** the spec
+  calls that field "the astronaut's control over what Mission Control sees… a
+  deliberate design position" — NotKaemy decided to remove the choice; your
+  call whether the spec/pitch wording changes. Also on `web`: every page
+  (except presenter/demo) zooms up on big windows so it fills the screen.
 - **App renamed to "Dr. Galactic"** (NotKaemy, 2026-11-14; the name is shown
   20% larger than the text around it). Done in the web on `web` (not merged yet): page titles, menu brand,
   login / presenter / demo headings. **Luca / @stefanalbu2010-byte / @dbm711:**
