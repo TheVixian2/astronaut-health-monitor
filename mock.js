@@ -14,6 +14,18 @@
 
   const MISSION = { environment: "mars", one_way_delay_s: 20 };
 
+  const CREW = [
+    { id: "a1", name: "Cmdr. Elena Ionescu", role: "Commander", status: "nominal" },
+    { id: "a2", name: "Mihai Popa", role: "Flight Engineer", status: "nominal" },
+    { id: "a3", name: "Dr. Sara Okafor", role: "Crew Medical Officer", status: "nominal" },
+    { id: "a4", name: "Jonas Berg", role: "Mission Specialist", status: "nominal" },
+  ];
+
+  // While an alert is active, vitals drift towards baseline x factor so the
+  // numbers and the chart agree with the alert.
+  const SHIFTS = { orthostatic: { heart_rate_bpm: 1.32, systolic_mmhg: 0.8 } };
+  const SHIFT_S = 45;
+
   const BASELINES = {
     a1: { heart_rate_bpm: 58, systolic_mmhg: 112, diastolic_mmhg: 72, spo2_pct: 98, temp_c: 36.5, resp_rate_bpm: 12, sleep_h_last_night: 7.2, mood_1to5: 4 },
     a2: { heart_rate_bpm: 74, systolic_mmhg: 124, diastolic_mmhg: 80, spo2_pct: 97, temp_c: 36.8, resp_rate_bpm: 15, sleep_h_last_night: 6.8, mood_1to5: 4 },
@@ -57,6 +69,7 @@
       this.baseline = BASELINES[this.aid] || BASELINES.a1;
       this.values = { ...this.baseline };
       this.alertIndex = 0;
+      this.shift = {};
 
       this.later(() => {
         this.readyState = 1;
@@ -98,7 +111,8 @@
     walk() {
       for (const [k, step] of Object.entries(STEP)) {
         const v = this.values[k];
-        this.values[k] = v + gauss() * step + (this.baseline[k] - v) * 0.1;
+        const target = this.baseline[k] * (this.shift[k] || 1);
+        this.values[k] = v + gauss() * step + (target - v) * 0.2;
       }
       this.values.spo2_pct = Math.min(this.values.spo2_pct, 100);
     }
@@ -116,6 +130,8 @@
 
     fireAlert() {
       const p = PROFILES[this.alertIndex++ % PROFILES.length];
+      this.shift = SHIFTS[p.profile] || {};
+      this.timers.push(setTimeout(() => { this.shift = {}; }, SHIFT_S * 1000));
       const alert = {
         id: "al-" + Math.random().toString(16).slice(2, 10), astronaut_id: this.aid,
         profile: p.profile, severity: p.severity, hazard: p.hazard, body_region: p.body_region,
@@ -127,5 +143,23 @@
     }
   }
 
-  window.Mock = { EventSource: MockEventSource, mission: () => ({ ...MISSION }) };
+  // REST stand-ins, same shapes as the spec. Async, like fetch.
+  const ALERTS_PATH = /^\/astronauts\/[^/]+\/alerts$/;
+  const CHECKIN_PATH = /^\/astronauts\/[^/]+\/checkin$/;
+
+  function get(path) {
+    const p = path.split("?")[0];
+    if (p === "/mission") return Promise.resolve({ ...MISSION });
+    if (p === "/crew") return Promise.resolve(CREW.map(c => ({ ...c })));
+    if (ALERTS_PATH.test(p)) return Promise.resolve([]);
+    return Promise.reject(new Error(`mock: no GET ${p}`));
+  }
+
+  function post(path, body) {
+    console.info("[mock] POST", path, body);
+    if (CHECKIN_PATH.test(path)) return Promise.resolve({ accepted: true });
+    return Promise.reject(new Error(`mock: no POST ${path}`));
+  }
+
+  window.Mock = { EventSource: MockEventSource, get, post };
 })();

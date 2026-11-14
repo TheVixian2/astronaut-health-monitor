@@ -23,9 +23,17 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 
 ## Files
 
-- `index.html` / `style.css` / `app.js` — currently the Phase 2 stream check
-  (connect, print events, upsert alerts by `id`). Real views replace it.
-- `mock.js` — the in-page fake stream. Dev only.
+- `index.html` — landing page linking the views. Keeps `?mock`/`?base`/`?aid`.
+- `self-check.html` / `self-check.js` — the astronaut view: alert banner with
+  verdict, clickable body figure, vitals tiles vs baseline, Chart.js trend,
+  check-in form (`share_with_ground` off by default), alert history.
+- `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
+- `common.js` — shared helpers (`window.AHM`): field list, profile names,
+  verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict
+  logic here only.
+- `mock.js` — in-page fake backend (`window.Mock`): stream, `/crew`,
+  `/mission`, `/alerts`, `/checkin`. Dev only.
+- `style.css` — one stylesheet for every page.
 
 ## Two views
 
