@@ -164,7 +164,7 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   moon, smiley, pulse trace (HRV), gauge (stress). Colours are the `--ic-*`
   tokens in `style.css` (`.vi-*`). Shown on the My health tiles; reuse it
   wherever a vital is labelled.
-- **HRV and stress** (owner, 2026-11-14): nine readings, five per row. HRV is
+- **HRV and stress** (owner, 2026-11-14): ten readings, five per row. HRV is
   `hrv_sdnn_ms` from the vitals (SDNN, as Apple Watch records it). **Stress
   (0-100) is derived in the web** (`AHM.withStress` in `common.js`), not sent by
   the backend: HRV at the astronaut's usual = 30, each 10 % below adds 16;
@@ -177,15 +177,18 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   generated so both share their points and morph). Sex is not in the crew data,
   so it is a per-viewer choice in localStorage per astronaut (`ahm-body-sex`);
   a `sex` field on `GET /crew` would be used if added.
-- **Skeletal mass** (owner, 2026-11-14: the crew has a portable X-ray
-  machine): `skeletal_mass_kg`, bone mineral content of the whole skeleton
-  from a weekly DXA scan, region "skin" (limbs), change shown to 1 decimal
-  (`deltaDp`). **PROVISIONAL bridge:** the backend does not send it yet, so
-  `AHM.withSkeletal` fills in simulated scans (`SIM_SKELETAL`: usual from the
-  days 7-14 scan, ~0.35 %/month lower since, LeBlanc et al. 2000) and the
-  chart note says "Simulated scans for now". When the backend sends the field
-  its values win and the table can go. Simulating in the web breaks the
-  "simulated server-side" rule on purpose until then.
+- **Bone density and muscle mass** (owner, 2026-11-14: the crew has a
+  portable X-ray machine; replaced "skeletal mass" the same day). From a
+  weekly DXA scan: `bone_density_g_cm2` (whole-body bone mineral density,
+  3 decimals as DXA reports it) and `muscle_mass_kg` (lean tissue of arms and
+  legs, the scan's stand-in for skeletal muscle). Region "skin" (limbs);
+  change shown to 1 decimal (`dp` / `deltaDp` on the field). **PROVISIONAL
+  bridge:** the backend sends neither yet, so `AHM.withScan` fills in
+  simulated scans per field (`SIM_SCAN`: usual from the days 7-14 scan; bone
+  ~0.35 %/month lower since, LeBlanc et al. 2000; muscle ~0.4 %/month, a
+  placeholder rate) and the chart note says "Simulated scans for now". A field
+  the backend sends wins. Simulating in the web breaks the "simulated
+  server-side" rule on purpose until then.
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict
   logic here only.

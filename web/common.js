@@ -14,27 +14,37 @@
     { key: "hrv_sdnn_ms", label: "HRV", unit: "ms", region: "heart" },
     // Derived here from HRV (withStress below), not sent by the backend.
     { key: "stress_0to100", label: "Stress", unit: "/100", region: "head", derived: true },
-    // Bone mineral content of the whole skeleton from the portable X-ray (DXA)
-    // scan (owner, 2026-11-14). Changes slowly, so its change shows 1 decimal.
-    { key: "skeletal_mass_kg", label: "Skeletal mass", unit: "kg", region: "skin", deltaDp: 1 },
+    // From the weekly portable X-ray (DXA) scan (owner, 2026-11-14): whole-body
+    // bone mineral density, and lean tissue of the arms and legs (the scan's
+    // stand-in for skeletal muscle). Both change slowly, so their change shows
+    // 1 decimal; `dp` is how many decimals the value itself shows.
+    { key: "bone_density_g_cm2", label: "Bone density", unit: "g/cm²", region: "skin", dp: 3, deltaDp: 1 },
+    { key: "muscle_mass_kg", label: "Muscle mass", unit: "kg", region: "skin", dp: 1, deltaDp: 1 },
   ];
 
-  // ---- skeletal mass: simulated X-ray scans ----------------------------------
-  // PROVISIONAL bridge: the backend does not send skeletal_mass_kg yet (asked
-  // in STATUS.md). Until it does, the console fills in a simulated weekly scan
-  // here and says so. Usual = the scan from mission days 7-14; the latest scan
-  // is ~0.35 % lower per month since, the whole-body bone loss measured after
-  // long-duration flights (LeBlanc et al. 2000). Once the backend sends the
-  // field, its values are used and this table is ignored.
-  const SIM_SKELETAL = {        // [usual, latest scan] kg of bone mineral
-    a1: [2.86, 2.85], a2: [3.21, 3.2], a3: [2.74, 2.73], a4: [3.05, 3.04],
+  // ---- X-ray (DXA) scan: simulated until the backend sends it -----------------
+  // PROVISIONAL bridge: the backend does not send bone_density_g_cm2 or
+  // muscle_mass_kg yet (asked in STATUS.md). Until it does, the console fills
+  // in a simulated weekly scan and says so on screen. Usual = the scan from
+  // mission days 7-14; the latest scan is lower since:
+  //   bone density ~0.35 %/month, the whole-body loss measured after
+  //     long-duration flights (LeBlanc et al. 2000);
+  //   muscle mass ~0.4 %/month, a PLACEHOLDER rate, not a published figure.
+  // A field the backend does send is used as is and its row here is ignored.
+  const SIM_SCAN = {            // field -> astronaut -> [usual, latest scan]
+    bone_density_g_cm2: { a1: [1.184, 1.18], a2: [1.236, 1.232], a3: [1.152, 1.148], a4: [1.21, 1.206] },
+    muscle_mass_kg:     { a1: [25.4, 25.3], a2: [27.6, 27.5], a3: [23.8, 23.7], a4: [26.3, 26.2] },
   };
-  function withSkeletal(v, aid) {
-    if (!v || typeof v.skeletal_mass_kg === "number") return v;
-    const sim = SIM_SKELETAL[aid];
-    if (!sim) return v;
-    return { ...v, skeletal_mass_kg: sim[1], skeletal_simulated: true,
-             baseline: v.baseline ? { ...v.baseline, skeletal_mass_kg: sim[0] } : v.baseline };
+  function withScan(v, aid) {
+    if (!v) return v;
+    let out = v;
+    for (const [key, byAid] of Object.entries(SIM_SCAN)) {
+      if (typeof v[key] === "number" || !byAid[aid]) continue;
+      const [usual, latest] = byAid[aid];
+      out = { ...out, [key]: latest, simulated_scan: true,
+              baseline: out.baseline ? { ...out.baseline, [key]: usual } : out.baseline };
+    }
+    return out;
   }
 
   // ---- stress level -----------------------------------------------------------
@@ -88,9 +98,12 @@
       <path class="ds" d="M4.4 13.2h2.4l1.2-4.6 1.8 8.2 1.4-3.6h1.9l.9-3.1 1.5 6.2 1-2.7h3.1"/>`],
     // a gauge with the needle towards the high end
     // a bone
-    skeletal_mass_kg: ["bone", `<g transform="rotate(-45 12 12)"><rect x="6.5" y="10" width="11" height="4" rx="1.2"/>
+    bone_density_g_cm2: ["bone", `<g transform="rotate(-45 12 12)"><rect x="6.5" y="10" width="11" height="4" rx="1.2"/>
       <circle cx="6.3" cy="9.7" r="2.7"/><circle cx="6.3" cy="14.3" r="2.7"/>
       <circle cx="17.7" cy="9.7" r="2.7"/><circle cx="17.7" cy="14.3" r="2.7"/></g>`],
+    // a flexed arm
+    muscle_mass_kg: ["muscle", `<path d="M3.4 20.2c-.2-3 .5-6 2.1-8.5l2.6-4c.3-.5.5-1 .5-1.6V4.6c0-.9.7-1.6 1.6-1.6h2.4c.9 0 1.6.7 1.6 1.6 0 .8-.6 1.5-1.4 1.6l-1.3.2v3.3c1.3-1 2.9-1.5 4.6-1.5 3.3 0 6 2.6 6 5.9v1.4c0 3.1-2.5 5.6-5.6 5.6H4.7c-.7 0-1.3-.5-1.3-1.2z"/>
+      <path class="ds" d="M11.2 14.6c1.2-1.6 3-2.4 5-2.3"/>`],
     stress_0to100: ["stress", `<path d="M12 4.6a9.5 9.5 0 0 0-8.4 13.9c.3.6.9.9 1.5.9h13.8c.6 0 1.2-.3 1.5-.9A9.5 9.5 0 0 0 12 4.6z"/>
       <path class="ds" d="M6.1 14.4h1.5M8 9.1l1 1M12 7.3v1.4M16 9.1l-1 1M16.4 14.4h1.5M12 15.2l3.7-4.6"/>
       <circle class="d" cx="12" cy="15.2" r="1.7"/>`],
@@ -255,7 +268,7 @@
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
-    withStress, stressBand, withSkeletal,
+    withStress, stressBand, withScan,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 
