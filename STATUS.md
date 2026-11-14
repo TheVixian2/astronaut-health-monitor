@@ -19,6 +19,15 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-14 — REAL NASA DATA in the stream + new dependency. Run
+  `pip install -r backend/requirements.txt` (adds `lightstreamer-client-lib`).**
+  `backend/iss_live.py` subscribes to NASA's public ISS Live telemetry: the cabin our
+  simulated crew lives in is the real ISS cabin (CO2, O2, pressure, temperature).
+  `GET /environment` + SSE event `environment`; the Commander's Habitat tab shows it.
+  Also new since the last entry: History page (`web/history.html`), Commander sees
+  every crew member's wellbeing level + areas, Habitat map (`GET /habitat`,
+  `/crew/locations`, `/astronauts/{id}/rooms`). Shapes in `docs/api-spec.md`.
+
 - **2026-11-14 (evening) — PIVOT DONE: mental health. Read this before your next commit.**
   Plan: Luca has it (6 workstreams). Deadline **Sun 15 Nov 23:59 Bucharest**.
   - **Removed on `main`:** profiles `orthostatic`, `fever`, `co2`, `sans` (+ `GET /sans`),
@@ -100,203 +109,113 @@ Branch: `watch`
 
 ## Backend — stefanalbu2010-byte (+ Luca later)
 
-Branch: `backend`
+Branch: `backend` (latest `f728ec1`). Section rewritten 2026-11-14 for the mental-health
+version; the older notes (SANS, fever, orthostatic, astronaut-first sharing) are in git history.
 
-- **Done — mock is up (`backend/main.py`, branch `backend`, ready to merge).**
-  Every spec endpoint except `/space-weather` (skipped as asked), pydantic
-  models, CORS open. Run: `cd backend`, activate the venv, `uvicorn main:app --reload`
-  → `http://localhost:8000/docs`. Smoke-tested every endpoint and both SSE views.
-  - Vitals: random walk with mean reversion around a **different baseline per
-    astronaut** (`a1` ~58 bpm ... `a2` ~74). `POST /ingest` HR overrides the
-    simulated HR (and its `source`) for 10 s.
-  - SSE: `vitals` every 3 s; a fake `alert` on `a1` every 60 s (cycles fever,
-    co2, orthostatic, sleep_debt, sans). Set `MOCK_AUTO_ALERT_S=10` for faster
-    testing, `0` to turn it off.
-  - **Web, note:** an alert is sent with `insight: null`, then **re-sent ~2 s
-    later with the same `id`** and `insight` filled in. Update by `id`.
-  - `view=ground` is delayed by `one_way_delay_s`. **Default mission is
-    `mars` / 20 s** (demo-compressed). Change it with `PUT /mission`.
-  - `/debug/scenario` is a stub (any string, 202, does nothing).
-  - `/checkin` returns `202 {"accepted": true}`. The spec gives no response shape.
-- **Luca, please confirm in the spec:** (1) insight delivered by re-sending the
-  alert event with the same id, (2) the `/checkin` and `/debug/scenario` responses.
-- **Done — `backend/insight_service.py`:** `generate_insight(profile, vitals, baseline, ...)`
-  calls `claude-sonnet-5-5` via `messages.parse()` and returns `Insight(why, trend,
-  recommended_action)`. It never raises: no key, timeout, API error or refusal all
-  return the fallback. Tested the no-key and bad-key paths; **not yet tested with a
-  real key** (none on this machine). Profile-agnostic, so it works for any post-pivot
-  condition. Not wired into `main.py` yet — the mock's fake alerts keep canned text
-  until the condition engine exists.
-- **Done: circadian rhythm from the on-board lighting log (`backend/circadian.py`,
-  branch `backend`). This is the mentor/judge suggestion.** We read the ISS lighting
-  system (SSLA modes: general 4500K, pre-sleep 2700K, phase-shift 6500K) instead of
-  asking the astronaut. 7 nights of simulated log per astronaut with different
-  habits. **Only `a2` is irregular** (bedtime spread ~2 h, bright light before sleep
-  on 4 of 7 nights), so that's the demo story. `sleep_h_last_night` in vitals now
-  comes from this log.
-  - **Ethics, built in:** shared with ground by default (NotKaemy's decision; the
-    ground view gets **403** once the astronaut opts out), suggestive wording only (tested: no "must", no
-    diagnosis), the app **never changes the lights itself**, no comparison between
-    crew, and it doesn't touch crew status or alerts.
-  - **Luca, proposed for the spec (already working, provisional):**
-    `GET /astronauts/{id}/circadian?view=crew|ground` returns `{share_with_ground,
-    lighting{mode,cct_k,since}, nights[7]{night_of,bedtime,wake_time,sleep_h,
-    pre_sleep_lighting_min,bright_light_last_hour}, summary{status,nights,
-    bedtime_spread_min,nights_bright_before_sleep}, card|null,
-    recommendation{text,source,source_url}, evidence{...}}`.
-    `PUT /astronauts/{id}/circadian/sharing {share_with_ground}`.
-    `PUT /astronauts/{id}/lighting {mode}` records the crew switching the mode.
-  - **NotKaemy, for Self-check:** show `card` when not null, `recommendation.text`
-    with its source link, a lighting chip ("Pre-sleep · 2700K"), a "share with
-    ground" toggle (off by default), and optionally a 7-night bedtime chart from
-    `nights`. In the Ground view, a 403 should read "Kept private by the astronaut".
-- **Done: circadian is now a full countermeasure loop (branch `backend`).**
-  Following the judge's "light simulation must be closer to Earth" point and the
-  team's wish to make circadian a big part of the project:
-  **detect drift → suggest a lighting plan → verify sleep improved.**
-  - **Detect:** body-clock drift in min/night. `a2` drifts ~15 min later each night,
-    bedtime spread ~1.7 h, and bright light before sleep on 4 of 7 nights.
-  - **Suggest:** `plan` built from the three ISS SSLA modes (morning phase-shift
-    6500K → day general 4500K → pre-sleep 2700K → dark). It stays fixed once accepted.
-  - **Verify:** `verification` compares before/after, e.g. *"bedtime varied by 0.2 h
-    (was 1.7 h), slept 7.1 h (was 6.3 h)"*; `summary.status` becomes `improving`.
-  - `environment_note` per mission (ISS 16 sunrises/day; Moon 29.5-day lunar day;
-    Mars: no day/night at all, so the lighting is the only cue).
-  - **New, provisional (Luca, for the spec):** `PUT /astronauts/{id}/circadian/plan
-    {accepted}` is the astronaut's own choice. `POST /debug/circadian {astronaut_id,
-    action: advance|reset, nights 1-14}` fast-forwards nights for the demo. `GET
-    /circadian` gains `environment_note`, `plan`, `verification`, and
-    `summary.drift_min_per_night / sleep_avg_h / target_bedtime`; `status` adds
-    `improving`. Existing fields are unchanged.
-  - **NotKaemy:** show the plan as a timeline of coloured bars by mode, with an
-    "I'd like to try this plan" button (calls `PUT .../plan`) and the verification
-    message when present. Demo button: `POST /debug/circadian` advance 4 nights.
-  - **Demo beat (~20 s):** `a2` card → accept plan → fast-forward 4 nights → "your
-    bedtime varied by 0.2 h, was 1.7 h". The close-the-loop moment.
-  - **Persistence note:** the lighting log lives in memory for now. It moves to
-    SQLite with the persistence task below.
-- **Done: persistence + the real condition engine + SANS (branch `backend`, ready to merge).**
-  Luca's persistence task and the `sans` demo problem are both solved.
-  - **SQLite** at `backend/data/ahm.db` (gitignored), written by a background thread
-    so a disk write never blocks a request or the tick loop. Stores every tick,
-    alerts (with the insight cached), check-ins, and the mission start.
-  - **Baseline = median of stored mission days 7-14.** It's a real `SELECT` now; it
-    falls back to the configured values only if nothing has been seeded.
-  - **Condition engine for all five spec profiles** (`orthostatic`, `co2`, `fever`,
-    `sleep_debt`, `sans`). It fires only on a NEW match, clears after 5 calm ticks
-    (~15 s), and the gate survives a restart (tested: no duplicate alerts).
-  - **SANS risk score 0-100** from mission day, acuity vs the day 7-14 baseline,
-    Amsler distortion, headaches (7 d) and cabin CO2 (7 d). Trigger 50, clear 40.
-  - **`/debug/scenario` is wired** (enum from the spec; `spe` gets 422). Vitals
-    shift together and alerts fire in ~20-40 s. `sans` injects a check-in through
-    the same path as a real one. `clear` resets the astronaut and drops live
-    check-ins so the SANS demo can run again.
-  - **Explanations without an API key:** the fallback is built from the real
-    numbers plus the verdict, e.g. *"Heart rate 93 bpm vs your baseline 73 (+27%);
-    systolic 103 vs 124 (-17%) … a reply takes about 44 min … so the on-board step
-    comes first."* `fever`/`sans` say *"This can wait for the flight surgeon"*.
-  - **Removed the fake auto-alert every 60 s.** To test alerts, use
-    `/debug/scenario` or `tools/simulate_crew.py --run --scenario a2:orthostatic:5`.
-- **Demo prep (run before every rehearsal):** from the repo root,
+- **@Luca: please merge `backend` into `main`.** It already contains `main`'s ISS Live CO2,
+  habitat map and history work (merged, the 5 conflicts in `main.py` resolved, tested).
+  `pip install -r backend/requirements.txt` first (`lightstreamer-client-lib`).
+- **Demo prep (before every rehearsal):** from the repo root,
   `backend/.venv/bin/python tools/simulate_crew.py --reset-db --seed-baseline`
-  (Windows: `backend\.venv\Scripts\python ...`), then start uvicorn. That gives six
-  weeks of history; **a1's SANS score sits at 40/50**, and one check-in with a
-  headache plus Amsler distortion takes it to ~73 and fires `sans`.
-- **@Luca, three things to know:**
-  1. **Watch bug: `MonitorModel.swift` line 52 takes `api.alerts().last` as the
-     newest alert, but `/alerts` returns newest FIRST** (backend and `web/mock.js`
-     both). With 2+ alerts the watch shows the oldest one and the haptic stops
-     firing. One-word fix: `.first`.
-  2. **`orthostatic` on a1 with the real watch:** watch HR overrides the simulated
-     HR, so the alert needs the watch's HR up (Simulate exertion) **and** the
-     systolic drop, which comes from `/debug/scenario orthostatic`. Either press
-     both, or stop the watch and the scenario alone fires it.
-  3. **`ground_eta_s` now = `real_one_way_delay_s`** (1320), matching the spec's
-     example. Before, it was the compressed 20 s.
-- **@Luca, for the spec (PROVISIONAL, live now):**
-  - `GET /astronauts/{id}/sans?view=crew|ground` →
-    `{astronaut_id, mission_day, score, trigger_at, status, baseline_acuity,
-    components[{name, points, detail}], vision_checks[{ts, acuity_line,
-    amsler_distortion, headache}], note, source_url}`. The ground view only lists
-    shared check-ins, and the details of private ones are redacted.
-  - `GET /astronauts/{id}/history?hours=24` → up to ~300 averaged points of every
-    vital plus `cabin_co2_mmhg`, oldest first, for charts (works up to 42 days).
-  - `GET /mission/light-time` → **live Earth-Mars light time from NASA JPL
-    Horizons: 661 s (11.0 min) today.** The verdict still uses the spec's 1320 by
-    default; `AHM_LIVE_LIGHT_TIME=1` switches it to the live value. Verdicts don't
-    change either way.
-  - Hazard question: the spec has `sans` → `distance`, but NASA HRP files SANS
-    under **altered gravity**. Backend follows the spec for now.
-- **@NotKaemy:** charts can now load weeks of real history from `/history`, and the
-  SANS view can draw `vision_checks` as a trend line with the `components` as
-  the "why". **Circadian sharing default is done on `backend`:** `_shared` now
-  defaults to `True`, so Ground gets 200 for everyone, and 403 ("the astronaut has
-  opted out…") after `PUT .../circadian/sharing {"share_with_ground": false}`. Tested.
-- **Done: judge 3's points (`events/2026-11-14-judge-3-sensors-blackout.md`), branch
-  `backend`, tested.** All PROVISIONAL and additive; existing fields unchanged.
-  - **Sensor accuracy:** each reading is checked (impossible value / spike / stuck sensor /
-    watch dropout) and stored with `quality` = ok | suspect | implausible | artifact.
-    Vitals gain `quality`. Impossible readings never raise an alert. The baseline uses only
-    `ok`. `GET /astronauts/{id}/sensors` gives per-signal status and last-hour accuracy.
-  - **"Do you feel this?":** vitals alerts gain `confirmation {status: pending|felt|not_felt,
-    question, answered_at, note}` and `data_quality: ok|suspect`. `POST
-    /astronauts/{id}/alerts/{alert_id}/confirm {felt, note?}` returns the alert and re-sends
-    it on SSE with the same id. "No" marks the readings as `artifact` (flagged, never
-    deleted, left out of the baseline/charts/reports), clears the alert, and mutes that
-    episode. SANS alerts have `confirmation: null` (they come from check-ins); confirming
-    one gets 409.
-  - **Blackout:** `PUT /mission/blackout {active, until?, reason?}`, `GET /mission/blackout`.
-    `GET /mission` gains `blackout`. During a blackout, Ground SSE holds every alert plus
-    the latest vitals and delivers them after contact returns (plus the light time).
-    Explanations say "Earth is out of contact… tell a crewmate or the CMO", with no cloud
-    call, and `ground_eta_s` includes the blackout left. `GET /protocols` gives on-board
-    steps per condition.
-  - **Report from history:** `GET /astronauts/{id}/report?days=7&view=crew|ground` returns
-    vitals vs own baseline, alerts with the astronaut's answer, check-ins, SANS, sleep, data
-    quality, **time to action vs the Earth round trip**, a ~1.3 KB `text` packet, and
-    `delivery`. The ground view leaves out private check-ins and opted-out sleep data.
-- **@NotKaemy, UI asks:** Yes/No buttons under `confirmation.question` on an alert; a
-  "sensor check" chip from `vitals.quality`; a blackout banner from `GET /mission`
-  `blackout` (and on Ground: "Out of contact, data will arrive when contact returns");
-  a "Report" panel showing `report.text`.
-- **@Luca:** demo beat for blackout + "do you feel this?" is in `presentation/ideas.md`.
-  New endpoints listed above, for the spec when you have a minute.
-- **TEAM DECISION (2026-11-14): mental health is now the focus**, with a profile per
-  astronaut built from all signals plus a crew view, so the commander or ground can be
-  notified. SANS, circadian and blackout stay as secondary features. Agreed with
-  stefanalbu2010-byte: **astronaut first**. Nothing is shared until the astronaut chooses;
-  only "urgent" notifies the commander and ground automatically.
-- **Done: behavioral health on `backend` (`backend/behavioral.py`), tested.** All PROVISIONAL.
-  - **Profile:** PHQ-2 (validated cut-off ≥3), mood, sleep/body clock, the 3-min reaction
-    test (PVT-B, 355 ms lapse) and resting HR, each vs the astronaut's own days 7-14. Levels
-    are steady / watch / concern / urgent, each signal comes with a plain reason, and there
-    are supportive suggestions. Safety rule: PHQ-2 5-6 plus one other sign is always urgent.
-  - **Who sees what:** the astronaut sees everything. Commander/ground see it only if the
-    astronaut shared it (per target), or automatically at urgent, and then only the level
-    and areas, never the answers. Crewmates never see it. The crew view shows crew-wide
-    trends without names, only with ≥3 people; PHQ-2 is never aggregated.
-  - **Notifications:** live SSE event **`notice`**, delivered only to the right screen:
-    the commander's own console (`a1`'s crew stream), the astronaut themselves, and the
-    astronaut's ground stream (delayed; held during a blackout). Also `GET /notifications?viewer=`.
-  - **Endpoints:** `GET /checkin/questions` (exact PHQ-2 wording + reaction test),
-    `GET /astronauts/{id}/wellbeing?viewer=`, `PUT /astronauts/{id}/wellbeing/sharing?viewer=`
-    `{commander?, ground?}` (only the astronaut), `GET /crew/wellbeing?viewer=a1|ground`.
-    `POST /checkin` gains optional `phq2 {little_interest, feeling_down}` (0-3 each) and
-    `reaction_test {mean_rt_ms, lapses, false_starts, duration_s}`.
-  - **`viewer`** = the signed-in astronaut's id, or `ground`. **@NotKaemy:** this is what the
-    per-astronaut login should send. Demo-level, not real security.
-  - **Demo (repeatable):** seed → `a2` starts at **watch** (mood down after the midpoint,
-    slower reactions, drifting bedtimes) → a2 check-in with PHQ-2 = 3 → **concern** → a2
-    taps "share with commander" → the commander's console gets the notice.
-    `POST /debug/scenario {a3, "strain"}` → **urgent** → commander + ground notified
-    automatically, a3 is told. `clear` resets.
-- **@NotKaemy, UI asks:** PHQ-2 + reaction test in the check-in (wording from
-  `/checkin/questions`); a "My wellbeing" card (level, reasons, suggestions, share toggles
-  for commander and ground); a commander view (`/crew/wellbeing?viewer=a1`, notices); on
-  Ground, notices and the crew view (`viewer=ground`). Listen for SSE `notice`.
-- **@Luca: please merge `backend` into `main`.** `main` still runs the morning's mock
-  backend, so none of today's backend work (database, conditions, sensors, blackout, reports,
-  mental health) is on `main` yet. The watch fix (`.last` → `.first`) is still open too.
+  (Windows: `backend\.venv\Scripts\python ...`), then start uvicorn. The seed is now
+  **repeatable**: the same story whatever time it runs (a2 ends at "watch" on day 42).
+- **Done: one psychological profile per astronaut (`backend/behavioral.py`).** Every input is
+  compared with the astronaut's **own** mission days 7-14 (how many SDs it moved, in the
+  worrying direction), then weighted. Score 0-100: steady < 20, watch 20-39, concern 40-59,
+  urgent 60+. Weights (Luca's 70/30 split, `GET /wellbeing/method` lists them all):
+
+  | Watch and station (70) | | Check-ins (30) | |
+  |---|---|---|---|
+  | Sleep | 15 | PHQ-2 / PHQ-9 | 15 |
+  | Heart-rate variability (night) | 12 | Mood | 8 |
+  | Time with crewmates (beacons) | 12 | Reaction test (PVT-B) | 7 |
+  | Activity | 11 | | |
+  | Body-clock regularity (lighting log) | 10 | | |
+  | Resting heart rate (night) | 10 | | |
+
+  - **Safety rules on top (validated cut-offs):** PHQ-2 >= 3 or PHQ-9 >= 10 → at least
+    concern; PHQ-2 >= 5 plus another sign, or PHQ-9 >= 20 → urgent; **PHQ-9 question 9 above
+    0 → urgent and shown at once.** PHQ-2 >= 2 asks for the PHQ-9 next (two-step screening,
+    Levis et al., JAMA 2020).
+  - **Missing data:** an input needs 4 of 7 days; otherwise its weight is shared within its
+    group, and `confidence` (high / medium / low) says how much had data.
+  - **Trends over time:** a daily score for the whole mission, the slope over 14 days
+    (worsening / improving at ±5 points a week), each input's own trend, the first day flagged.
+  - **Psych report:** `GET /astronauts/{id}/psych-report?viewer=&days=28`, a ~2.7 KB text.
+- **Accuracy check (`tools/check_profile.py --seeds 30`, 30 simulated crews):** false
+  "concern" on stable astronaut-days **0.0%**, false "watch" **0.8%**; a2's slow decline
+  detected on **87%** of days 35-41 (flagged from day 34, median; the decline starts on day 22).
+  Synthetic data only: it checks the scoring against its own simulation, not clinical accuracy.
+- **Done: alerts are commander-first (Luca's decision).** `wellbeing_concern`,
+  `wellbeing_urgent` and `sleep_debt` go to the commander (a1), or to the deputy if the
+  commander is the one flagged, and to Mission Control after the light delay. The
+  astronaut's own views hold them back until the commander releases them
+  (`PUT /astronauts/{id}/alerts/{alert_id}/release?viewer=a1`) or after 12 h
+  (`AHM_RELEASE_AFTER_S`). Psychological data is never sent to a cloud model.
+- **Done: Bluetooth beacons (`backend/location.py`).** One beacon per room, strongest above
+  -90 dBm, two scans in a row must agree. Room ids are the habitat map's (`q_a1`..`q_a4`,
+  `command`, `lab`, `galley`, `exercise`; **hygiene has no beacon, never tracked**).
+  `/crew/locations` and `/astronauts/{id}/rooms` now read the same live room and stored stays
+  as the profile (one model; `habitat.py` folded into `location.py`). Every crew-map view
+  shows up in the astronaut's own `seen_by`.
+- **New endpoints, PROVISIONAL (Luca, for the spec):** `GET /wellbeing/method`,
+  `GET /astronauts/{id}/wellbeing?viewer=`, `GET /crew/wellbeing?viewer=a1|ground`,
+  `GET /notifications?viewer=`, `GET /astronauts/{id}/psych-report?viewer=`,
+  `GET /astronauts/{id}/alerts?viewer=`, `PUT .../alerts/{alert_id}/release?viewer=`,
+  `GET /checkin/questions` (PHQ-2, PHQ-9, reaction test), `phq9 {answers: [9 x 0-3]}` on
+  `POST /checkin`, `GET /station/rooms`, `POST` + `GET /astronauts/{id}/location`.
+  `/ingest` takes `hrv_sdnn_ms` and `active_min`. `/rooms` adds `with_crew_7d_avg_h` and
+  `with_crew_normal_h`. **Removed:** `PUT /astronauts/{id}/wellbeing/sharing`.
+- **Demo beats:** (1) Commander page: a2 at **watch**, trend worsening. (2) a2's check-in
+  with PHQ-2 = 3 → **concern** → the commander's console gets the notice; a2's own page says
+  it's with the commander. (3) The commander releases it → a2 sees the assessment and
+  suggestions. (4) `POST /debug/scenario {a3, "strain"}` → **urgent**. `clear` resets.
+- **Done: optional check-in tags (`c7773a8`).** `POST /checkin` takes
+  `context: ["ill" | "new_medication" | "period"]`. Those days are left out of the body
+  signals they distort (a cold, a new sleep pill, the late menstrual cycle lowering HRV), so
+  they aren't read as a change in wellbeing. Mood and the PHQ always count and the safety
+  rules always apply, so a tag can't hide a warning. Others only see "N of the last 7 days
+  left out (marked in a check-in)", never which tag. Signals gain `left_out_days`;
+  `GET /checkin/questions` gains `context` (question, options, note).
+- **Safety fix:** a PHQ-9 with question 9 above 0 now keeps the level at urgent for the
+  14-day PHQ window. Before, a routine PHQ-2 the next day could clear it.
+- **Decided (Stefan, 2026-11-14):**
+  - **The psychological side never shows on the watch.** Backend: `POST /ask` answers
+    questions about feelings on board with a pointer to a person (crisis words: "tell someone
+    in person now"). They're never sent to Claude and never get a level or score.
+  - **Hygiene in an emergency:** the commander, CMO and Mission Control may see the current
+    room through `GET /astronauts/{id}/location` during an emergency (active critical alert or
+    urgent level), hygiene included. That's the one exception to the hygiene rule, and the
+    astronaut's `seen_by` lists who looked.
+- **@Luca, watch:** please **remove the "Mood" row** from the vitals page (`ContentView.swift`,
+  the `VitalRow(label: "Mood", ...)` line). Mood is a check-in answer, and the watch now shows
+  no psychological data at all. Keep decoding `mood_1to5` (the vitals shape still has it).
+  Your filter on psychological alerts in `MonitorModel.swift` stays as it is.
+- **Team decisions needed:**
+  1. **Time with crewmates in the score.** Stefan asked for every input to feed the profile,
+     so it carries 12 of 100 points now. Luca's habitat note said display-only (weak evidence).
+     To make it display-only: drop `social_time` from `behavioral.INPUTS` (its points spread over
+     the other watch inputs) and re-run `check_profile.py`.
+  2. **Crew map always on** for the commander and Mission Control (Luca: fire,
+     depressurisation). Kept. Each astronaut's own room history stays private (the Crew
+     Medical Officer sees the current room only in an emergency).
+  3. **Who is the deputy?** The crew has no pilot. Default: the Crew Medical Officer, a3
+     (`AHM_DEPUTY` to change it).
+- **@Luca, watch:** (1) `MonitorModel.swift` takes `api.alerts().last`, but `/alerts` returns
+  newest first: use `.first`. (2) The watch polls `/astronauts/a1/alerts`, which now
+  includes a1's own unreleased psychological alerts (they belong to the deputy until
+  released). Poll `/astronauts/a1/alerts?viewer=a1` instead, and they stay off the wrist.
+- **@NotKaemy, UI asks:** (1) a **PHQ-9 step** in the check-in when the wellbeing answer
+  has `needs_phq9: true` (wording in `GET /checkin/questions` → `phq9`; send
+  `phq9: {answers: [...9]}`). If question 9 is above 0, show the support message at once.
+  (2) Optional: the 3-min reaction test (`reaction_test`); without it its 7 points are
+  shared among the other check-in inputs. (3) Commander page: a **Release** button on
+  unreleased psychological alerts, and the psych report text. (4) Self-check: when the
+  wellbeing answer has `withheld: true`, show "your commander has this first" instead of
+  a level. (5) An optional "Anything that might affect your body this week?" step with
+  the three `context` options from `GET /checkin/questions`, and its note under it.
+  Your one-question check-in already matches the backend (mood, sleep,
+  symptoms, PHQ-2).
 - **Blocked on:** nothing.
 
 ## Presentation — dbm711
@@ -314,6 +233,14 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **Check-in: one question at a time, and no "share with ground" box**
+  (NotKaemy, 2026-11-14; on `web`, not merged yet). Steps: mood → sleep →
+  symptoms → the two PHQ-2 items from `GET /checkin/questions`. **Every
+  check-in is now sent with `share_with_ground: true`.** **Luca:** the spec
+  calls that field "the astronaut's control over what Mission Control sees… a
+  deliberate design position" — NotKaemy decided to remove the choice; your
+  call whether the spec/pitch wording changes. Also on `web`: every page
+  (except presenter/demo) zooms up on big windows so it fills the screen.
 - **App renamed to "Dr. Galactic"** (NotKaemy, 2026-11-14; the name is shown
   20% larger than the text around it). Done in the web on `web` (not merged yet): page titles, menu brand,
   login / presenter / demo headings. **Luca / @stefanalbu2010-byte / @dbm711:**

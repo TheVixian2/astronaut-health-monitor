@@ -23,7 +23,9 @@ log = logging.getLogger("store")
 DB_PATH = Path(os.getenv("AHM_DB") or Path(__file__).with_name("data") / "ahm.db")
 
 VITAL_FIELDS = ("heart_rate_bpm", "spo2_pct", "temp_c",
-                "resp_rate_bpm", "sleep_h_last_night", "mood_1to5")
+                "resp_rate_bpm", "sleep_h_last_night", "mood_1to5",
+                "hrv_sdnn_ms", "active_min")  # HRV and active minutes today: from the watch (a1) or simulated
+NEW_COLUMNS = {"hrv_sdnn_ms": "REAL", "active_min": "REAL"}  # added to databases made before they existed
 MIN_BASELINE_SAMPLES = 50
 
 SCHEMA = """
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS samples (            -- one row per tick, per astrona
   heart_rate_bpm REAL,
   spo2_pct REAL, temp_c REAL, resp_rate_bpm REAL,
   sleep_h_last_night REAL, mood_1to5 INTEGER,
+  hrv_sdnn_ms REAL, active_min REAL,
   source       TEXT NOT NULL,                   -- 'real' | 'simulated'
   quality      TEXT NOT NULL DEFAULT 'ok',      -- ok | suspect | implausible | artifact (quality.py)
   PRIMARY KEY (astronaut_id, ts)
@@ -55,6 +58,14 @@ CREATE TABLE IF NOT EXISTS notices (            -- behavioral health: who was to
   id TEXT PRIMARY KEY, astronaut_id TEXT NOT NULL, target TEXT NOT NULL,
   created_at TEXT NOT NULL, notice_json TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS room_visits (        -- Bluetooth-beacon room (location.py), one row per stay
+  astronaut_id TEXT NOT NULL, room TEXT NOT NULL,
+  entered_at TEXT NOT NULL, left_at TEXT,       -- left_at NULL = still there
+  source TEXT NOT NULL,                         -- 'beacon' | 'simulated'
+  PRIMARY KEY (astronaut_id, entered_at)
+);
+CREATE INDEX IF NOT EXISTS idx_visits_time ON room_visits (entered_at);
 
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
@@ -94,6 +105,9 @@ def init() -> None:
         columns = {row[1] for row in con.execute("PRAGMA table_info(samples)")}
         if "quality" not in columns:  # database created before sensor-quality flags existed
             con.execute("ALTER TABLE samples ADD COLUMN quality TEXT NOT NULL DEFAULT 'ok'")
+        for col, typ in NEW_COLUMNS.items():
+            if col not in columns:
+                con.execute(f"ALTER TABLE samples ADD COLUMN {col} {typ}")
 
 
 # --- Background writer -------------------------------------------------------
@@ -296,6 +310,45 @@ def insert_samples(rows: list[tuple]) -> None:
         con.executemany(_INSERT_SAMPLE, [(*r, "ok") for r in rows])
 
 
+def daily_aggregates(aid: str, start: str, end: str) -> dict[str, dict]:
+    """Per day, from clean readings only: resting HR and HRV at night (00-05 UTC, asleep),
+    active minutes (the day's last counter value), and sleep."""
+    with _db() as con:
+        rows = con.execute(
+            "SELECT substr(ts, 1, 10) AS d, "
+            "AVG(CASE WHEN substr(ts, 12, 2) < '05' THEN heart_rate_bpm END), "
+            "AVG(CASE WHEN substr(ts, 12, 2) < '05' THEN hrv_sdnn_ms END), "
+            "MAX(active_min), AVG(sleep_h_last_night), COUNT(*) "
+            "FROM samples WHERE astronaut_id = ? AND ts >= ? AND ts < ? AND quality = 'ok' "
+            "GROUP BY d ORDER BY d", (aid, start, end)).fetchall()
+    return {d: dict(rhr=rhr, hrv=hrv, active=act, sleep=sleep, n=n) for d, rhr, hrv, act, sleep, n in rows}
+
+
+def open_visit(aid: str, room: str, ts: str, source: str) -> None:
+    _write("UPDATE room_visits SET left_at = ? WHERE astronaut_id = ? AND left_at IS NULL", (ts, aid))
+    _write("INSERT OR REPLACE INTO room_visits VALUES (?,?,?,NULL,?)", (aid, room, ts, source))
+
+
+def close_open_visits(ts: str) -> None:
+    with _db() as con:
+        con.execute("UPDATE room_visits SET left_at = ? WHERE left_at IS NULL", (ts,))
+
+
+def visits_between(start: str, end: str) -> list[tuple[str, str, str, str]]:
+    """(astronaut_id, room, entered_at, left_at) overlapping [start, end); open stays end at `end`."""
+    with _db() as con:
+        rows = con.execute(
+            "SELECT astronaut_id, room, entered_at, COALESCE(left_at, ?) FROM room_visits "
+            "WHERE entered_at < ? AND COALESCE(left_at, ?) > ? ORDER BY entered_at",
+            (end, end, end, start)).fetchall()
+    return [tuple(r) for r in rows]
+
+
+def insert_visits(rows: list[tuple]) -> None:
+    with _db() as con:
+        con.executemany("INSERT OR REPLACE INTO room_visits VALUES (?,?,?,?,?)", rows)
+
+
 def insert_checkins(rows: list[tuple[str, str, dict]]) -> None:
     with _db() as con:
         con.executemany("INSERT OR REPLACE INTO checkins VALUES (?,?,?)",
@@ -304,5 +357,5 @@ def insert_checkins(rows: list[tuple[str, str, dict]]) -> None:
 
 def reset() -> None:
     with _db() as con:
-        for table in ("samples", "alerts", "checkins", "notices", "meta"):
+        for table in ("samples", "alerts", "checkins", "notices", "room_visits", "meta"):
             con.execute(f"DELETE FROM {table}")

@@ -107,6 +107,29 @@ cheap and make "we use NASA data" true:
 | *Latent virus reactivation in ISS astronauts* (Frontiers Microbiol. 2019): https://www.frontiersin.org/journals/microbiology/articles/10.3389/fmicb.2019.00016/full | Shedding of herpesviruses (VZV, EBV, CMV) rises in spaceflight. Changes are associated with the **daily cortisol rhythm**. This is an association, not proof of cause. | found |
 | *Astroimmunology* review (Nat Rev Immunol 2025): https://vivo.weill.cornell.edu/display/pubid41102553 | Lists abnormal circadian rhythms among the spaceflight factors that disrupt immune cells | found (abstract only) |
 
+## Psychological profile and room beacons (backend, Consensus-checked 2026-11-14)
+
+Sources behind `backend/behavioral.py` and `backend/location.py`. Labels: Strong / Moderate /
+Limited, from the study design and population.
+
+| Resource | What it gives us | Evidence |
+|---|---|---|
+| Levis et al. (JAMA 2020), *Accuracy of the PHQ-2 Alone and in Combination With the PHQ-9*: https://consensus.app/papers/details/w:157a9876-8a4a-412c-9cf2-afaf86faf638/ | PHQ-2 >= 3: sensitivity 0.72, specificity 0.85; PHQ-2 >= 2 then PHQ-9 >= 10 is more specific. Our two-step check-in. | Strong (individual-participant meta-analysis) |
+| Levis et al. (BMJ 2019), *Accuracy of PHQ-9 for screening to detect major depression*: https://consensus.app/papers/details/w:94663b88-e58a-44c2-9c99-52d6dca77cba/ | PHQ-9 >= 10 cut-off | Strong (meta-analysis) |
+| Manea et al. (J Affect Disord 2016), *Identifying depression with the PHQ-2*: https://consensus.app/papers/details/w:76fdd8e9-e19b-46a4-aed0-c132a3d19e96/ | PHQ-2 accuracy across studies | Strong (meta-analysis) |
+| Mitchell et al. (BJPsych Open 2016), *Case finding and screening clinical utility of the PHQ-9 and PHQ-2*: https://consensus.app/papers/details/w:70cc267b-3cce-431f-a33f-84f66ea479cf/ | Good for ruling out, can't confirm a diagnosis: why we say "screen, never a diagnosis" | Strong (meta-analysis, 40 studies) |
+| Kroenke et al. (Med Care 2003), *The Patient Health Questionnaire-2*: https://consensus.app/papers/details/w:964a1886-4c6c-4b5f-9d08-6d45328b5ee7/ | The original PHQ-2 and its cut-off of 3 | Moderate (validation study) |
+| Kemp et al. (Biol Psychiatry 2010), *Impact of Depression and Antidepressant Treatment on HRV*: https://consensus.app/papers/details/w:e30389d9-5ce4-4936-b967-0e844d977b45/ | Lower HRV with depression; lower still with more severe depression (r = -0.35) | Moderate (meta-analysis, 18 studies, n = 1,080; patients, not astronauts) |
+| Grosicki et al. (Am J Physiol Heart 2025), *HRV coefficient of variation during sleep as a digital biomarker*: https://consensus.app/papers/details/w:ed1bcdff-bd5a-4108-a21d-cadc6f40ecb8/ | Night-to-night HRV swings are normal: why the baseline spread has a floor (`REL_FLOOR`) | Moderate (>21,000 wearable users) |
+| Basner et al. (PNAS 2013), *Mars 520-d mission simulation reveals protracted crew hypokinesis*: https://consensus.app/papers/details/w:0d1c235d-e6c1-4b06-9c95-290ca74d35d5/ | Mars-500 crews moved less and their sleep timing shifted over the mission: activity and body clock as inputs | Moderate (analog, n = 6, actigraphy) |
+| Basner et al. (PLoS ONE 2014), *Psychological and Behavioral Changes during Confinement in a 520-Day Simulated Mission to Mars*: https://consensus.app/papers/details/w:88d789f2-b38a-432e-8a18-bf05940c04ab/ | Mars-500 tracked weekly depression scores, mood, PVT-B and actigraphy, the same kind of inputs as ours; big differences between people (why we use personal baselines) | Limited (analog, n = 6) |
+| Stamatis et al. (npj Ment Health Res 2024), *Passively sensed smartphone features for depression and anxiety*: https://consensus.app/papers/details/w:910d0bc5-13b9-4246-a043-89e2ad1fbba6/ | Time at home vs one's own average predicted depression symptoms: the within-person room signal | Moderate (cohort, n = 1,013) |
+| Zhang et al. (JMIR mHealth 2021), *Depressive symptom severity and nearby Bluetooth device counts*: https://consensus.app/papers/details/w:109a6da1-6176-4686-8923-d4995e4af9de/ | Bluetooth proximity linked to depressive symptoms | Limited (preliminary longitudinal study) |
+| Johannes et al. (PLoS ONE 2015), *Wireless Monitoring of Changes in Crew Relations during Long-Duration Mission Simulation*: https://consensus.app/papers/details/w:77011ac3-e893-47f9-aac4-9969a4700723/ | Proximity sensors tracked crew relations in Mars-500 | Limited (analog, n = 6) |
+| Basner et al. (Front Psychol 2026), *Proximity measurements for objective assessments of crew cohesion in an Antarctic space analog*: https://consensus.app/papers/details/w:5459b588-a250-4e76-aaaf-bab5d12fed24/ | Proximity as a crew-cohesion measure in Antarctica | Limited (analog) |
+| Cantisani et al. (PNAS 2026), *Social interactions in ICE environments: Antarctic winter teams using wearable sensors*: https://consensus.app/papers/details/w:f3e38452-0a00-4bc3-a4e6-14005fd1d61a/ | More close contact also went with conflict, so only a change from one's own normal counts | Limited (analog, wearable sensors) |
+| Bouse et al. (Sensors 2024), *Indoor Localization Using Bluetooth Beacons and RSSI Fingerprinting with Smartwatch*: https://consensus.app/papers/details/w:85a9c2ed-5af8-4417-ba15-63ea6555bdde/ | Watch + beacon room detection about 86-92% accurate, errors mostly in doorways: why two scans must agree | Limited (engineering study) |
+
 ## Competition note
 
 Lots of teams are on this same challenge, and several already use **NASA OSDR

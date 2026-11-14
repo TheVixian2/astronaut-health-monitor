@@ -29,6 +29,10 @@ struct VitalsSnapshot: Decodable, Equatable {
     /// Renaming this to `mood1to5` makes every vitals decode fail silently,
     /// which the UI then reports as "offline".
     let mood1To5: Int
+    /// HRV and active minutes come from the backend (the single source of truth), with the
+    /// astronaut's own normal in `baseline`. Optional so an older backend still decodes.
+    let hrvSdnnMs: Double?
+    let activeMin: Double?
     let source: String
     let baseline: Baseline
 
@@ -39,6 +43,8 @@ struct VitalsSnapshot: Decodable, Equatable {
         let respRateBpm: Double
         let sleepHLastNight: Double
         let mood1To5: Int   // capital T — see the note above
+        let hrvSdnnMs: Double?
+        let activeMin: Double?
     }
 }
 
@@ -46,6 +52,24 @@ struct VitalsSnapshot: Decodable, Equatable {
 struct HistoryPoint: Decodable {
     let ts: Date
     let heartRateBpm: Double?
+}
+
+/// Live ISS cabin air (GET /environment). `demoOverride` is true while a presenter has
+/// replaced the real CO2 to show the alarm; the watch then says so.
+struct CabinAir: Decodable, Equatable {
+    let co2Mmhg: Double?
+    let co21hAvgMmhg: Double?
+    let co2LimitMmhg: Double
+    let cabinTempC: Double?
+    let cabinPressureMmhg: Double?
+    let status: String
+    let demoOverride: Bool?
+}
+
+/// An answer from POST /ask.
+struct AskAnswer: Decodable, Equatable {
+    let answer: String
+    let source: String
 }
 
 /// One night from the on-board lighting log (GET /circadian).
@@ -88,13 +112,11 @@ actor APIClient {
     private struct IngestBody: Encodable {
         let timestamp: Date
         let heartRateBpm: Double
-        let hrvSdnnMs: Double   // PROVISIONAL: the backend ignores these two
-        let activeMin: Double   // until it stores HRV and activity
         let source: String
     }
 
     /// POST /astronauts/{id}/ingest
-    func ingest(_ sample: WatchSample) async throws {
+    func ingest(heartRate: Double) async throws {
         let url = Self.baseURL
             .appendingPathComponent("astronauts")
             .appendingPathComponent(astronautID)
@@ -104,8 +126,7 @@ actor APIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(
-            IngestBody(timestamp: Date(), heartRateBpm: sample.heartRateBpm, hrvSdnnMs: sample.hrvSdnnMs,
-                       activeMin: sample.activeMin, source: "simulated")
+            IngestBody(timestamp: Date(), heartRateBpm: heartRate, source: "simulated")
         )
 
         let (_, response) = try await session.data(for: request)
@@ -138,6 +159,7 @@ actor APIClient {
             .appendingPathComponent("astronauts")
             .appendingPathComponent(astronautID)
             .appendingPathComponent("alerts")
+            .appending(queryItems: [URLQueryItem(name: "viewer", value: astronautID)])
 
         let (data, response) = try await session.data(from: url)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
@@ -166,6 +188,37 @@ actor APIClient {
         url.append(queryItems: [URLQueryItem(name: "view", value: "crew")])
         let c: Circadian = try await get(url)
         return c.nights
+    }
+
+    /// GET /environment — real ISS cabin air (NASA ISS Live).
+    func cabinAir() async throws -> CabinAir {
+        try await get(Self.baseURL.appendingPathComponent("environment"))
+    }
+
+    /// GET /mission — only the REAL one-way light time is used (for "can this wait for Earth?").
+    func realOneWayDelayS() async throws -> Int {
+        struct Mission: Decodable { let realOneWayDelayS: Int }
+        let m: Mission = try await get(Self.baseURL.appendingPathComponent("mission"))
+        return m.realOneWayDelayS
+    }
+
+    /// POST /astronauts/{id}/ask — the Claude wrapper: a short answer about the wearer's own
+    /// physical data and the cabin. `source` is "claude", or "on_board" when Claude isn't reachable.
+    func ask(_ question: String) async throws -> AskAnswer {
+        let url = Self.baseURL
+            .appendingPathComponent("astronauts")
+            .appendingPathComponent(astronautID)
+            .appendingPathComponent("ask")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(["question": question])
+        request.timeoutInterval = 25  // Claude may take a few seconds; the backend falls back on its own
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try decoder.decode(AskAnswer.self, from: data)
     }
 
     private func get<T: Decodable>(_ url: URL) async throws -> T {

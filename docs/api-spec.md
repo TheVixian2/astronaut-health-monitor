@@ -188,6 +188,32 @@ sees.** It is a deliberate design position, not a toggle for convenience — see
 - `GET /astronauts/{id}/history?hours=&bucket_s=` → each point also has `low{}` and
   `high{}` per field; `bucket_s=3600` = hour by hour.
 
+## Cabin environment — **PROVISIONAL**, real NASA data (`backend/iss_live.py`)
+
+Live from **NASA ISS Live** telemetry (public Lightstreamer feed, adapter `ISSLIVE`):
+US Lab + Node 3 ppCO2, Lab ppO2, cabin pressure, cabin air temperature.
+
+- `GET /environment` → `{source, updated_at, ppco2_lab_mmhg, ppco2_node3_mmhg,
+  ppo2_lab_mmhg, cabin_pressure_mmhg, cabin_temp_c, co2_mmhg, co2_1h_avg_mmhg,
+  co2_limit_mmhg: 3, status: ok|elevated|above_limit|unavailable, note, source_url}`
+- SSE event **`environment`** (same shape) on every stream, ~every 30 s.
+- NASA-STD-3001 limit: 3 mmHg 1-hour average; `elevated` from 2.5 (OCHMO-TB-004:
+  headache risk < 1 % needs a 7-day average below 2.5). Elevated CO2 adds a
+  crew-wide suggestion to `GET /crew/wellbeing`.
+- `AHM_ISS_LIVE=0` turns the feed off; without network `status` is `unavailable`.
+- **Demo only:** `POST /debug/cabin {ppco2_mmhg, minutes}` replaces the live CO2 for a
+  few minutes (`{}` ends it) so the on-board alarm can be shown; while active,
+  `demo_override: true` and `source` says "DEMO OVERRIDE, not real ISS data".
+
+## Ask Claude (watch) — **PROVISIONAL**
+
+`POST /astronauts/{id}/ask {question}` → `{answer, source: claude|on_board, note}`.
+The watch's Claude wrapper (Ask page, "Why?" on alerts and the urgent pop-up). Sends
+Claude **only** physical readings vs baseline, cabin air and the light time, never mood
+or check-in answers. No API key, a blackout or any failure → an on-board answer built
+from the same numbers (`source: on_board`). Model: `INSIGHT_MODEL` (default
+`claude-sonnet-5-5`), server-side refusal fallback on.
+
 ## Habitat — **PROVISIONAL** (live in `backend/habitat.py`)
 
 Room per astronaut from a Bluetooth beacon per module (simulated by a fixed daily
