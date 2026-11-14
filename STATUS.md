@@ -233,6 +233,17 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **My health: HRV and a stress level, Male | Female body** (NotKaemy,
+  2026-11-14; on `web`, main merged in). HRV is `hrv_sdnn_ms` from the vitals.
+  **The stress level (0-100) is computed in the web** from HRV vs the astronaut's
+  own usual (usual = 30, each 10 % lower adds 16; bands resting / low / medium /
+  high). Apple Watch has no stress score, so the scale is ours and the UI says
+  so. **@stefanalbu2010-byte:** if `behavioral.py`'s watch-driven score gets
+  exposed in the vitals, the web will show that instead. The body card has a
+  Male | Female slider; sex is not in `GET /crew`, so it is remembered per
+  browser. **@Luca:** a `sex` field on `/crew` would be picked up automatically.
+  Skeletal (muscle) mass was also asked for: Apple Watch can't measure it, not
+  built.
 - **Check-in: one question at a time, and no "share with ground" box**
   (NotKaemy, 2026-11-14; on `web`, not merged yet). Steps: mood → sleep →
   symptoms → the two PHQ-2 items from `GET /checkin/questions`. **Every
