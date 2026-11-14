@@ -54,7 +54,7 @@ Then paste this one line, swapping `backend` for your lane
 (`backend` = stefanalbu2010-byte, `web` = NotKaemy, `watch` = Luca):
 
 ```sh
-git clone https://github.com/dr-galactic/dr-galactic.github.io.git && cd astronaut-health-monitor && git checkout backend && claude
+git clone https://github.com/dr-galactic/dr-galactic.github.io.git && cd dr-galactic.github.io && git checkout backend && claude
 ```
 
 That clones, puts you on your branch, and starts Claude Code in the repo. Then
