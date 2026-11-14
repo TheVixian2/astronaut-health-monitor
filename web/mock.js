@@ -30,6 +30,10 @@
   // it is raised (before any ground delay). Backs GET /astronauts/{id}/alerts.
   const ALERT_LOG = [];
 
+  // Latest check-in values per astronaut. Like the backend, a check-in's
+  // sleep_h / mood_1to5 replace the simulated sleep / mood in later vitals.
+  const MANUAL = {};
+
   const BASELINES = {
     a1: { heart_rate_bpm: 58, systolic_mmhg: 112, diastolic_mmhg: 72, spo2_pct: 98, temp_c: 36.5, resp_rate_bpm: 12, sleep_h_last_night: 7.2, mood_1to5: 4 },
     a2: { heart_rate_bpm: 74, systolic_mmhg: 124, diastolic_mmhg: 80, spo2_pct: 97, temp_c: 36.8, resp_rate_bpm: 15, sleep_h_last_night: 6.8, mood_1to5: 4 },
@@ -128,7 +132,8 @@
         heart_rate_bpm: Math.round(v.heart_rate_bpm), systolic_mmhg: Math.round(v.systolic_mmhg),
         diastolic_mmhg: Math.round(v.diastolic_mmhg), spo2_pct: Math.round(v.spo2_pct),
         temp_c: Math.round(v.temp_c * 10) / 10, resp_rate_bpm: Math.round(v.resp_rate_bpm),
-        sleep_h_last_night: v.sleep_h_last_night, mood_1to5: v.mood_1to5,
+        sleep_h_last_night: MANUAL[this.aid]?.sleep_h_last_night ?? v.sleep_h_last_night,
+        mood_1to5: MANUAL[this.aid]?.mood_1to5 ?? v.mood_1to5,
       };
     }
 
@@ -169,7 +174,12 @@
 
   function post(path, body) {
     console.info("[mock] POST", path, body);
-    if (CHECKIN_PATH.test(path)) return Promise.resolve({ accepted: true });
+    if (CHECKIN_PATH.test(path)) {
+      const m = (MANUAL[path.split("/")[2]] ||= {});
+      if (body.sleep_h != null) m.sleep_h_last_night = body.sleep_h;
+      if (body.mood_1to5 != null) m.mood_1to5 = body.mood_1to5;
+      return Promise.resolve({ accepted: true });
+    }
     return Promise.reject(new Error(`mock: no POST ${path}`));
   }
 

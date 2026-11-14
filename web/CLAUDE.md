@@ -15,6 +15,11 @@ Start the backend first, then open `web/index.html`. If `file://` causes trouble
 python3 -m http.server 5500   # then visit http://localhost:5500
 ```
 
+On Windows (no `source`, no `python3`): from `backend/`,
+`py -3.12 -m venv .venv`, `.venv\Scripts\python -m pip install -r requirements.txt`,
+then `.venv\Scripts\python -m uvicorn main:app --port 8000`. Set
+`MOCK_AUTO_ALERT_S=20` first for faster fake alerts.
+
 **No backend running?** Open `index.html?mock` (or tick "Mock data"). `mock.js`
 generates fake events in the page, mirroring the backend mock: `vitals` every
 3 s, an `alert` on `a1` every 30 s re-sent ~2 s later with the same `id` and
@@ -33,6 +38,10 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   header. The **"signals in transit" strip is a demo overlay**: it polls the
   undelayed `GET /alerts` to show the `incoming — 00:18` countdown. Polled, not
   streamed, so the page stays at 4 SSE connections (browser limit ~6 per host).
+- `demo.html` — Self-check and Ground side by side (two iframes) for the
+  pitch. Holds 5 SSE connections (1 + 4), just under the browser's ~6 per
+  host; Ground's in-transit polling shares the last slot. Tested against the
+  real backend.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict

@@ -76,6 +76,20 @@
     renderTiles();
     pushChart();
     renderAge();
+    renderSleep(v);
+  }
+
+  // Light & sleep card: compare last night against this astronaut's own usual.
+  function renderSleep(v) {
+    const h = v.sleep_h_last_night, base = v.baseline?.sleep_h_last_night;
+    const el = $("sleepNote");
+    if (typeof h !== "number") { el.textContent = "No sleep data yet."; el.className = "sleep-note muted"; return; }
+    const usual = typeof base === "number" ? ` (your usual: ${base} h)` : "";
+    const short = h < 6 || (typeof base === "number" && h < base * 0.85);
+    el.className = `sleep-note ${short ? "short" : "muted"}`;
+    el.textContent = short
+      ? `Last night: ${h} h${usual}, shorter than usual. Tonight, protect the hour before sleep.`
+      : `Last night: ${h} h${usual}, close to your usual. Keep the routine.`;
   }
 
   function onAlert(a) {
