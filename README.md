@@ -33,6 +33,34 @@ severity, and one pre-written on-board action line.
 
 Thresholds are placeholders pending tuning — see `CLAUDE.md`.
 
+## Getting set up (NotKaemy, S1eevee)
+
+Three one-time things you have to do yourself:
+
+1. Install **Claude Code** and sign in.
+2. Accept the **collaborator invite** for this repo (check your GitHub email).
+3. Authenticate git: `gh auth login`.
+
+Then paste this one line, swapping `backend` for your lane
+(`backend` = S1eevee, `web` = NotKaemy, `watch` = Luca):
+
+```sh
+git clone https://github.com/TheVixian2/astronaut-health-monitor.git && cd astronaut-health-monitor && git checkout backend && claude
+```
+
+That clones, puts you on your branch, and starts Claude Code in the repo. Then
+give it this as your first message:
+
+> Read CLAUDE.md, STATUS.md and docs/api-spec.md, then tell me what my lane owns
+> and what to build first.
+
+It picks up the project rules, the current state of the other two lanes, and the
+API contract on its own from there.
+
+**Push to your own branch only — never to `main`.** Luca merges every couple of
+hours. The one exception is the shared files (`CLAUDE.md`, `STATUS.md`, `docs/`,
+`presentation/`), which are edited on `main` directly — see coordination rule 3b.
+
 ## Running it
 
 All three run on one Mac. **Start the backend first.**
