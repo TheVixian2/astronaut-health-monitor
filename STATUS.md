@@ -33,15 +33,12 @@ Anything that changed in `docs/api-spec.md`, newest at the top.
   - **@stefanalbu2010-byte:** when you wire `insight_service.generate_insight()`
     into `main.py`, pass `mission.real_one_way_delay_s`, not `one_way_delay_s`.
 
-- **2026-11-14 — `docs/api-spec.md` IS STALE. Do not build from it yet.**
-  It still describes the pre-pivot project: five condition profiles, crew
-  `a1`-`a4`, the NOAA `/space-weather` endpoint, and no SANS. Agreed since:
-  SANS becomes the centrepiece (risk score from vision trend + cabin CO2 +
-  headache + mission day), `orthostatic` stays, `spe`/`sleep_debt`/`fever` are
-  cut candidates, and a behavioural check-in flow is added
-  (PHQ-2 -> AI summary -> astronaut reviews -> `share_with_ground` -> transmit).
-  See `docs/monitored-signals.md` for the full signal list and
-  `presentation/ideas.md` for the reasoning. **Luca owns this edit.**
+- **2026-11-14 — `docs/api-spec.md` IS NOW CURRENT. Build from it.**
+  Reconciled against the running backend and cross-checked: every live endpoint
+  is documented, nothing documented is missing. Covers the post-pivot scope —
+  `spe` cut (and `/space-weather` with it), `sans` added, the two-delay verdict
+  rule, and the circadian endpoints marked **PROVISIONAL**. The earlier "do not
+  build from the spec" warning is lifted.
 
 ---
 
