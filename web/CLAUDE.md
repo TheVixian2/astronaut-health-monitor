@@ -15,6 +15,18 @@ Start the backend first, then open `web/index.html`. If `file://` causes trouble
 python3 -m http.server 5500   # then visit http://localhost:5500
 ```
 
+**No backend running?** Open `index.html?mock` (or tick "Mock data"). `mock.js`
+generates fake events in the page, mirroring the backend mock: `vitals` every
+3 s, an `alert` on `a1` every 30 s re-sent ~2 s later with the same `id` and
+`insight` filled in, and the ground view held back by 20 s. URL params `base`,
+`aid` and `view` preset the controls.
+
+## Files
+
+- `index.html` / `style.css` / `app.js` — currently the Phase 2 stream check
+  (connect, print events, upsert alerts by `id`). Real views replace it.
+- `mock.js` — the in-page fake stream. Dev only.
+
 ## Two views
 
 - **Self-check** — the astronaut, on a station tablet. Their own vitals, a
