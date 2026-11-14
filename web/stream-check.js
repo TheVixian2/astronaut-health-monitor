@@ -88,7 +88,7 @@
           <strong>${esc(profileName(a.profile))}</strong>
           <span class="muted small">${esc(a.astronaut_id)} · ${esc(a.body_region)} · ${esc(a.hazard)} · ${esc(a.started_at)}</span></div>
         <div class="verdict">${esc(verdict(a, mission).text)}</div>
-        <div>${esc(a.onboard_action)}</div>${ins}</li>`;
+        <div>${esc(a.onboard_action)}</div>${window.AHM.nasaRefs(a)}${ins}</li>`;
     }).join("");
   }
 

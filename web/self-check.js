@@ -206,6 +206,7 @@
           <span class="muted small">${esc(REGION_NAMES[a.body_region] || a.body_region)} · ${esc(time(a.started_at))}</span></div>
         <div class="b-verdict ${v.onboard ? "onboard" : ""}">${esc(v.text)}</div>
         <div class="b-action">${esc(a.onboard_action)}</div>
+        ${A.nasaRefs(a)}
         ${insightBlock(a)}
       </div>
       <button type="button" class="ack" data-id="${esc(a.id)}">Got it</button>`;
@@ -231,6 +232,7 @@
           <span class="muted small">${esc(time(a.started_at))}</span></div>
         <div class="verdict">${esc(verdict(a, mission).text)}</div>
         <div>${esc(a.onboard_action)}</div>
+        ${A.nasaRefs(a)}
         ${insightBlock(a)}
       </li>`).join("");
   }
@@ -270,9 +272,10 @@
   // ---- status --------------------------------------------------------------
 
   function renderMission() {
-    $("mission").innerHTML = mission
-      ? `${esc(A.ENV_NAMES[mission.environment] || mission.environment)} · ground is <strong>${dur(mission.one_way_delay_s)}</strong> away`
-      : "Mission: unknown";
+    if (!mission) { $("mission").textContent = "Mission: unknown"; return; }
+    const realS = mission.real_one_way_delay_s ?? mission.one_way_delay_s;
+    const demo = realS > mission.one_way_delay_s ? ` <span class="muted">(demo: ${dur(mission.one_way_delay_s)})</span>` : "";
+    $("mission").innerHTML = `${esc(A.ENV_NAMES[mission.environment] || mission.environment)} · ground is <strong>${dur(realS)}</strong> away${demo}`;
   }
 
   function renderAge() {

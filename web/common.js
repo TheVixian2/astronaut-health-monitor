@@ -24,7 +24,43 @@
     spe: "Solar particle event",
   };
 
-  const REGION_NAMES = { heart: "Heart", head: "Head", lungs: "Lungs", skin: "Skin", whole_body: "Whole body" };
+  // NASA Human Research Program references, shown with every alert
+  // (docs/resources.md: official challenge resources). Titles are copied
+  // verbatim from https://www.nasa.gov/hrp/hazards and
+  // https://www.nasa.gov/hrp/risks (read 2026-11-14) — don't paraphrase them.
+  const HAZARDS = {
+    radiation: { name: "Space Radiation", url: "https://www.nasa.gov/hrp/hazard-space-radiation/" },
+    isolation: { name: "Isolation and Confinement", url: "https://www.nasa.gov/hrp/hazard-isolation-and-confinement/" },
+    distance: { name: "Distance from Earth", url: "https://www.nasa.gov/hrp/hazard-distance-from-earth/" },
+    gravity: { name: "Gravity Fields", url: "https://www.nasa.gov/hrp/hazard-gravity-fields/" },
+    environment: { name: "Hostile/Closed Environments", url: "https://www.nasa.gov/hrp/hazard-hostile-closed-environments/" },
+  };
+  const HAZARDS_INDEX = "https://www.nasa.gov/hrp/hazards/";
+
+  const REF = "https://www.nasa.gov/reference/";
+  // Condition profile -> official HRP risk. `co2` has no matching risk on the
+  // NASA list, so it deliberately shows its hazard only.
+  const HRP_RISKS = {
+    orthostatic: { title: "Risk of Cardiovascular Adaptations", url: REF + "risk-of-cardiovascular-adaptations/" },
+    sans: { title: "Risk of Spaceflight Associated Neuro-ocular Syndrome (SANS)", url: REF + "risk-of-spaceflight-associated-neuro-ocular-syndrome-sans/" },
+    fever: { title: "Risk of Altered Immune System Responses", url: REF + "risk-of-altered-immune-system-responses/" },
+    sleep_debt: { title: "Risk of Inadequate Sleep and Irregular Schedules", url: REF + "risk-from-inadequate-sleep-and-irregular-schedules/" },
+    spe: { title: "Risk of Radiation-Induced Cancers", url: REF + "risk-of-radiation-induced-cancers/" },
+  };
+
+  // "NASA hazard: Gravity Fields ↗ · NASA risk: Risk of … ↗" as HTML.
+  function nasaRefs(alert) {
+    const link = (url, text) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+    const parts = [];
+    const h = HAZARDS[alert.hazard];
+    if (h) parts.push(`NASA hazard: ${link(h.url, h.name)}`);
+    else if (alert.hazard) parts.push(`Hazard: ${link(HAZARDS_INDEX, alert.hazard)}`);
+    const r = HRP_RISKS[alert.profile];
+    if (r) parts.push(`NASA risk: ${link(r.url, r.title)}`);
+    return parts.length ? `<div class="nasa-ref small">${parts.join(" · ")}</div>` : "";
+  }
+
+  const REGION_NAMES ={ heart: "Heart", head: "Head", lungs: "Lungs", skin: "Skin", whole_body: "Whole body" };
   const SEVERITY_RANK = { watch: 1, alert: 2, critical: 3 };
   const ENV_NAMES = { iss: "ISS", moon: "Moon", mars: "Mars" };
 
@@ -104,5 +140,6 @@
     FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES,
     settings, linkWithSettings, openStream, getJSON, postJSON,
     verdict, deltaPct, dur, fmt, esc, profileName,
+    HAZARDS, HRP_RISKS, nasaRefs,
   };
 })();
