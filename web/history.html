@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>History · Dr. Galactic</title>
   <script src="auth.js"></script>
+  <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js via CDN (web/CLAUDE.md). -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -13,14 +17,14 @@
     .hist { max-width: 1100px; margin: 0 auto; padding: 0 16px 32px; display: grid; gap: 16px; }
     .hist .card { padding: 14px 16px; }
     .hist .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .hist .seg { display: inline-flex; border: 1px solid #ffffff26; border-radius: 8px; overflow: hidden; }
+    .hist .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-control); overflow: hidden; }
     .hist .seg button { background: none; border: 0; color: inherit; padding: 6px 12px; cursor: pointer; font: inherit; }
-    .hist .seg button[aria-pressed="true"] { background: #ffffff1f; font-weight: 600; }
+    .hist .seg button[aria-pressed="true"] { background: var(--panel); box-shadow: inset 0 -3px 0 var(--mars); font-weight: 650; }
     .hist .chart-box { position: relative; height: 280px; }
     .hist table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-    .hist th, .hist td { text-align: right; padding: 4px 8px; border-bottom: 1px solid #ffffff12; }
+    .hist th, .hist td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--line); }
     .hist th:first-child, .hist td:first-child { text-align: left; }
-    .hist .dev-up { color: #f0a050; } .hist .dev-down { color: #6fb3ff; }
+    .hist .dev-up { color: var(--alert-ink); } .hist .dev-down { color: var(--accent); }
     .hist .table-scroll { max-height: 320px; overflow: auto; }
     .hist pre { white-space: pre-wrap; font-size: 13px; margin: 0; }
     .hist .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -32,7 +36,7 @@
     <a class="brand" data-href="index.html" href="index.html" title="Home">Dr. Galactic</a>
     <span class="area-tag">History</span>
     <div class="menu"><a id="back" href="index.html">← Back</a></div>
-    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+    <div class="user small"><span data-user></span><span data-demo-only> <a data-href="index.html" href="index.html">All views</a></span> <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
   <header class="bar">
@@ -53,14 +57,14 @@
         <span class="muted small" id="rangeLabel"></span>
       </div>
       <div class="chart-box"><canvas id="chart"></canvas></div>
-      <p class="muted small">Line = average · shaded band = lowest to highest reading in that period ·
-        dashed = this astronaut's own normal (mission days 7–14).</p>
+      <p class="muted small">The line is the average; the shaded band runs from the lowest to the highest reading in that period;
+        the dashed line is this astronaut's own normal (mission days 7 to 14).</p>
       <div class="table-scroll"><table id="table"></table></div>
     </section>
 
     <div class="two">
       <section class="card">
-        <h2>Sleep · last 7 nights</h2>
+        <h2>Sleep, last 7 nights</h2>
         <div class="chart-box" style="height:200px"><canvas id="sleepChart"></canvas></div>
         <p class="muted small" id="sleepNote"></p>
       </section>

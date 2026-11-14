@@ -29,14 +29,13 @@
   const initials = name => name.replace(/^(Cmdr\.|Dr\.)\s*/, "").split(" ").map(p => p[0]).join("").slice(0, 2);
 
   function drawMap(locs) {
-    const fill = { shared: "#1d2a3a", private: "#2a2140", hygiene: "#232323" };
-    let svg = `<rect x="8" y="28" width="984" height="244" rx="40" fill="none" stroke="#ffffff33" stroke-width="2"/>`;
+    // Colours come from style.css (.hab-*), so the map follows the light theme.
+    let svg = `<rect class="hab-hull" x="8" y="28" width="984" height="244" rx="40"/>`;
     for (const r of rooms) {
       const [x, y, w, h] = LAYOUT[r.id] || [];
       if (x == null) continue;
-      svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${fill[r.kind]}" stroke="#ffffff26"
-        ${r.kind === "hygiene" ? 'stroke-dasharray="6 4"' : ""}/>
-        <text x="${x + 8}" y="${y + 16}" fill="#9aa4b2" font-size="12">${A.esc(r.name)}</text>`;
+      svg += `<rect class="hab-room ${A.esc(r.kind)}" x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>
+        <text class="hab-label" x="${x + 8}" y="${y + 17}">${A.esc(r.name)}</text>`;
     }
     const perRoom = {};
     for (const l of locs) if (l.room) (perRoom[l.room] = perRoom[l.room] || []).push(l);
@@ -44,9 +43,9 @@
       const [x, y, w, h] = LAYOUT[room];
       people.forEach((l, i) => {
         const cx = x + w / 2 + (i - (people.length - 1) / 2) * 34, cy = y + h / 2 + (h > 60 ? 8 : 4);
-        svg += `<g><title>${A.esc(l.name)} · ${A.esc(l.room_name)} since ${new Date(l.since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</title>
+        svg += `<g><title>${A.esc(l.name)} in ${A.esc(l.room_name)} since ${new Date(l.since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</title>
           <circle cx="${cx}" cy="${cy}" r="15" fill="${COLORS[l.astronaut_id] || "#ccc"}"/>
-          <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#111">${A.esc(initials(l.name))}</text></g>`;
+          <text class="hab-dot-label" x="${cx}" y="${cy + 4}" text-anchor="middle">${A.esc(initials(l.name))}</text></g>`;
       });
     }
     $("habMap").innerHTML = svg;
@@ -71,7 +70,7 @@
         <div class="hab-stat"><span class="hab-big">${t.shared_7d_avg_h}</span> h/day <span class="muted small">shared, last 7 days</span></div>
         <div class="small">normal ${t.shared_normal_h} h <span class="hab-delta ${low ? "low" : "muted"}">${d > 0 ? "+" : ""}${d.toFixed(0)}%</span></div>
       </div>
-      <div class="hab-bar" title="Out of 24 h · marker = their normal">
+      <div class="hab-bar" title="Out of 24 h. The marker is their normal.">
         <div class="hab-fill" style="width:${pct(t.shared_7d_avg_h)};background:${COLORS[aid] || "var(--accent)"}"></div>
         <div class="hab-normal" style="left:${pct(t.shared_normal_h)}"></div>
       </div>

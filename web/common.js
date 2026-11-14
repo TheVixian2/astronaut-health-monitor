@@ -10,7 +10,69 @@
     { key: "temp_c", label: "Temperature", unit: "°C", region: "skin" },
     { key: "sleep_h_last_night", label: "Sleep last night", unit: "h", region: "head" },
     { key: "mood_1to5", label: "Mood", unit: "/5", region: "head" },
+    // Heart-rate variability as Apple Watch records it (SDNN, ms). From the
+    // watch for a1, simulated for the others (backend).
+    { key: "hrv_sdnn_ms", label: "HRV", unit: "ms", region: "heart" },
+    // Derived here from HRV (withStress below), not sent by the backend.
+    { key: "stress_0to100", label: "Stress", unit: "/100", region: "head", derived: true },
+    // From the weekly portable X-ray (DXA) scan (owner, 2026-11-14): whole-body
+    // bone mineral density, and lean tissue of the arms and legs (the scan's
+    // stand-in for skeletal muscle). Both change slowly, so their change shows
+    // 1 decimal; `dp` is how many decimals the value itself shows.
+    { key: "bone_density_g_cm2", label: "Bone density", unit: "g/cm²", region: "skin", dp: 3, deltaDp: 1 },
+    { key: "muscle_mass_kg", label: "Muscle mass", unit: "kg", region: "skin", dp: 1, deltaDp: 1 },
   ];
+
+  // ---- X-ray (DXA) scan: simulated until the backend sends it -----------------
+  // PROVISIONAL bridge: the backend does not send bone_density_g_cm2 or
+  // muscle_mass_kg yet (asked in STATUS.md). Until it does, the console fills
+  // in a simulated weekly scan and says so on screen. Usual = the scan from
+  // mission days 7-14; the latest scan is lower since:
+  //   bone density ~0.35 %/month, the whole-body loss measured after
+  //     long-duration flights (LeBlanc et al. 2000);
+  //   muscle mass ~0.4 %/month, a PLACEHOLDER rate, not a published figure.
+  // A field the backend does send is used as is and its row here is ignored.
+  const SIM_SCAN = {            // field -> astronaut -> [usual, latest scan]
+    bone_density_g_cm2: { a1: [1.184, 1.18], a2: [1.236, 1.232], a3: [1.152, 1.148], a4: [1.21, 1.206] },
+    muscle_mass_kg:     { a1: [25.4, 25.3], a2: [27.6, 27.5], a3: [23.8, 23.7], a4: [26.3, 26.2] },
+  };
+  function withScan(v, aid) {
+    if (!v) return v;
+    let out = v;
+    for (const [key, byAid] of Object.entries(SIM_SCAN)) {
+      if (typeof v[key] === "number" || !byAid[aid]) continue;
+      const [usual, latest] = byAid[aid];
+      out = { ...out, [key]: latest, simulated_scan: true,
+              baseline: out.baseline ? { ...out.baseline, [key]: usual } : out.baseline };
+    }
+    return out;
+  }
+
+  // ---- stress level -----------------------------------------------------------
+  // Watches estimate stress from heart-rate variability: when the nervous system
+  // is under load, the time between beats varies less. Apple Watch records HRV
+  // as SDNN (ms) but keeps no stress score of its own, so the scale is ours
+  // (owner's request, 2026-11-14), a design choice and not a validated score:
+  //   HRV at the astronaut's own usual = 30 (low); every 10 % below it adds 16.
+  //   Bands as on other watches' 0-100 stress scales: 0-25 resting, 26-50 low,
+  //   51-75 medium, 76-100 high.
+  const STRESS_AT_USUAL = 30;
+  const STRESS_BANDS = [[25, "Resting"], [50, "Low"], [75, "Medium"], [100, "High"]];
+  function stressFromHrv(hrv, usual) {
+    if (typeof hrv !== "number" || typeof usual !== "number" || usual <= 0) return null;
+    return Math.max(0, Math.min(100, Math.round(STRESS_AT_USUAL + (1 - hrv / usual) * 160)));
+  }
+  function stressBand(score) {
+    return score == null ? "" : STRESS_BANDS.find(([max]) => score <= max)[1];
+  }
+  // A vitals snapshot with stress_0to100 added (and the usual level in baseline).
+  function withStress(v) {
+    if (!v || typeof v.hrv_sdnn_ms !== "number") return v;
+    const usual = v.baseline ? v.baseline.hrv_sdnn_ms : null;
+    const score = stressFromHrv(v.hrv_sdnn_ms, usual);
+    return { ...v, stress_0to100: score,
+             baseline: v.baseline ? { ...v.baseline, stress_0to100: score == null ? null : STRESS_AT_USUAL } : v.baseline };
+  }
 
   // Flat icon per vital (24 x 24, filled shapes). Colour comes from CSS:
   // .vi-<name> sets `color` (tokens --ic-*), .d paths are the darker detail
@@ -32,6 +94,20 @@
     mood_1to5: ["mood", `<circle cx="12" cy="12" r="9.2"/>
       <circle class="d" cx="9" cy="10" r="1.3"/><circle class="d" cx="15" cy="10" r="1.3"/>
       <path class="ds" d="M8.3 14.2c.9 1.6 2.2 2.4 3.7 2.4s2.8-.8 3.7-2.4"/>`],
+    // a pulse trace with uneven beat spacing: the variability between beats
+    hrv_sdnn_ms: ["hrv", `<rect x="2.4" y="4.4" width="19.2" height="15.2" rx="3.6"/>
+      <path class="ds" d="M4.4 13.2h2.4l1.2-4.6 1.8 8.2 1.4-3.6h1.9l.9-3.1 1.5 6.2 1-2.7h3.1"/>`],
+    // a gauge with the needle towards the high end
+    // a bone
+    bone_density_g_cm2: ["bone", `<g transform="rotate(-45 12 12)"><rect x="6.5" y="10" width="11" height="4" rx="1.2"/>
+      <circle cx="6.3" cy="9.7" r="2.7"/><circle cx="6.3" cy="14.3" r="2.7"/>
+      <circle cx="17.7" cy="9.7" r="2.7"/><circle cx="17.7" cy="14.3" r="2.7"/></g>`],
+    // a flexed arm
+    muscle_mass_kg: ["muscle", `<path d="M3.4 20.2c-.2-3 .5-6 2.1-8.5l2.6-4c.3-.5.5-1 .5-1.6V4.6c0-.9.7-1.6 1.6-1.6h2.4c.9 0 1.6.7 1.6 1.6 0 .8-.6 1.5-1.4 1.6l-1.3.2v3.3c1.3-1 2.9-1.5 4.6-1.5 3.3 0 6 2.6 6 5.9v1.4c0 3.1-2.5 5.6-5.6 5.6H4.7c-.7 0-1.3-.5-1.3-1.2z"/>
+      <path class="ds" d="M11.2 14.6c1.2-1.6 3-2.4 5-2.3"/>`],
+    stress_0to100: ["stress", `<path d="M12 4.6a9.5 9.5 0 0 0-8.4 13.9c.3.6.9.9 1.5.9h13.8c.6 0 1.2-.3 1.5-.9A9.5 9.5 0 0 0 12 4.6z"/>
+      <path class="ds" d="M6.1 14.4h1.5M8 9.1l1 1M12 7.3v1.4M16 9.1l-1 1M16.4 14.4h1.5M12 15.2l3.7-4.6"/>
+      <circle class="d" cx="12" cy="15.2" r="1.7"/>`],
   };
   function vitalIcon(key) {
     const ic = VITAL_ICONS[key];
@@ -113,7 +189,66 @@
 
   function openStream({ base, aid, view, mock }) {
     const url = `${base}/astronauts/${encodeURIComponent(aid)}/stream?view=${view}`;
-    return { url, source: mock ? new window.Mock.EventSource(url) : new EventSource(url) };
+    return { url, source: mock ? new window.Mock.EventSource(url) : new PausingEventSource(url) };
+  }
+
+  // Browsers allow only 6 open connections to one server, shared by EVERY tab,
+  // and each live stream holds one for as long as it is open (Mission Control
+  // holds 4, one per astronaut). A couple of forgotten tabs then use them all
+  // and every new page sits on "connecting…" with no data (seen 2026-11-14:
+  // a Mission Control tab + a demo tab starve a new console). So a stream
+  // closes once its tab has been hidden for HIDDEN_GRACE_MS and reopens when
+  // the tab is shown again. The grace period keeps quick window switches
+  // live (a window covered by another counts as hidden too, and a reopened
+  // Mission Control stream waits out the light delay again).
+  // Same interface as EventSource for what the pages use: addEventListener,
+  // onopen / onerror / onmessage, readyState, close().
+  const HIDDEN_GRACE_MS = 15000;
+  class PausingEventSource {
+    constructor(url) {
+      this.url = url;
+      this.listeners = [];
+      this.es = null;
+      this.closed = false;
+      this.pauseTimer = null;
+      this.onopen = this.onerror = this.onmessage = null;
+      this.onVisibility = () => {
+        clearTimeout(this.pauseTimer);
+        if (document.hidden) this.pauseTimer = setTimeout(() => this.pause(), HIDDEN_GRACE_MS);
+        else this.resume();
+      };
+      document.addEventListener("visibilitychange", this.onVisibility);
+      this.resume();
+      if (document.hidden) this.onVisibility();   // opened in the background: same grace
+    }
+    get readyState() { return this.closed ? 2 : this.es ? this.es.readyState : 0; }   // paused = connecting
+    addEventListener(type, fn, opts) {
+      this.listeners.push([type, fn, opts]);
+      if (this.es) this.es.addEventListener(type, fn, opts);
+    }
+    removeEventListener(type, fn) {
+      this.listeners = this.listeners.filter(([t, f]) => !(t === type && f === fn));
+      if (this.es) this.es.removeEventListener(type, fn);
+    }
+    resume() {
+      if (this.es || this.closed) return;
+      const es = this.es = new EventSource(this.url);
+      es.onopen = e => this.onopen && this.onopen(e);
+      es.onerror = e => this.onerror && this.onerror(e);
+      es.onmessage = e => this.onmessage && this.onmessage(e);
+      this.listeners.forEach(([t, fn, o]) => es.addEventListener(t, fn, o));
+    }
+    pause() {
+      if (!this.es) return;
+      this.es.close();
+      this.es = null;
+    }
+    close() {
+      clearTimeout(this.pauseTimer);
+      this.pause();
+      this.closed = true;
+      document.removeEventListener("visibilitychange", this.onVisibility);
+    }
   }
 
   // Errors carry .status so callers can tell 403 (private) from 404 (missing).
@@ -193,6 +328,7 @@
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
+    withStress, stressBand, withScan,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 
@@ -263,7 +399,7 @@
   // Links marked data-href keep ?mock / ?base / ?aid when moving between pages.
   document.querySelectorAll("a[data-href]").forEach(a => { a.href = linkWithSettings(a.dataset.href); });
   const who = window.AHMAuth && window.AHMAuth.session();
-  document.querySelectorAll("[data-user]").forEach(el => { el.textContent = who ? `Signed in as ${who.user} · ${who.label}` : ""; });
+  document.querySelectorAll("[data-user]").forEach(el => { el.textContent = who ? `Signed in as ${who.user}: ${who.label}` : ""; });
   // "All views" and other presenter-only links.
   if (!who || who.role !== "demo") document.querySelectorAll("[data-demo-only]").forEach(el => { el.hidden = true; });
   document.querySelectorAll("[data-signout]").forEach(b => b.addEventListener("click", () => window.AHMAuth.logout()));
