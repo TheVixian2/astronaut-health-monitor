@@ -1,6 +1,6 @@
 # web — CLAUDE.md
 
-**Owner: TBD.** Only the web owner edits this folder.
+**Owner: NotKaemy.** Only the web owner edits this folder.
 
 ## Stack
 

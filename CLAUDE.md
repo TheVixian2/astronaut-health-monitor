@@ -68,9 +68,9 @@ profile also stores `onboard_action` (one line for the watch) and `body_region`
 
 | Lane | Owner | Owns |
 |---|---|---|
-| Watch + API spec + integration | Luca (has the Mac) | `/watch-app`, `docs/api-spec.md`, merging PRs |
-| Backend | TBD | `/backend`, `/tools` |
-| Web | TBD | `/web` |
+| Watch + API spec + integration | **Luca** (has the Mac) | `/watch-app`, `docs/api-spec.md`, merging PRs |
+| Backend | **S1eevee**, joined by Luca once the watch app is done | `/backend`, `/tools` |
+| Web | **NotKaemy** | `/web` (both views) |
 
 ## Coordination rules
 
