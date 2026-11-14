@@ -111,3 +111,25 @@ Append freely. Dated bullets. Unsorted is fine.
 - **TODO:** check the Space Apps challenge page's own suggested-resources list.
   Judges often expect those specific datasets, and that list beats anything
   found by general search.
+
+## 2026-11-14 — NASA resources (see `docs/resources.md`)
+
+- **Full list of NASA, partner-agency and other resources is in `docs/resources.md`**,
+  with what each gives us, which lane uses it, and whether the link was checked.
+- **Three cheap fixes for "we use no NASA data":** (1) live Mars light-time from the
+  **JPL Horizons API**, (2) measured dose per environment (ISS/Moon/Mars) from **NASA
+  OSDR RadLab**, (3) every threshold cites **NASA-STD-3001 / OCHMO technical briefs /
+  HRP evidence**, shown as a "source" tooltip.
+- **Strong citation for SANS inputs:** NASA's OCHMO Carbon Dioxide technical brief ties
+  headache and vision changes to fluid shift and CO2. That is exactly our CO2 + headache
+  input. https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf
+- **Partner agencies to name:** CSA Bio-Monitor (measures the vitals we simulate), ESA
+  EchoFinder-2 (also guided by each astronaut's own baseline), CNES EveryWear (the
+  closest existing crew app).
+- **Slides: no NASA meatball, worm or seal** (needs permission). Use Space Apps branding.
+  Don't put "NASA" in the product name.
+- **Many teams are on this challenge and already use OSDR RadLab + NOAA.** NASA data is
+  the minimum. What sets us apart is SANS, the act-now verdict and astronaut-controlled
+  sharing.
+- **Still TODO:** the challenge page's own Resources list needs to be copied from a
+  browser (scripts fail the site's certificate check).
