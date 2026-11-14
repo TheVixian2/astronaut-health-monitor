@@ -15,16 +15,16 @@ from typing import Optional
 CREW = {
     "a1": ("Cmdr. Elena Ionescu", "Commander",
            dict(heart_rate_bpm=58, spo2_pct=98,
-                temp_c=36.5, resp_rate_bpm=12, sleep_h_last_night=7.2, mood_1to5=4)),
+                temp_c=36.5, resp_rate_bpm=12, sleep_h_last_night=7.2, mood_1to5=4, hrv_sdnn_ms=55, active_min=45)),
     "a2": ("Mihai Popa", "Flight Engineer",
            dict(heart_rate_bpm=74, spo2_pct=97,
-                temp_c=36.8, resp_rate_bpm=15, sleep_h_last_night=6.8, mood_1to5=4)),
+                temp_c=36.8, resp_rate_bpm=15, sleep_h_last_night=6.8, mood_1to5=4, hrv_sdnn_ms=42, active_min=40)),
     "a3": ("Dr. Sara Okafor", "Crew Medical Officer",
            dict(heart_rate_bpm=66, spo2_pct=98,
-                temp_c=36.6, resp_rate_bpm=13, sleep_h_last_night=7.5, mood_1to5=5)),
+                temp_c=36.6, resp_rate_bpm=13, sleep_h_last_night=7.5, mood_1to5=5, hrv_sdnn_ms=50, active_min=50)),
     "a4": ("Jonas Berg", "Mission Specialist",
            dict(heart_rate_bpm=62, spo2_pct=98,
-                temp_c=36.4, resp_rate_bpm=14, sleep_h_last_night=7.0, mood_1to5=4)),
+                temp_c=36.4, resp_rate_bpm=14, sleep_h_last_night=7.0, mood_1to5=4, hrv_sdnn_ms=47, active_min=35)),
 }
 
 # --- Thresholds (placeholders) -----------------------------------------------
@@ -36,6 +36,26 @@ PROFILES = {
                        onboard_action="Consider pre-sleep lighting (2700K) 1 h before bed, screens aside, eye mask."),
 }
 VITALS_PROFILES = ("sleep_debt",)
+
+# Psychological alerts come from the profile (behavioral.py), not from one tick's vitals.
+# They go to the commander first (the deputy if the commander is flagged), who releases them
+# to the astronaut; Mission Control always gets them after the light delay (team decision,
+# Luca 2026-11-14). act_within_s drives the usual verdict rule.
+PROFILES["wellbeing_concern"] = dict(
+    severity="alert", hazard="isolation", body_region="head", act_within_s=86400,
+    onboard_action="Check in with them privately today, and offer a private conference with Mission Control.")
+PROFILES["wellbeing_urgent"] = dict(
+    severity="critical", hazard="isolation", body_region="head", act_within_s=1800,
+    onboard_action="Talk with them in person now, and don't leave them alone if they seem at risk. "
+                   "Tell the Crew Medical Officer and Mission Control.")
+PSYCHOLOGICAL = {"sleep_debt", "wellbeing_concern", "wellbeing_urgent"}
+CREW_MESSAGE = {  # what the astronaut sees once a psychological alert is released to them
+    "sleep_debt": "Your sleep has been short for a few nights. Your sleep plan has a few ideas that may help.",
+    "wellbeing_concern": "Your recent wellbeing checks show some changes from your usual. Your commander would "
+                         "like to talk, and a private conference with Mission Control is always an option.",
+    "wellbeing_urgent": "Several of your recent checks have changed a lot. You don't have to handle this alone: "
+                        "your commander and Mission Control know, and someone will be with you.",
+}
 
 # Sensors aren't right 100% of the time, so a vitals alert asks whether the astronaut
 # actually feels it. "No" marks the readings as a likely sensor error in their history.
@@ -60,6 +80,19 @@ SCENARIO_MULT = {
 }
 SCENARIO_SLEEP_NIGHTS_H = [5.4, 5.1, 5.0]
 SCENARIO_SLEEP_MOOD = 2
+
+# The demo story: a2 declines slowly after the mission midpoint (problems tended to emerge after
+# the midpoint in HI-SEAS; Frontiers 2022). Used by the live simulation and by the seed, so they
+# agree. Watch signals only; the check-in side of the story is in tools/simulate_crew.py and the
+# time-with-crew side in location.py. Multipliers on the astronaut's own baseline.
+DECLINE_FROM_DAY = 22
+
+
+def drift(aid: str, mission_day: int) -> dict[str, float]:
+    if aid != "a2" or mission_day < DECLINE_FROM_DAY:
+        return {}
+    ramp = min(1.0, (mission_day - DECLINE_FROM_DAY + 1) / 14)  # builds up over two weeks
+    return {"hrv_sdnn_ms": 1 - 0.12 * ramp, "active_min": 1 - 0.2 * ramp}
 
 
 @dataclass

@@ -16,10 +16,12 @@ from typing import Optional
 PLAUSIBLE = {  # what a human body can physically do
     "heart_rate_bpm": (25, 220),
     "spo2_pct": (70, 100), "temp_c": (33.0, 42.0), "resp_rate_bpm": (4, 60),
+    "hrv_sdnn_ms": (5, 250), "active_min": (0, 1440),
 }
 MAX_JUMP_PER_TICK = {  # change in one 3 s tick that is more likely a sensor glitch than the body
     "heart_rate_bpm": 35,
     "spo2_pct": 6, "temp_c": 1.0, "resp_rate_bpm": 10,
+    "hrv_sdnn_ms": 40, "active_min": 1440,  # the active-minutes counter resets at midnight
 }
 FLATLINE_TICKS = 20  # identical watch heart rate for 60 s
 RECENT_TICKS = 1200  # ~1 h of per-tick results for the accuracy summary

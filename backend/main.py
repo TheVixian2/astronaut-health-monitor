@@ -34,10 +34,10 @@ from pydantic import BaseModel, Field, model_validator
 import behavioral
 import circadian
 import engine
-import habitat
 import horizons
 import iss_live
 import insight_service
+import location
 import quality
 import store
 
@@ -75,6 +75,8 @@ class IngestRequest(BaseModel):
     timestamp: datetime
     heart_rate_bpm: float
     source: Source
+    hrv_sdnn_ms: Optional[float] = Field(default=None, ge=0, le=500)   # PROVISIONAL: from the watch
+    active_min: Optional[float] = Field(default=None, ge=0, le=1440)   # PROVISIONAL: active minutes today
 
 
 class Accepted(BaseModel):
@@ -88,6 +90,8 @@ class Baseline(BaseModel):
     resp_rate_bpm: int
     sleep_h_last_night: float
     mood_1to5: int
+    hrv_sdnn_ms: float = 0   # PROVISIONAL: heart-rate variability (ms) from the watch
+    active_min: float = 0    # PROVISIONAL: active minutes so far today (baseline: a usual whole day)
 
 
 Quality = Literal["ok", "suspect", "implausible"]
@@ -128,6 +132,13 @@ class Alert(BaseModel):
     # PROVISIONAL additions (not yet in docs/api-spec.md)
     data_quality: Literal["ok", "suspect"] = "ok"   # suspect = a sensor glitch was seen at the time
     confirmation: Optional[Confirmation] = None     # "do you feel this?"; null for check-in-based alerts
+    # Psychological alerts: the commander sees them first (the deputy if the commander is the one
+    # flagged) and releases them to the astronaut; Mission Control always gets them after the delay.
+    psychological: bool = False
+    routed_to: Optional[str] = None                 # who has it first on board
+    released_to_crew_at: Optional[datetime] = None  # when the astronaut was shown it
+    released_by: Optional[str] = None               # astronaut id, or "automatic"
+    crew_message: Optional[str] = None              # what the astronaut sees once it is released
 
 
 class Mission(BaseModel):
@@ -154,6 +165,7 @@ class CheckinRequest(BaseModel):
     share_with_ground: bool
     # PROVISIONAL (behavioral health): wording in GET /checkin/questions
     phq2: Optional[behavioral.Phq2] = None
+    phq9: Optional[behavioral.Phq9] = None          # asked when PHQ-2 >= 2 (two-step screening)
     reaction_test: Optional[behavioral.ReactionTest] = None
 
 
@@ -165,7 +177,8 @@ class ScenarioRequest(BaseModel):
 
 # PROVISIONAL additions (not yet in docs/api-spec.md)
 
-Target = Literal["commander", "ground", "self"]
+Target = Literal["commander", "deputy", "ground", "self"]
+View = Literal["self", "commander", "deputy", "ground"]
 
 
 class Notice(BaseModel):
@@ -173,28 +186,102 @@ class Notice(BaseModel):
     astronaut_id: str          # whose wellbeing this is about
     target: Target
     level: behavioral.Level
-    reason: Literal["shared_by_astronaut", "automatic_urgent", "told_astronaut"]
+    reason: Literal["flagged", "released", "auto_released", "safety"]
+    alert_id: Optional[str] = None
     areas: list[str]           # e.g. ["mood", "sleep"]: never the answers themselves
     created_at: datetime
     ground_eta_s: Optional[int] = None
     message: str
 
 
+class Routing(BaseModel):
+    routed_to: str             # who sees a psychological flag first on board
+    routed_to_name: str
+    active_alert_id: Optional[str]
+    released: Optional[bool]   # null when no psychological alert is active
+
+
+class Wellbeing(BaseModel):
+    astronaut_id: str
+    name: str
+    view: View
+    mission_day: int
+    withheld: bool             # self view before a flag is released: the numbers, not the assessment
+    level: Optional[behavioral.Level]
+    score: Optional[int]
+    rule: Optional[str]        # the safety rule that set the level, if any
+    confidence: Literal["high", "medium", "low"]
+    coverage: float            # share of the weight that had enough data
+    group_points: dict[str, float]
+    signals: list[behavioral.Signal]
+    phq: Optional[behavioral.PhqResult]
+    needs_phq9: bool
+    trend: Optional[behavioral.Trend]
+    personal_or_shared: str
+    suggestions: list[str]
+    routing: Routing
+    note: str
+
+
 class CrewMemberWellbeing(BaseModel):
     astronaut_id: str
     name: str
     role: str
-    level: Optional[behavioral.Level]  # null when the astronaut keeps it private
-    visible_because: Literal["shared", "automatic_urgent", "commander_first", "private"]
+    level: behavioral.Level
+    score: int
+    trend: str
+    confidence: str
+    unreleased_alert: bool
+    visible_because: Literal["commander_first", "shared", "ground"]  # commander_first: not shown to them yet
     areas: list[str] = []              # which areas raised the level; never the answers
 
 
 class CrewWellbeing(BaseModel):
-    view: Literal["commander", "ground"]
+    view: View
     crew_wide: list[str]       # trends shared by >= 3 crew, without names
     members: list[CrewMemberWellbeing]
     suggestions: list[str]
     note: str
+
+
+class PsychReportAlert(BaseModel):
+    id: str
+    profile: str
+    severity: Severity
+    started_at: datetime
+    routed_to: Optional[str]
+    released_to_crew_at: Optional[datetime]
+    released_by: Optional[str]
+    still_active: bool
+
+
+class PsychReport(BaseModel):
+    profile: Wellbeing
+    alerts: list[PsychReportAlert]
+    crew_context: list[str]
+    data_quality: dict[str, int]
+    text: str                  # plain-language report, small enough for a congested deep-space link
+    size_bytes: int
+    method: dict
+
+
+class LocationNow(BaseModel):
+    room: Optional[str]
+    room_name: Optional[str]
+    since: Optional[datetime]
+    source: Literal["beacon", "simulated"]
+
+
+class LocationView(BaseModel):
+    astronaut_id: str
+    view: Literal["self", "commander", "doctor", "ground"]
+    current: LocationNow
+    reason: Optional[str]                        # why someone other than the astronaut may see it
+    today_minutes: Optional[dict[str, int]]      # self only: room -> minutes today
+    week: Optional[dict[str, Optional[float]]]   # self only: 7-day averages vs usual
+    seen_by: Optional[list[dict]]                # self only: who looked, when and why
+    note: str
+
 
 class ConfirmRequest(BaseModel):
     felt: bool
@@ -318,6 +405,8 @@ class LightTime(BaseModel):
 
 class HistoryPoint(BaseModel):
     ts: datetime
+    hrv_sdnn_ms: Optional[float] = None
+    active_min: Optional[float] = None
     heart_rate_bpm: Optional[float] = None
     spo2_pct: Optional[float] = None
     temp_c: Optional[float] = None
@@ -331,7 +420,7 @@ class HistoryPoint(BaseModel):
 # --- State -----------------------------------------------------------------------
 
 SEVERITY_RANK = {"watch": 1, "alert": 2, "critical": 3}
-WALK_STEP = {"heart_rate_bpm": 1.0, "spo2_pct": 0.2, "temp_c": 0.02, "resp_rate_bpm": 0.3}
+WALK_STEP = {"heart_rate_bpm": 1.0, "spo2_pct": 0.2, "temp_c": 0.02, "resp_rate_bpm": 0.3, "hrv_sdnn_ms": 1.0}
 
 
 class AstronautState:
@@ -353,20 +442,23 @@ class AstronautState:
         self.sensors = quality.SensorMonitor()
         self.quality: str = "ok"            # quality flag of the latest reading
         self.muted: dict[str, int] = {}     # profile -> calm ticks; astronaut said "I don't feel it"
-        # Behavioral health (behavioral.py): astronaut first, nothing shared until they choose.
-        self.wb_share = {"commander": False, "ground": False}
-        self.wb_auto_notified = False       # urgent level reached in this episode
-        self.wb_level: str = "steady"
-        self.mood_baseline: Optional[float] = None
-        self.rt_baseline: Optional[tuple[float, float]] = None
-        self.hr_7d: Optional[float] = None
+        # Psychological profile (behavioral.py), recomputed from the stored history every ~60 s.
+        self.history: Optional[behavioral.History] = None
+        self.profile: Optional[behavioral.Result] = None
+        self.trend: Optional[behavioral.Trend] = None
+        self.watch_extra: Optional[tuple[Optional[float], Optional[float], float]] = None  # hrv, active, loop t
+        # Room from the Bluetooth beacons (location.py)
+        self.room: Optional[str] = None
+        self.room_since: Optional[datetime] = None
+        self.room_source: str = "simulated"
+        self.location_seen: list[dict] = []   # who saw the room during an emergency, and why
 
     def watch_dropout(self) -> bool:
         loop = asyncio.get_running_loop()
         return self.real_hr is not None and loop.time() - self.real_hr[1] >= REAL_HR_FRESH_S
 
     def target(self, field: str) -> float:
-        base = getattr(self.baseline, field)
+        base = getattr(self.baseline, field) * engine.drift(self.id, mission_day(now())).get(field, 1.0)
         mult = engine.SCENARIO_MULT.get(self.scenario, {}).get(field, 1.0)
         return base * mult
 
@@ -388,19 +480,29 @@ class AstronautState:
         self.values["sleep_h_last_night"] = self.sleep_nights()[-1]
         mood = engine.SCENARIO_SLEEP_MOOD if self.scenario == "sleep_debt" else self.baseline.mood_1to5
         self.values["mood_1to5"] = self.manual.get("mood_1to5", mood)
+        # Active minutes today: builds up over the waking day toward this astronaut's usual total.
+        t = now()
+        awake = max(0.0, min(1.0, (t.hour * 60 + t.minute - 360) / (16.5 * 60)))
+        total = self.baseline.active_min * engine.drift(self.id, mission_day(t)).get("active_min", 1.0)
+        self.values["active_min"] = round(total * awake, 1)
 
     def snapshot(self) -> Vitals:
         v = self.values
         hr, source = v["heart_rate_bpm"], "simulated"
         loop = asyncio.get_running_loop()
+        hrv, active = v["hrv_sdnn_ms"], v["active_min"]
         if self.real_hr and loop.time() - self.real_hr[1] < REAL_HR_FRESH_S:
             hr, source = self.real_hr[0], self.real_hr[2]
+        if self.watch_extra and loop.time() - self.watch_extra[2] < REAL_HR_FRESH_S:
+            hrv = self.watch_extra[0] if self.watch_extra[0] is not None else hrv
+            active = self.watch_extra[1] if self.watch_extra[1] is not None else active
         return Vitals(
             timestamp=now(), source=source, baseline=self.baseline,
             heart_rate_bpm=round(hr), spo2_pct=round(v["spo2_pct"]),
             temp_c=round(v["temp_c"], 1), resp_rate_bpm=round(v["resp_rate_bpm"]),
             sleep_h_last_night=round(v["sleep_h_last_night"], 1),
-            mood_1to5=max(1, min(5, round(v["mood_1to5"]))), quality=self.quality)
+            mood_1to5=max(1, min(5, round(v["mood_1to5"]))), hrv_sdnn_ms=round(hrv),
+            active_min=round(active, 1), quality=self.quality)
 
     def context(self, t: datetime) -> engine.Context:
         return engine.Context(sleep_last_nights=self.sleep_nights(),
@@ -424,6 +526,11 @@ subscribers: dict[str, dict[asyncio.Queue, str]] = {aid: {} for aid in crew}  # 
 background: set[asyncio.Task] = set()
 notices: list[Notice] = []
 COMMANDER_ID = next(aid for aid, (_, role, _) in engine.CREW.items() if role == "Commander")
+CMO_ID = next(aid for aid, (_, role, _) in engine.CREW.items() if role == "Crew Medical Officer")
+# Who gets the commander's own psychological flags. TEAM: confirm; the spec says "the pilot" but the
+# crew has no pilot, so the Crew Medical Officer is the default.
+DEPUTY_ID = os.getenv("AHM_DEPUTY", CMO_ID)
+RELEASE_AFTER_S = int(os.getenv("AHM_RELEASE_AFTER_S", str(12 * 3600)))  # a flag never stays hidden for good
 
 
 def mission_day(t: datetime) -> int:
@@ -461,160 +568,218 @@ def _round_baseline(b: dict) -> dict:
 
 
 def _load_store_view(t: datetime) -> dict:
+    """Everything the profile needs, read in one go (runs in a thread). Complete days only."""
     w0, w1 = store.iso(mission_start + timedelta(days=6)), store.iso(mission_start + timedelta(days=14))
+    today = t.date()
+    start_iso = store.iso(mission_start)
+    today_iso = store.iso(datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc))
+    social = location.daily_social(store.visits_between(start_iso, today_iso),
+                                   mission_start.date(), today - timedelta(days=1))
     view = {}
     for aid in crew:
-        window = store.checkins_between(aid, w0, w1)
-        moods = behavioral.mood_values(window)
-        view[aid] = dict(
-            baseline=store.baseline(aid, w0, w1),
-            mood=statistics.median(moods) if moods else None,
-            rt=behavioral.rt_baseline(window),
-            hr_7d=store.period_stats(aid, store.iso(t - timedelta(days=7)))["heart_rate_bpm"]["avg"],
-            checkins=store.checkins_between(aid, store.iso(t - timedelta(days=14))))
+        days: dict[date, behavioral.DayData] = {}
+        for dstr, a in store.daily_aggregates(aid, start_iso, today_iso).items():
+            days[date.fromisoformat(dstr)] = behavioral.DayData(rhr=a["rhr"], hrv=a["hrv"], active=a["active"],
+                                                                sleep=a["sleep"])
+        for d, (crew_h, quarters_h) in social[aid].items():
+            dd = days.setdefault(d, behavioral.DayData())
+            dd.crew_h, dd.quarters_h = crew_h, quarters_h
+        view[aid] = dict(baseline=store.baseline(aid, w0, w1), days=days,
+                         checkins=store.checkins_between(aid, start_iso))
     return view
 
 
 async def refresh_from_store() -> None:
-    view = await asyncio.to_thread(_load_store_view, now())
+    t = now()
+    view = await asyncio.to_thread(_load_store_view, t)
+    b0, b1 = (mission_start + timedelta(days=6)).date(), (mission_start + timedelta(days=13)).date()
     for aid, d in view.items():
         s = crew[aid]
         s.baseline_stored = d["baseline"] is not None
-        s.baseline = Baseline(**_round_baseline(d["baseline"])) if s.baseline_stored else s.configured
-        s.mood_baseline, s.rt_baseline, s.hr_7d = d["mood"], d["rt"], d["hr_7d"]
+        base = _round_baseline(d["baseline"]) if s.baseline_stored else s.configured.model_dump()
+        acts = [x.active for day, x in d["days"].items() if b0 <= day <= b1 and x.active is not None]
+        if acts:
+            base["active_min"] = round(statistics.fmean(acts))  # a usual whole day, not a mid-day counter
+        s.baseline = Baseline(**base)
         newest = d["checkins"][-1][0] if d["checkins"] else ""
         s.checkins = d["checkins"] + [c for c in s.checkins if c[0] > newest]  # keep any not yet read back
+        s.history = behavioral.History(days=d["days"], checkins=s.checkins, mission_start=mission_start.date())
+    await asyncio.to_thread(compute_profiles, t)
 
 
-# --- Behavioral health (behavioral.py) ----------------------------------------------
+# --- Psychological profile (behavioral.py) ---------------------------------------------
 
-LEVEL_RANK = {"steady": 0, "watch": 1, "concern": 2, "urgent": 3}
 CREW_WIDE_TEXT = {
-    "sleep": "is sleeping at least 1 h less than usual",
+    "sleep": "is sleeping less than usual",
     "body_clock": "has irregular or drifting bedtimes",
+    "hrv": "has a lower heart-rate variability than usual",
+    "activity": "is less active than usual",
+    "social_time": "is spending less time with crewmates than usual",
     "mood": "reports a lower mood than usual",
     "reaction_time": "has slower reaction times than usual",
     "resting_heart_rate": "has a higher resting heart rate than usual",
-}  # PHQ-2 is never aggregated: too personal even without names
+}  # PHQ answers are never aggregated: too personal even without names
+LEVEL_PROFILE = {"concern": "wellbeing_concern", "urgent": "wellbeing_urgent"}
+crew_counts: dict[str, int] = {}
 
 
-def _signals(s: AstronautState, t: datetime) -> list[behavioral.Signal]:
-    week = store.iso(t - timedelta(days=7))
-    recent = [c for c in s.checkins if c[0] >= week]
-    moods = behavioral.mood_values(recent)
-    circ = circadian.assess(s.id, t, mission.environment).summary
-    return behavioral.signals_for(behavioral.Inputs(
-        phq2=behavioral.latest_phq2(s.checkins), mood_7d=statistics.fmean(moods) if moods else None,
-        mood_baseline=s.mood_baseline, sleep_avg_7n=circ.sleep_avg_h,
-        sleep_baseline=s.baseline.sleep_h_last_night,
-        body_clock_status="watch" if circ.status == "watch" else "steady",
-        rt_latest=behavioral.latest_rt(s.checkins), rt_baseline=s.rt_baseline,
-        hr_7d=s.hr_7d, hr_baseline=s.baseline.heart_rate_bpm))
+def compute_profiles(t: datetime) -> None:
+    """Profile and trend for every astronaut (runs in a thread). Today's check-ins count."""
+    global crew_counts
+    yesterday = t.date() - timedelta(days=1)
+    results = {}
+    for aid, s in crew.items():
+        if s.history is None:
+            continue
+        s.history.checkins = s.checkins
+        s.history.body_clock_status = circadian.assess(aid, t, mission.environment).summary.status
+        results[aid] = behavioral.compute(s.history, yesterday, live=True)
+    crew_counts = behavioral.mark_crew_wide(results)
+    for aid, r in results.items():
+        crew[aid].profile = r
+        crew[aid].trend = behavioral.trend(crew[aid].history, t.date(), r)
 
 
-def crew_signals(t: datetime) -> tuple[dict[str, list[behavioral.Signal]], dict[str, int]]:
-    """Every astronaut's signals, marked crew_wide where >= 3 people share them, plus counts."""
-    all_sigs = {aid: _signals(s, t) for aid, s in crew.items()}
-    counts: dict[str, int] = {}
-    for sigs in all_sigs.values():
-        for name in {x.name for x in sigs if x.points > 0}:
-            counts[name] = counts.get(name, 0) + 1
-    shared = {n for n, k in counts.items() if k >= behavioral.CREW_WIDE_MIN and n != "phq2"}
-    for sigs in all_sigs.values():
-        for x in sigs:
-            x.crew_wide = x.name in shared and x.points > 0
-    return all_sigs, counts
+def routed_to(aid: str) -> str:
+    return DEPUTY_ID if aid == COMMANDER_ID else COMMANDER_ID
 
 
-def wellbeing(s: AstronautState, t: datetime, view: str,
-              all_sigs: Optional[dict[str, list[behavioral.Signal]]] = None) -> behavioral.Wellbeing:
-    sigs = (all_sigs or crew_signals(t)[0])[s.id]
-    score = min(100, round(sum(x.points for x in sigs)))
-    phq = behavioral.latest_phq2(s.checkins)
-    level = behavioral.level_from(sigs, score, phq[0] if phq else None)
-    if s.wb_auto_notified:
-        share_note = ("Because several strong signals added up, your commander and Mission Control were told "
-                      "your wellbeing level and which areas are affected, not your answers. This is a wellbeing "
-                      "check, not a diagnosis.")
+def psych_alerts(s: AstronautState, active_only: bool = True) -> list[Alert]:
+    pool = s.active.values() if active_only else s.alerts
+    return [a for a in pool if a.psychological]
+
+
+def withheld_for_self(s: AstronautState) -> bool:
+    return any(a.released_to_crew_at is None for a in psych_alerts(s))
+
+
+def personal_or_shared(signals: list[behavioral.Signal]) -> str:
+    raised = [x for x in signals if x.severity >= 0.5]
+    if not raised:
+        return "Nothing stands out."
+    shared = sorted({x.area for x in raised if x.crew_wide})
+    personal = sorted({x.area for x in raised if not x.crew_wide})
+    parts = []
+    if shared:
+        parts.append(f"Shared with most of the crew: {', '.join(shared)} (likely the schedule or environment).")
+    if personal:
+        parts.append(f"Personal: {', '.join(personal)}.")
+    return " ".join(parts)
+
+
+def wellbeing_view(s: AstronautState, view: str, t: datetime) -> Wellbeing:
+    r = s.profile
+    if r is None:
+        raise HTTPException(503, "The profile is not ready yet; try again in a minute.")
+    withheld = view == "self" and withheld_for_self(s)
+    top = max(psych_alerts(s), key=lambda a: SEVERITY_RANK[a.severity], default=None)
+    to = routed_to(s.id)
+    routing = Routing(routed_to=to, routed_to_name=crew[to].name, active_alert_id=top.id if top else None,
+                      released=(top.released_to_crew_at is not None) if top else None)
+    signals = r.signals
+    if withheld:  # the astronaut's own numbers stay visible; the assessment waits for the release
+        signals = [x.model_copy(update=dict(z=None, severity=0.0, points=0.0, trend="unknown", crew_wide=False))
+                   for x in r.signals]
+    return Wellbeing(
+        astronaut_id=s.id, name=s.name, view=view, mission_day=mission_day(t), withheld=withheld,
+        level=None if withheld else r.level, score=None if withheld else r.score,
+        rule=None if withheld else r.rule, confidence=r.confidence, coverage=r.coverage,
+        group_points={} if withheld else r.group_points, signals=signals, phq=r.phq, needs_phq9=r.needs_phq9,
+        trend=None if withheld else s.trend,
+        personal_or_shared="" if withheld else personal_or_shared(r.signals),
+        suggestions=(["Keep your check-ins going so changes are easy to spot."] if withheld
+                     else behavioral.suggestions_for(r)),
+        routing=routing,
+        note="Decision support only, never a diagnosis. Each input is compared with your own mission days "
+             "7-14; PHQ uses its validated cut-offs. GET /wellbeing/method shows every weight.")
+
+
+def _area_list(r: Optional[behavioral.Result], profile: str) -> list[str]:
+    if r is None or profile == "sleep_debt":
+        return ["sleep"]
+    return sorted({x.area for x in r.signals if x.severity >= 0.5}) or ["general"]
+
+
+def send_notice(s: AstronautState, target: str, level: str, reason: str, alert: Alert, areas: list[str]) -> None:
+    area_text = ", ".join(areas)
+    first = crew[alert.routed_to].name if alert.routed_to else "the commander"
+    if reason == "flagged" and target == "ground":
+        message = (f"{s.name}'s wellbeing check is at '{level}' (areas: {area_text}). {first} has it first "
+                   f"on board.")
+    elif reason == "flagged":
+        role = "As deputy for the commander's own wellbeing" if target == "deputy" else "As commander"
+        message = (f"{s.name}'s wellbeing check is at '{level}' (areas: {area_text}). They haven't been shown "
+                   f"it yet. {role}, talk with them privately, then release it to them.")
     else:
-        share_note = ("Your commander sees your wellbeing level and which areas are affected, never your answers. "
-                      "Mission Control sees it only if you share it, or automatically at the urgent level.")
-    wb = behavioral.Wellbeing(
-        astronaut_id=s.id, view=view, mission_day=mission_day(t), level=level, score=score, signals=sigs,
-        phq2=behavioral.Phq2Result(score=phq[0], screen_positive=phq[0] >= behavioral.PHQ2_POSITIVE,
-                                   taken_at=phq[1]) if phq else None,
-        personal_or_shared=behavioral.personal_or_shared(sigs),
-        suggestions=behavioral.suggestions_for(level, sigs),
-        sharing=behavioral.SharingState(commander=s.wb_share["commander"], ground=s.wb_share["ground"],
-                                        auto_notified=s.wb_auto_notified, note=share_note),
-        note="Decision support only, never a diagnosis. Everything except PHQ-2 is compared with your own "
-             "mission days 7-14; PHQ-2 uses its validated screening cut-off.",
-        sources=behavioral.SOURCES)
-    if view != "self" and not s.wb_share["ground" if view == "ground" else "commander"]:
-        # Visible only because of the automatic urgent rule: the level and areas, never the answers.
-        wb.signals = [behavioral.Signal(name=x.name, area=x.area, value=None, baseline=None, points=x.points,
-                                        detail="Kept private by the astronaut.", crew_wide=x.crew_wide)
-                      for x in sigs if x.points > 0]
-        wb.phq2 = None
-        wb.suggestions = (["Consider checking in with them privately; they know you were notified."]
-                          if s.wb_auto_notified else
-                          ["They have not been told you can see this. Decide whether and how to raise it: "
-                           "in person, in private."])
-    return wb
-
-
-def send_notice(s: AstronautState, target: str, level: str, reason: str, areas: list[str]) -> None:
-    if target == "commander" and s.id == COMMANDER_ID:
-        return  # the commander's own wellbeing goes to ground only
-    name = s.name
-    area_text = ", ".join(areas) or "general"
-    message = {
-        "automatic_urgent": f"{name}'s wellbeing check reached the urgent level (areas: {area_text}). They have "
-                            f"been told you were notified. Consider checking in with them privately.",
-        "shared_by_astronaut": f"{name} chose to share their wellbeing check with you: {level} (areas: {area_text}).",
-        "told_astronaut": "Several strong signals added up, so your commander and Mission Control were told your "
-                          "wellbeing level and the areas affected, not your answers. This is a wellbeing check, "
-                          "not a diagnosis.",
-    }[reason]
+        message = alert.crew_message or "Your commander shared a wellbeing check with you."
+        if reason == "auto_released":
+            message += " (Shared with you automatically: a flag never stays hidden.)"
     n = Notice(id=f"nt-{uuid.uuid4().hex[:8]}", astronaut_id=s.id, target=target, level=level, reason=reason,
-               areas=areas, created_at=now(), ground_eta_s=ground_eta_s() if target == "ground" else None,
-               message=message)
+               alert_id=alert.id, areas=areas, created_at=now(),
+               ground_eta_s=ground_eta_s() if target == "ground" else None, message=message)
     notices.append(n)
     store.save_notice(n.model_dump(mode="json"))
     if target == "ground":
-        publish(s.id, "notice", n, views={"ground"})          # delayed, and held during a blackout
-    elif target == "commander":
-        publish(COMMANDER_ID, "notice", n, views={"crew"})    # the commander's own console
+        publish(s.id, "notice", n, views={"ground"})               # delayed, and held during a blackout
+    elif target in ("commander", "deputy"):
+        publish(alert.routed_to, "notice", n, views={"crew"})      # their own console
     else:
-        publish(s.id, "notice", n, views={"crew"})            # the astronaut themselves
+        publish(s.id, "notice", n, views={"crew"})                 # the astronaut themselves
     log.info("%s: wellbeing notice to %s (%s, %s)", s.id, target, level, reason)
 
 
-def save_wb_state(s: AstronautState) -> None:
-    store.meta_set_async(f"wb_state:{s.id}", json.dumps({"share": s.wb_share, "auto_notified": s.wb_auto_notified}))
+def release_alert(s: AstronautState, alert: Alert, by: str, reason: str = "released") -> None:
+    alert.released_to_crew_at = now()
+    alert.released_by = by
+    store.update_alert(alert.model_dump(mode="json"))
+    publish(s.id, "alert", alert)  # now on every view, the astronaut's included
+    level = s.profile.level if s.profile else "watch"
+    send_notice(s, "self", level, reason, alert, _area_list(s.profile, alert.profile))
+    log.info("%s: %s released to the astronaut by %s", s.id, alert.profile, by)
+
+
+def psych_insight(s: AstronautState, profile: str, r: behavioral.Result) -> Insight:
+    """Built on board from the profile: psychological data is never sent to a cloud model."""
+    p = engine.PROFILES[profile]
+    top = sorted((x for x in r.signals if x.points > 0), key=lambda x: -x.points)[:3]
+    why = f"{s.name}'s wellbeing check is at '{r.level}' (score {r.score}/100, confidence {r.confidence})."
+    if r.rule:
+        why += f" {r.rule}"
+    trend = " ".join(x.detail for x in top) or "Several small changes added up."
+    if s.trend and s.trend.direction != "unknown" and s.trend.points_per_week is not None:
+        trend += f" Over the last 2 weeks the score is {s.trend.direction} ({s.trend.points_per_week:+.0f} a week)."
+    left = blackout_left_s()
+    delay = mission.real_one_way_delay_s
+    if left is not None:
+        verdict = "Earth is out of contact (blackout): act on board; Mission Control gets this when contact returns."
+    elif engine.acts_on_board(p["act_within_s"], delay):
+        verdict = f"A reply from Mission Control takes about {2 * delay / 60:.0f} min, so the first step is on board."
+    else:
+        verdict = f"Mission Control will see this in about {delay / 60:.0f} min."
+    return Insight(why=why, trend=trend, recommended_action=f"{p['onboard_action']} {verdict}")
 
 
 def evaluate_wellbeing(t: datetime) -> None:
-    all_sigs, _ = crew_signals(t)
+    """Raise, escalate or clear psychological alerts from each profile (concern and urgent only)."""
     for s in crew.values():
-        wb = wellbeing(s, t, "self", all_sigs)
-        areas = behavioral.areas(wb.signals)
-        auto_now = False
-        if wb.level == "urgent" and not s.wb_auto_notified:
-            s.wb_auto_notified = auto_now = True  # the safety exception, once per episode
-            for target in ("commander", "ground"):
-                send_notice(s, target, wb.level, "automatic_urgent", areas)
-            send_notice(s, "self", wb.level, "told_astronaut", areas)
-        elif LEVEL_RANK[wb.level] < LEVEL_RANK["concern"] and s.wb_auto_notified:
-            s.wb_auto_notified = False  # episode over
-            save_wb_state(s)
-        if auto_now:
-            save_wb_state(s)
-        if wb.level != s.wb_level and not auto_now:
-            for target in ("commander", "ground"):
-                if s.wb_share[target]:
-                    send_notice(s, target, wb.level, "shared_by_astronaut", areas)
-            s.wb_level = wb.level
+        r = s.profile
+        if r is None:
+            continue
+        want = LEVEL_PROFILE.get(r.level)
+        current = [a.profile for a in psych_alerts(s) if a.profile in LEVEL_PROFILE.values()]
+        rank = {"wellbeing_concern": 1, "wellbeing_urgent": 2}
+        if want and (not current or rank[want] > max(rank[c] for c in current)):
+            for c in current:
+                clear_alert(s, c)
+            v = s.snapshot().model_dump(include=set(store.VITAL_FIELDS))
+            raise_alert(s, want, v, s.context(t), profile_result=r)
+        elif not want:
+            for c in current:
+                clear_alert(s, c)
+        # A flag never stays hidden for good: release it automatically after RELEASE_AFTER_S.
+        for a in psych_alerts(s, active_only=False):
+            if a.released_to_crew_at is None and (t - a.started_at).total_seconds() >= RELEASE_AFTER_S:
+                release_alert(s, a, "automatic", "auto_released")
 
 
 # --- Alerts ------------------------------------------------------------------------
@@ -645,11 +810,19 @@ async def attach_insight(s: AstronautState, alert: Alert, v: dict, ctx: engine.C
             act_within_s=alert.act_within_s, one_way_delay_s=mission.real_one_way_delay_s, fallback=fallback)
     alert.insight = Insight(**result.model_dump())
     store.set_insight(alert.model_dump(mode="json"))
-    publish(s.id, "alert", alert)
+    publish_alert(s, alert)
 
 
-def raise_alert(s: AstronautState, profile: str, v: dict, ctx: engine.Context) -> Alert:
+def publish_alert(s: AstronautState, alert: Alert) -> None:
+    """An unreleased psychological alert goes to Mission Control's view only, never the astronaut's."""
+    hidden = alert.psychological and alert.released_to_crew_at is None
+    publish(s.id, "alert", alert, views={"ground"} if hidden else None)
+
+
+def raise_alert(s: AstronautState, profile: str, v: dict, ctx: engine.Context,
+                profile_result: Optional[behavioral.Result] = None) -> Alert:
     p = engine.PROFILES[profile]
+    psych = profile in engine.PSYCHOLOGICAL
     question = engine.CONFIRM_QUESTIONS.get(profile)
     alert = Alert(
         id=f"al-{uuid.uuid4().hex[:8]}", astronaut_id=s.id, profile=profile,
@@ -657,14 +830,26 @@ def raise_alert(s: AstronautState, profile: str, v: dict, ctx: engine.Context) -
         started_at=now(), onboard_action=p["onboard_action"], act_within_s=p["act_within_s"],
         ground_eta_s=ground_eta_s(), insight=None,
         data_quality="suspect" if s.quality == "suspect" else "ok",
-        confirmation=Confirmation(status="pending", question=question) if question else None)
+        confirmation=Confirmation(status="pending", question=question) if question else None,
+        psychological=psych, routed_to=routed_to(s.id) if psych else None,
+        crew_message=engine.CREW_MESSAGE.get(profile) if psych else None)
+    if profile_result is not None:
+        alert.insight = psych_insight(s, profile, profile_result)
     s.alerts.append(alert)
     s.active[profile] = alert
     s.misses[profile] = 0
     store.save_alert(alert.model_dump(mode="json"))
-    publish(s.id, "alert", alert)
-    log.info("%s: %s alert raised", s.id, profile)
-    spawn(attach_insight(s, alert, v, ctx))
+    publish_alert(s, alert)
+    log.info("%s: %s alert raised%s", s.id, profile, f" (to {alert.routed_to} first)" if psych else "")
+    if psych:
+        r = profile_result or s.profile
+        level, areas = (r.level if r else "watch"), _area_list(r, profile)
+        send_notice(s, "deputy" if s.id == COMMANDER_ID else "commander", level, "flagged", alert, areas)
+        send_notice(s, "ground", level, "flagged", alert, areas)
+        if profile_result is not None and profile_result.rule and "question 9" in profile_result.rule:
+            release_alert(s, alert, "automatic", "safety")  # safety: the astronaut is not left alone with it
+    if profile_result is None:
+        spawn(attach_insight(s, alert, v, ctx))
     return alert
 
 
@@ -725,6 +910,11 @@ async def tick_loop() -> None:
                 snap.quality = s.quality
                 store.add_sample(aid, store.iso(t), v, snap.source, s.quality)
                 publish(aid, "vitals", snap)
+                room, src = location.current_room(aid, t, mission_day(t), asyncio.get_running_loop().time())
+                if room != s.room:
+                    store.open_visit(aid, room, store.iso(t), src)
+                    s.room, s.room_since = room, t
+                s.room_source = src
             ticks += 1
             if ticks % 10 == 0:  # real ISS cabin data into every stream, ~30 s
                 env = CabinEnvironment(**iss_live.snapshot())
@@ -786,21 +976,15 @@ async def lifespan(app: FastAPI):
         log.info("%s baseline: %s", s.id, "stored mission days 7-14" if s.baseline_stored
                  else "configured (run tools/simulate_crew.py --seed-baseline)")
     t = now()
-    # Behavioral health: restore sharing choices and notices; take today's levels silently
-    # so a restart never re-sends notifications.
+    # Psychological profile: notices back from the database, open room stays closed at restart,
+    # then today's levels (restored alerts keep the new-match gate, so nothing is re-sent).
     for n in await asyncio.to_thread(store.load_notices):
         try:
             notices.append(Notice(**n))
         except Exception:
             continue
-    all_sigs, _ = crew_signals(t)
-    for s in crew.values():
-        saved = await asyncio.to_thread(store.meta_get, f"wb_state:{s.id}")
-        if saved:
-            state = json.loads(saved)
-            s.wb_share.update(state.get("share", {}))
-            s.wb_auto_notified = bool(state.get("auto_notified"))
-        s.wb_level = wellbeing(s, t, "self", all_sigs).level
+    await asyncio.to_thread(store.close_open_visits, store.iso(t))
+    evaluate_wellbeing(t)
     spawn(tick_loop())
     spawn(fetch_light_time())
     yield
@@ -810,7 +994,7 @@ async def lifespan(app: FastAPI):
     store.stop_writer()
 
 
-app = FastAPI(title="Astronaut Health Monitor backend", lifespan=lifespan)
+app = FastAPI(title="Dr. Galactic backend", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
@@ -818,7 +1002,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 @app.get("/")
 async def root() -> dict:
-    return {"service": "astronaut-health-monitor backend", "docs": "/docs"}
+    return {"service": "Dr. Galactic backend (astronaut-health-monitor)", "docs": "/docs"}
 
 
 @app.get("/crew")
@@ -829,8 +1013,11 @@ async def get_crew() -> list[CrewMember]:
 @app.post("/astronauts/{aid}/ingest", status_code=202)
 async def ingest(aid: str, body: IngestRequest) -> Accepted:
     state = get_state(aid)
-    state.real_hr = (body.heart_rate_bpm, asyncio.get_running_loop().time(), body.source)
+    loop_t = asyncio.get_running_loop().time()
+    state.real_hr = (body.heart_rate_bpm, loop_t, body.source)
     state.values["heart_rate_bpm"] = body.heart_rate_bpm
+    if body.hrv_sdnn_ms is not None or body.active_min is not None:
+        state.watch_extra = (body.hrv_sdnn_ms, body.active_min, loop_t)
     return Accepted()
 
 
@@ -891,8 +1078,30 @@ async def stream(aid: str, request: Request, view: Literal["crew", "ground"] = "
 
 
 @app.get("/astronauts/{aid}/alerts")
-async def get_alerts(aid: str) -> list[Alert]:
-    return list(reversed(get_state(aid).alerts))  # newest first
+async def get_alerts(aid: str, viewer: Optional[str] = None) -> list[Alert]:
+    """Newest first. With viewer = the astronaut themselves, unreleased psychological alerts are left out."""
+    s = get_state(aid)
+    alerts = s.alerts
+    if viewer == aid:
+        alerts = [a for a in alerts if not (a.psychological and a.released_to_crew_at is None)]
+    return list(reversed(alerts))
+
+
+@app.put("/astronauts/{aid}/alerts/{alert_id}/release")
+async def release(aid: str, alert_id: str, viewer: str) -> Alert:
+    """PROVISIONAL. The commander (or the deputy, for the commander's own flags) shows a
+    psychological alert to the astronaut, ideally after talking with them in private."""
+    s = get_state(aid)
+    alert = next((a for a in s.alerts if a.id == alert_id), None)
+    if alert is None:
+        raise HTTPException(404, f"No alert '{alert_id}' for {aid}")
+    if not alert.psychological:
+        raise HTTPException(409, "Only psychological alerts are released; this one is already shown to everyone.")
+    if viewer != alert.routed_to:
+        raise HTTPException(403, f"Only {crew[alert.routed_to].name}, who has it first on board, can release it.")
+    if alert.released_to_crew_at is None:
+        release_alert(s, alert, viewer)
+    return alert
 
 
 @app.post("/astronauts/{aid}/alerts/{alert_id}/confirm")
@@ -958,7 +1167,8 @@ async def record_checkin(s: AstronautState, body: CheckinRequest) -> None:
         s.manual["mood_1to5"] = body.mood_1to5
     if body.sleep_h is not None:
         s.manual["sleep_h_last_night"] = body.sleep_h
-    evaluate_wellbeing(now())  # a single check-in can change the wellbeing level
+    await asyncio.to_thread(compute_profiles, now())  # a single check-in can change the profile
+    evaluate_wellbeing(now())
 
 
 @app.post("/astronauts/{aid}/checkin", status_code=202)
@@ -983,11 +1193,14 @@ async def debug_scenario(body: ScenarioRequest) -> Accepted:
         if seeded_until:  # drop live check-ins so the wellbeing demo can run again
             await asyncio.to_thread(store.delete_checkins_after, s.id, seeded_until)
             s.checkins = [c for c in s.checkins if c[0] <= seeded_until]
+        await asyncio.to_thread(compute_profiles, now())
         evaluate_wellbeing(now())
     elif body.scenario == "strain":
         # Same path as a real check-in, kept PRIVATE: strong PHQ-2, low mood and a slow reaction test,
         # enough to reach "urgent", so the automatic notification can be shown.
-        rt, lapses = s.rt_baseline or (260.0, 1.0)
+        rts = [p["reaction_test"] for _, p in s.checkins if p.get("reaction_test")]
+        rt = statistics.fmean(x["mean_rt_ms"] for x in rts) if rts else 260.0
+        lapses = statistics.fmean(x["lapses"] for x in rts) if rts else 1.0
         await record_checkin(s, CheckinRequest(
             timestamp=now(), mood_1to5=1, share_with_ground=False,
             phq2=behavioral.Phq2(little_interest=3, feeling_down=3),
@@ -1006,7 +1219,8 @@ SENSOR_NOTE = ("Sensors are not right 100% of the time. Every reading is checked
                "marked as sensor errors in your history (never deleted) and left out of your baseline, "
                "charts and reports.")
 VITAL_LABELS = {"heart_rate_bpm": "Heart rate (bpm)", "spo2_pct": "SpO2 (%)", "temp_c": "Temperature (°C)",
-                "resp_rate_bpm": "Breathing (/min)", "sleep_h_last_night": "Sleep (h)", "mood_1to5": "Mood (1-5)"}
+                "resp_rate_bpm": "Breathing (/min)", "sleep_h_last_night": "Sleep (h)", "mood_1to5": "Mood (1-5)",
+                "hrv_sdnn_ms": "Heart-rate variability (ms)", "active_min": "Active minutes today"}
 QUALITY_FLAGS = ("ok", "suspect", "implausible", "artifact")
 
 
@@ -1147,7 +1361,7 @@ async def get_history(aid: str, hours: float = Query(24, gt=0, le=24 * 60),
     return [HistoryPoint(**r) for r in rows]
 
 
-# --- PROVISIONAL: behavioral health (behavioral.py) ---------------------------------
+# --- PROVISIONAL: psychological profile, report, location ------------------------------
 # `viewer` is who is looking: their astronaut id, or "ground". The web login decides it;
 # this is a demo-level check, not security (docs/api-spec.md: "Auth: none").
 
@@ -1156,91 +1370,69 @@ def _view_for(target: AstronautState, viewer: str) -> str:
         return "self"
     if viewer == "ground":
         return "ground"
-    if viewer == COMMANDER_ID:
-        return "commander"
-    raise HTTPException(403, "Only the astronaut themselves, the commander or ground can see this.")
-
-
-def _can_see(target: AstronautState, view: str) -> bool:
-    # Commander first (team decision 2026-11-14): the commander always sees the level and the
-    # areas (never the answers, see wellbeing()); Mission Control only if shared or urgent.
-    return view in ("self", "commander") or target.wb_share[view] or target.wb_auto_notified
+    if viewer == routed_to(target.id):
+        return "deputy" if target.id == COMMANDER_ID else "commander"
+    raise HTTPException(403, "Only the astronaut, the commander (the deputy for the commander's own check) "
+                             "or Mission Control can see this.")
 
 
 @app.get("/checkin/questions")
 async def checkin_questions() -> dict:
-    """Exact wording for the behavioral check-in: validated PHQ-2 items and the reaction test."""
-    return {"phq2": behavioral.PHQ2_QUESTIONS, "reaction_test": behavioral.REACTION_TEST}
+    """Exact wording: PHQ-2, the PHQ-9 follow-up, and the reaction test."""
+    return {"phq2": behavioral.PHQ2_QUESTIONS, "phq9": behavioral.PHQ9_QUESTIONS,
+            "reaction_test": behavioral.REACTION_TEST}
+
+
+@app.get("/wellbeing/method")
+async def wellbeing_method() -> dict:
+    """Every input, its weight and evidence, the level bands and the safety rules."""
+    return behavioral.method()
 
 
 @app.get("/astronauts/{aid}/wellbeing")
-async def get_wellbeing(aid: str, viewer: str) -> behavioral.Wellbeing:
+async def get_wellbeing(aid: str, viewer: str) -> Wellbeing:
     s = get_state(aid)
-    view = _view_for(s, viewer)
-    if not _can_see(s, view):
-        raise HTTPException(403, "Kept private by the astronaut.")
-    return wellbeing(s, now(), view)
-
-
-@app.put("/astronauts/{aid}/wellbeing/sharing")
-async def put_wellbeing_sharing(aid: str, viewer: str, body: behavioral.SharingRequest) -> behavioral.SharingState:
-    """Only the astronaut can choose who sees their wellbeing check."""
-    s = get_state(aid)
-    if viewer != aid:
-        raise HTTPException(403, "Only the astronaut can change who sees their wellbeing check.")
-    t = now()
-    wb = wellbeing(s, t, "self")
-    for target in ("commander", "ground"):
-        new = getattr(body, target)
-        if new is None or new == s.wb_share[target]:
-            continue
-        s.wb_share[target] = new
-        if new:  # sharing turned on: tell them the current level straight away
-            send_notice(s, target, wb.level, "shared_by_astronaut", behavioral.areas(wb.signals))
-    save_wb_state(s)
-    return wellbeing(s, t, "self").sharing
+    return wellbeing_view(s, _view_for(s, viewer), now())
 
 
 @app.get("/crew/wellbeing")
 async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
-    """For the commander and ground: who shared what, plus crew-wide trends without names."""
+    """For the commander and Mission Control: every crew member's level, plus crew-wide trends."""
     if viewer not in (COMMANDER_ID, "ground"):
-        raise HTTPException(403, "The crew view is for the commander and ground.")
+        raise HTTPException(403, "The crew view is for the commander and Mission Control.")
     view = "ground" if viewer == "ground" else "commander"
-    t = now()
-    all_sigs, counts = crew_signals(t)
     members = []
     for s in crew.values():
-        if s.id == viewer:
-            continue
-        shown = ("shared" if s.wb_share[view] else "automatic_urgent" if s.wb_auto_notified
-                 else "commander_first" if view == "commander" else "private")
-        wb = wellbeing(s, t, "self", all_sigs)
-        visible = shown != "private"
+        if s.id == viewer or s.profile is None:
+            continue  # the commander's own check goes to the deputy
         members.append(CrewMemberWellbeing(
-            astronaut_id=s.id, name=s.name, role=s.role, visible_because=shown,
-            level=wb.level if visible else None,
-            areas=behavioral.areas(wb.signals) if visible else []))
+            astronaut_id=s.id, name=s.name, role=s.role, level=s.profile.level, score=s.profile.score,
+            trend=s.trend.direction if s.trend else "unknown", confidence=s.profile.confidence,
+            unreleased_alert=withheld_for_self(s),
+            visible_because="ground" if view == "ground" else "commander_first" if withheld_for_self(s) else "shared",
+            areas=_area_list(s.profile, "wellbeing") if s.profile.level != "steady" else []))
     crew_wide = [f"Most of the crew ({n} of {len(crew)}) {CREW_WIDE_TEXT[name]}."
-                 for name, n in counts.items() if n >= behavioral.CREW_WIDE_MIN and name in CREW_WIDE_TEXT]
+                 for name, n in crew_counts.items() if n >= behavioral.CREW_WIDE_MIN and name in CREW_WIDE_TEXT]
     suggestions = []
-    if any(n >= behavioral.CREW_WIDE_MIN for name, n in counts.items() if name in ("sleep", "body_clock")):
+    if any(crew_counts.get(n, 0) >= behavioral.CREW_WIDE_MIN for n in ("sleep", "body_clock")):
         suggestions.append("Consider reviewing the crew schedule and the lighting plan; a crew rest period may help.")
     env = iss_live.snapshot()
     if env["status"] in ("elevated", "above_limit"):
         suggestions.append(f"Cabin CO2 is {env['co2_1h_avg_mmhg'] or env['co2_mmhg']} mmHg (live ISS reading; "
                            f"NASA limit {env['co2_limit_mmhg']:g} mmHg). Headaches and poorer sleep start around this "
                            "level: consider checking the CO2 scrubber and ventilation.")
-    if counts.get("mood", 0) >= behavioral.CREW_WIDE_MIN:
-        suggestions.append("Consider shared crew time or a lighter day; check the environment (CO2, noise, temperature).")
-    if counts.get("reaction_time", 0) >= behavioral.CREW_WIDE_MIN:
+    if crew_counts.get("social_time", 0) >= behavioral.CREW_WIDE_MIN:
+        suggestions.append("Consider shared crew time: a common meal or a crew evening.")
+    if crew_counts.get("mood", 0) >= behavioral.CREW_WIDE_MIN:
+        suggestions.append("Consider a lighter day; check the environment (CO2, noise, temperature).")
+    if crew_counts.get("reaction_time", 0) >= behavioral.CREW_WIDE_MIN:
         suggestions.append("Consider moving demanding tasks until the crew is better rested.")
     if not suggestions:
-        suggestions.append("No crew-wide strain. Individual check-ins stay private unless an astronaut shares them.")
+        suggestions.append("No crew-wide strain.")
     return CrewWellbeing(
         view=view, crew_wide=crew_wide, members=members, suggestions=suggestions,
         note=f"Crew-wide trends never name anyone and need at least {behavioral.CREW_WIDE_MIN} people. "
-             "Questionnaire answers are never aggregated or shown here.")
+             "Questionnaire answers are never aggregated.")
 
 
 # --- PROVISIONAL: live cabin environment from NASA ISS Live (iss_live.py) -----------
@@ -1266,7 +1458,7 @@ async def get_environment() -> CabinEnvironment:
     return CabinEnvironment(**iss_live.snapshot())
 
 
-# --- PROVISIONAL: habitat rooms (habitat.py) -----------------------------------------
+# --- PROVISIONAL: habitat rooms (location.py: same rooms and stays as the beacons and the profile) ---
 
 class Room(BaseModel):
     id: str
@@ -1291,12 +1483,25 @@ class RoomTime(BaseModel):
     shared_normal_h: float           # average full day in shared rooms, own mission days 7-14
     shared_so_far_normal_h: float    # the same normal, scaled to the time of day so far
     shared_7d_avg_h: float           # average full day in shared rooms over the last 7 days
+    with_crew_7d_avg_h: Optional[float] = None   # shared room with a crewmate there: the profile input
+    with_crew_normal_h: Optional[float] = None
     note: str
 
 
 @app.get("/habitat")
 async def get_habitat() -> list[Room]:
-    return [Room(id=r, name=n, kind=k) for r, (n, k) in habitat.ROOMS.items()]
+    return [Room(id=r.id, name=r.name, kind=r.kind) for r in location.ROOMS.values()]
+
+
+def _note_map_view(s: AstronautState, viewer: str, t: datetime) -> None:
+    """The crew map is polled every few seconds: keep one line per viewer per day."""
+    day = store.iso(t)[:10]
+    for e in s.location_seen:
+        if e["viewer"] == viewer and e["reason"] == "crew map (safety)" and e["at"][:10] == day:
+            e["at"], e["views"] = store.iso(t), e.get("views", 1) + 1
+            return
+    s.location_seen.append({"viewer": viewer, "at": store.iso(t), "reason": "crew map (safety)", "views": 1})
+    del s.location_seen[:-50]
 
 
 @app.get("/crew/locations")
@@ -1307,11 +1512,11 @@ async def get_crew_locations(viewer: str) -> list[Location]:
     t = now()
     out = []
     for s in crew.values():
-        r = habitat.room_at(s.id, t, mission_start)
-        tracked = habitat.ROOMS[r][1] != "untracked"
-        out.append(Location(astronaut_id=s.id, name=s.name, room=r if tracked else None,
-                            room_name=habitat.ROOMS[r][0] if tracked else "Not tracked",
-                            since=habitat.since(s.id, t, mission_start) if tracked else None))
+        tracked = s.room is not None and location.ROOMS[s.room].kind != "untracked"
+        out.append(Location(astronaut_id=s.id, name=s.name, room=s.room if tracked else None,
+                            room_name=location.ROOMS[s.room].name if tracked else "Not tracked",
+                            since=s.room_since if tracked else None))
+        _note_map_view(s, viewer, t)
     return out
 
 
@@ -1321,36 +1526,181 @@ async def get_room_time(aid: str, viewer: str) -> RoomTime:
     get_state(aid)
     if viewer not in (aid, COMMANDER_ID):
         raise HTTPException(403, "Room time is for the astronaut and the commander.")
+    s = get_state(aid)
     t = now()
     start = t.replace(hour=0, minute=0, second=0, microsecond=0)
-    hours = habitat.hours_by_room(aid, start, t, mission_start)
-    kinds = habitat.by_kind(hours)
-    normal = habitat.waking_shared_normal(aid, mission_start)
-    so_far = habitat.by_kind(habitat.hours_by_room(aid, mission_start + timedelta(days=6),
-                                                   mission_start + timedelta(days=6) + (t - start), mission_start))
+    b0 = datetime.combine(mission_start.date() + timedelta(days=6), datetime.min.time(), tzinfo=timezone.utc)
+    visits = await asyncio.to_thread(store.visits_between, store.iso(min(b0, start - timedelta(days=7))),
+                                     store.iso(t))
+    shared = lambda a, b: location.by_kind(location.hours_by_room(visits, aid, a, b))["shared"]
+    hours = location.hours_by_room(visits, aid, start, t)
+    kinds = location.by_kind(hours)
+    base_days = [b0 + timedelta(days=d) for d in range(8)]
+    with_crew = lambda days: [d.crew_h for d in days if d and d.crew_h is not None]
+    last7 = with_crew([s.history.days.get(start.date() - timedelta(days=i)) for i in range(1, 8)]) if s.history else []
+    base7 = with_crew([s.history.days.get(d.date()) for d in base_days]) if s.history else []
     return RoomTime(
-        astronaut_id=aid, day_start=start, hours={r: h for r, h in hours.items() if r != "hygiene"},
-        shared_h=kinds["shared"], private_h=kinds["private"], shared_normal_h=normal,
-        shared_so_far_normal_h=so_far["shared"],
-        shared_7d_avg_h=round(sum(habitat.by_kind(habitat.hours_by_room(
-            aid, start - timedelta(days=d), start - timedelta(days=d - 1), mission_start))["shared"]
-            for d in range(1, 8)) / 7, 1),
-        note="Supporting signal only: time in shared rooms is shown, never added to the wellbeing score. "
-             "The hygiene module has no beacon and is never tracked.")
+        astronaut_id=aid, day_start=start, hours={r: round(h, 1) for r, h in hours.items() if r != "hygiene"},
+        shared_h=kinds["shared"], private_h=kinds["private"],
+        shared_normal_h=round(statistics.fmean(shared(d, d + timedelta(days=1)) for d in base_days), 1),
+        shared_so_far_normal_h=round(statistics.fmean(shared(d, d + (t - start)) for d in base_days), 1),
+        shared_7d_avg_h=round(statistics.fmean(shared(start - timedelta(days=i), start - timedelta(days=i - 1))
+                                               for i in range(1, 8)), 1),
+        with_crew_7d_avg_h=round(statistics.fmean(last7), 1) if last7 else None,
+        with_crew_normal_h=round(statistics.fmean(base7), 1) if base7 else None,
+        note="Time with crewmates (a shared room with someone else there, awake hours) is one of the inputs "
+             "of the wellbeing profile, compared with your own mission days 7-14; GET /wellbeing/method shows "
+             "its weight. Rooms only, never coordinates. The hygiene module has no beacon and is never tracked.")
 
 
 @app.get("/notifications")
 async def get_notifications(viewer: str) -> list[Notice]:
-    """Wellbeing notices for this viewer, newest first: the commander, ground, or the astronaut themselves."""
+    """Wellbeing notices for this viewer, newest first."""
     if viewer == "ground":
         mine = [n for n in notices if n.target == "ground"]
-    elif viewer == COMMANDER_ID:
-        mine = [n for n in notices if n.target == "commander" or (n.target == "self" and n.astronaut_id == viewer)]
     elif viewer in crew:
-        mine = [n for n in notices if n.target == "self" and n.astronaut_id == viewer]
+        mine = [n for n in notices
+                if (n.target == "self" and n.astronaut_id == viewer)
+                or (n.target in ("commander", "deputy") and routed_to(n.astronaut_id) == viewer)]
     else:
         raise HTTPException(403, "Unknown viewer.")
     return list(reversed(mine))
+
+
+def _psych_text(s: AstronautState, wb: Wellbeing, alerts: list[PsychReportAlert], ctx: list[str],
+                dq: dict[str, int], t: datetime) -> str:
+    who = {"self": "the astronaut", "commander": "the commander", "deputy": "the deputy",
+           "ground": "Mission Control"}[wb.view]
+    lines = [f"Psychological report: {s.name} ({s.role}), mission day {wb.mission_day}, {t:%d %b %Y}.",
+             f"For {who}. Decision support only, never a diagnosis."]
+    if wb.withheld:
+        lines.append("Your numbers against your own normal (mission days 7-14):")
+        lines += [f"- {x.label}: {x.detail}" for x in wb.signals if x.enough_data]
+        return "\n".join(lines)
+    lines.append(f"Wellbeing level: {wb.level.upper()} (score {wb.score}/100). Confidence {wb.confidence}: "
+                 f"{wb.coverage * 100:.0f}% of the weighted inputs had enough data.")
+    if wb.rule:
+        lines.append(f"Safety rule: {wb.rule}")
+    tr = wb.trend
+    if tr and tr.direction != "unknown":
+        since = f" First at watch or above on {tr.first_flagged:%d %b}." if tr.first_flagged else ""
+        lines.append(f"Trend: {tr.direction} ({tr.points_per_week:+.0f} points a week over the last 2 weeks; "
+                     f"7 days ago {tr.score_7_days_ago}).{since}")
+        lines.append("Daily score, last 14 days: " +
+                     " ".join(f"d{p.mission_day}:{p.score}" for p in tr.timeline[-14:]))
+    lines.append("What changed, against your own days 7-14 (biggest first):")
+    for x in sorted(wb.signals, key=lambda x: -x.points):
+        if not x.enough_data:
+            continue
+        tail = "" if x.trend == "unknown" else f" Trend: {x.trend}."
+        lines.append(f"- {x.label} [{x.points:g} of {x.weight:g} points]: {x.detail}{tail}")
+    missing = [x.label for x in wb.signals if not x.enough_data]
+    if missing:
+        lines.append(f"Not enough data yet: {', '.join(missing)}.")
+    if wb.needs_phq9:
+        lines.append("Next step: the PHQ-9 follow-up (PHQ-2 was 2 or more).")
+    if wb.personal_or_shared and wb.personal_or_shared != "Nothing stands out.":
+        lines.append(wb.personal_or_shared)
+    lines += ctx
+    for a in alerts:
+        rel = f"released {a.released_to_crew_at:%d %b %H:%M} by {a.released_by}" if a.released_to_crew_at \
+            else "not released yet"
+        lines.append(f"Flag: {a.started_at:%d %b %H:%M} {a.profile} ({a.severity}), to {a.routed_to} first, {rel}.")
+    total = sum(dq.values())
+    if total:
+        lines.append(f"Data: {100 * dq.get('ok', 0) / total:.1f}% of {total} readings clean; "
+                     f"{dq.get('artifact', 0)} marked as sensor errors and left out.")
+    lines.append("Suggested next steps: " + " ".join(wb.suggestions))
+    lines.append("Method: score = weight x change from your own normal; watch and station 70, check-ins 30 "
+                 "(a team design choice); weights in GET /wellbeing/method.")
+    return "\n".join(lines)
+
+
+@app.get("/astronauts/{aid}/psych-report")
+async def psych_report(aid: str, viewer: str, days: int = Query(28, ge=7, le=60)) -> PsychReport:
+    """The psychological profile as one report: trend over time, every input, flags and who saw them."""
+    s = get_state(aid)
+    view = _view_for(s, viewer)
+    t = now()
+    wb = wellbeing_view(s, view, t)
+    since = t - timedelta(days=days)
+    alerts = [PsychReportAlert(id=a.id, profile=a.profile, severity=a.severity, started_at=a.started_at,
+                               routed_to=a.routed_to, released_to_crew_at=a.released_to_crew_at,
+                               released_by=a.released_by, still_active=s.active.get(a.profile) is a)
+              for a in psych_alerts(s, active_only=False)
+              if a.started_at >= since and (view != "self" or a.released_to_crew_at is not None)]
+    ctx = [] if wb.withheld else [f"Crew context: most of the crew ({n} of {len(crew)}) {CREW_WIDE_TEXT[k]}."
+                                  for k, n in crew_counts.items()
+                                  if n >= behavioral.CREW_WIDE_MIN and k in CREW_WIDE_TEXT]
+    dq = await asyncio.to_thread(store.quality_counts, aid, store.iso(since))
+    text = _psych_text(s, wb, alerts, ctx, dq, t)
+    return PsychReport(profile=wb, alerts=alerts, crew_context=ctx, data_quality=dq, text=text,
+                       size_bytes=len(text.encode("utf-8")), method=behavioral.method())
+
+
+@app.get("/station/rooms")
+async def station_rooms() -> list[location.Room]:
+    """Rooms and their beacon ids (iBeacon UUID / major / minor), for the watch and a station map."""
+    return location.rooms()
+
+
+@app.post("/astronauts/{aid}/location")
+async def post_location(aid: str, body: location.ScanRequest) -> location.ScanResult:
+    """PROVISIONAL. A Bluetooth scan from the watch: beacons heard and their signal strength."""
+    get_state(aid)
+    return location.handle_scan(aid, body, asyncio.get_running_loop().time())
+
+
+def _emergency(s: AstronautState) -> Optional[str]:
+    crit = next((a for a in s.active.values() if a.severity == "critical"), None)
+    if crit:
+        return f"active critical alert ({crit.profile})"
+    if s.profile and s.profile.level == "urgent":
+        return "urgent wellbeing level"
+    return None
+
+
+@app.get("/astronauts/{aid}/location")
+async def get_location(aid: str, viewer: str) -> LocationView:
+    """Only the astronaut sees where they are. The commander, the Crew Medical Officer and Mission
+    Control see the current room only during an emergency, and the astronaut can see who looked."""
+    s = get_state(aid)
+    t = now()
+    current = LocationNow(room=s.room, room_name=location.ROOMS[s.room].name if s.room else None,
+                          since=s.room_since, source=s.room_source)
+    if viewer != aid:
+        reason = _emergency(s)
+        roles = {COMMANDER_ID: "commander", CMO_ID: "doctor", "ground": "ground"}
+        if viewer not in roles or reason is None:
+            raise HTTPException(403, "Location history is the astronaut's own. The commander and Mission Control "
+                                     "see current rooms on GET /crew/locations; the Crew Medical Officer only "
+                                     "in an emergency.")
+        s.location_seen.append({"viewer": viewer, "at": store.iso(t), "reason": reason})
+        return LocationView(astronaut_id=aid, view=roles[viewer], current=current, reason=reason,
+                            today_minutes=None, week=None, seen_by=None,
+                            note="Shown because of an emergency. The astronaut can see that you looked.")
+    day0 = datetime.combine(t.date(), datetime.min.time(), tzinfo=timezone.utc)
+    visits = await asyncio.to_thread(store.visits_between, store.iso(day0), store.iso(t))
+    minutes: dict[str, int] = {}
+    for vid, room, entered, left in visits:
+        if vid != aid:
+            continue
+        a = max(datetime.fromisoformat(entered.replace("Z", "+00:00")), day0)
+        b = datetime.fromisoformat(left.replace("Z", "+00:00"))
+        minutes[room] = minutes.get(room, 0) + max(0, round((b - a).total_seconds() / 60))
+    social = next((x for x in (s.profile.signals if s.profile else []) if x.name == "social_time"), None)
+    week = None
+    if s.history:
+        last7 = [s.history.days.get(t.date() - timedelta(days=i)) for i in range(1, 8)]
+        crew_h = [d.crew_h for d in last7 if d and d.crew_h is not None]
+        q_h = [d.quarters_h for d in last7 if d and d.quarters_h is not None]
+        week = {"with_crew_h_per_day": round(statistics.fmean(crew_h), 1) if crew_h else None,
+                "alone_in_quarters_h_per_day": round(statistics.fmean(q_h), 1) if q_h else None}
+    return LocationView(astronaut_id=aid, view="self", current=current, reason=None, today_minutes=minutes,
+                        week=week, seen_by=list(s.location_seen),
+                        note=(social.detail if social else "") + " Rooms only, never coordinates. The commander "
+                             "and Mission Control can see which room you're in now (for safety: fire or "
+                             "depressurisation), and seen_by lists who looked. Hygiene is never tracked.")
 
 
 @app.get("/mission/light-time")
