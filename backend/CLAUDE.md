@@ -54,6 +54,11 @@ Env vars: `AHM_DB` (database path, default `data/ahm.db`), `AHM_LIVE_LIGHT_TIME=
 - `engine.py` — crew baselines, condition profiles, thresholds, SANS risk score,
   scenario shifts, "do you feel this?" questions, on-board protocols, fallback
   explanations (blackout-aware).
+- `behavioral.py` — **the team's main focus (2026-11-14):** wellbeing profile from PHQ-2,
+  mood, sleep/body clock, reaction test and resting HR, each vs the astronaut's own baseline
+  (PHQ-2 uses its validated cut-off). Astronaut first: nothing is shared until they choose;
+  only "urgent" notifies the commander and ground automatically (level + areas, never answers).
+  Crew-wide trends never name anyone and need >= 3 people.
 - `quality.py` — sensor checks per reading: impossible values, spikes, stuck sensor,
   watch dropout. Sensor errors the astronaut reports are flagged `artifact`, never deleted.
 - `store.py` — SQLite schema, background writer, reads (baseline, history, check-ins).
