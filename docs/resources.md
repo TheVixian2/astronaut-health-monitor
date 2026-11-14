@@ -3,10 +3,26 @@
 What we can use, what each one gives us, and which lane would use it.
 Status: **found** = link seen working on 2026-11-14 · **check** = open it and confirm before relying on it.
 
-> **TODO, needs a browser:** the official challenge page's own *Resources* list.
-> spaceappschallenge.org fails the certificate check from our scripts, so someone
-> must open it in a browser and paste the list here. Judges expect those exact
-> resources, so they rank above everything below.
+## Official challenge resources (from the challenge page's Resources tab)
+
+Judges expect **these**, so they come before everything else in this file.
+
+| Resource | What it is | How we use it |
+|---|---|---|
+| **NASA: 5 Hazards of Human Spaceflight** — https://www.nasa.gov/hrp/hazards | HRP overview of radiation, isolation, distance, gravity and hostile closed environments | Our alert `hazard` field already uses these. **Show it in the UI**: each alert names its hazard and links here. |
+| **NASA: Risks of Human Spaceflight** — https://www.nasa.gov/hrp/risks | HRP overview of the main risks, with links to detailed reports | Map every condition to its **official HRP risk** (e.g. `sans` maps to the SANS risk) and show the risk name with the alert. Take exact titles from the page. |
+| **NASA: Ongoing HRP Research in Space** | Articles on current HRP research | Pitch: "this is the research we build on". Copy the URL from the challenge page. |
+| **CSA: Monitoring Radiation for Astronaut Health** | Canadian technology and research for measuring crew radiation exposure | **The only specific partner resource, and it's about radiation.** See the note below. Copy the URL from the challenge page. |
+| **CSA: Why Do We Conduct Science Experiments in Space?** | Why ISS research matters for health on Earth too | Pitch: the "it helps people on Earth" impact line |
+
+> **For Luca, about cutting `spe`:** the challenge's only targeted partner resource is
+> CSA radiation monitoring. Cutting radiation completely drops the one partner
+> resource judges see listed. A light option is a running dose per mission
+> environment from **NASA OSDR RadLab** (below), shown as "radiation (CSA / NASA)".
+> It needs no `spe` alert and no NOAA feed.
+>
+> These resources are background pages, not datasets. The data we can actually call
+> (JPL Horizons, OSDR RadLab) is listed further down.
 
 ## The plan in one line
 
