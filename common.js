@@ -108,6 +108,12 @@
       <path class="ds" d="M6.1 14.4h1.5M8 9.1l1 1M12 7.3v1.4M16 9.1l-1 1M16.4 14.4h1.5M12 15.2l3.7-4.6"/>
       <circle class="d" cx="12" cy="15.2" r="1.7"/>`],
   };
+  // The vital's icon colour (its --ic-* token), so a chart line matches the icon; --accent otherwise.
+  function vitalColor(key) {
+    const css = getComputedStyle(document.documentElement);
+    const ic = VITAL_ICONS[key];
+    return (ic && css.getPropertyValue(`--ic-${ic[0]}`).trim()) || css.getPropertyValue("--accent").trim();
+  }
   function vitalIcon(key) {
     const ic = VITAL_ICONS[key];
     return ic ? `<span class="vi vi-${ic[0]}" aria-hidden="true"><svg viewBox="0 0 24 24">${ic[1]}</svg></span>` : "";
@@ -323,7 +329,7 @@
   const profileName = id => PROFILE_NAMES[id] || id;
 
   window.AHM = {
-    FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES, vitalIcon,
+    FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES, vitalIcon, vitalColor,
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
