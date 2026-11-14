@@ -25,6 +25,7 @@
     "doctor.html": ["doctor", "demo"],
     "ground.html": ["ground", "demo"],
     "stream-check.html": ["ground", "demo"],
+    "history.html": ["crew", "captain", "doctor", "ground", "demo"],
   };
 
   const KEY = "ahm-session";
