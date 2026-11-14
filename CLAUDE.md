@@ -107,6 +107,11 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   poll their own `GET /vitals` (`data-poll`): browsers allow ~6 connections
   per host and the console + Ground already use 5 on one machine. In `?mock`
   mode they use in-page mock streams.
+- **My health fills the window** (all three console pages): `self-check.js`
+  sets `body[data-tab]`; on `health` the console grid stretches to the
+  bottom, the vitals tiles are tall and stretch across the row (`auto-fit`),
+  and the chart (`.chart-box`, canvas absolutely positioned so Chart.js can't
+  grow the card) and the body figure take the free height.
 - `self-check.html` / `self-check.js` — the astronaut console (data only):
   body figure, vitals tiles vs baseline, Chart.js trend, check-in form
   (`share_with_ground` off by default), sleep & light log. **Its cards are

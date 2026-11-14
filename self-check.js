@@ -396,6 +396,7 @@
   function showTab() {
     const want = location.hash.slice(1);
     const tab = TABS.includes(want) ? want : TABS[0] || "health";
+    document.body.dataset.tab = tab;   // style.css: My health stretches to the window's height
     document.querySelectorAll("[data-tab]").forEach(s => { s.hidden = s.dataset.tab !== tab; });
     document.querySelectorAll("[data-tab-link]").forEach(a => {
       if (a.dataset.tabLink === tab) a.setAttribute("aria-current", "page");
@@ -466,12 +467,13 @@
       <div id="regionInfo" class="region-info"></div>
     </section>
 
-    <section class="card" data-tab="health">
+    <section class="card vitals-card" data-tab="health">
       <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
       <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
       <div class="chart-wrap">
         <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small">last few minutes · dashed = your baseline · tap a tile to change</span></div>
-        <canvas id="chart" height="170"></canvas>
+        <!-- The chart fills whatever height the card has left (style.css). -->
+        <div class="chart-box"><canvas id="chart"></canvas></div>
         <p id="chartFallback" class="muted small" hidden>Chart unavailable (Chart.js did not load — offline?).</p>
       </div>
     </section>
