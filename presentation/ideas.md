@@ -232,3 +232,26 @@ to tighten, not final claims.**
 - **Eyes, say it precisely:** fluid shift deforms the eye (**SANS**, what we track);
   radiation clouds the lens (**cataracts**, NASA astronaut studies). Both are threats
   to sight that grow with mission length. Don't say "radiation deforms the eyeball".
+## 2026-11-14 — circadian rhythm as a main part of the story
+
+- **Thesis line (Luca's framing plus the judge's point):** *"On the way to Mars there
+  is no sunrise. The station's lighting is the last link to Earth's rhythm, so we
+  turned it into medicine."*
+- **It's a countermeasure loop, not just another alarm:** detect body-clock drift →
+  suggest a lighting plan built only from NASA's own ISS lighting modes (6500K
+  morning, 4500K day, 2700K pre-sleep, dark) → verify that sleep improved. The
+  software closes the loop instead of only raising alerts.
+- **Demo beat (~20 s, backend ready):** `a2`'s card says "your sleep has been shifting
+  about 15 min later each night" → the astronaut taps "I'd like to try this plan" →
+  fast-forward 4 nights → "your bedtime varied by 0.2 h (was 1.7 h), you slept 7.1 h
+  (was 6.3 h)". The fast-forward is a demo control, so say so.
+- **It connects to everything else:** sleep feeds the baseline; body-clock disruption
+  is linked to immune changes (judge 1); the lighting plan is a countermeasure the
+  crew runs *without* waiting for Houston (the core question); and the astronaut
+  chooses whether to follow it, with data private by default (ethics).
+- **Environment-aware:** ISS (16 sunrises a day), Moon (a lunar day is 29.5 Earth
+  days), Mars transit (no day/night at all) and Mars surface (a sol is 24 h 39 min).
+  The longer and farther the mission, the more the lighting matters, which fits
+  judge 2's "longer flights will need our system".
+- **Keep it honest:** "may help", "linked to". Phase-shift light is normally used with
+  flight-surgeon guidance, and the plan says so.
