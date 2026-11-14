@@ -227,6 +227,42 @@ Branch: `backend`
   a "Report" panel showing `report.text`.
 - **@Luca:** demo beat for blackout + "do you feel this?" is in `presentation/ideas.md`.
   New endpoints listed above, for the spec when you have a minute.
+- **TEAM DECISION (2026-11-14): mental health is now the focus**, with a profile per
+  astronaut built from all signals plus a crew view, so the commander or ground can be
+  notified. SANS, circadian and blackout stay as secondary features. Agreed with
+  stefanalbu2010-byte: **astronaut first**. Nothing is shared until the astronaut chooses;
+  only "urgent" notifies the commander and ground automatically.
+- **Done: behavioral health on `backend` (`backend/behavioral.py`), tested.** All PROVISIONAL.
+  - **Profile:** PHQ-2 (validated cut-off ≥3), mood, sleep/body clock, the 3-min reaction
+    test (PVT-B, 355 ms lapse) and resting HR, each vs the astronaut's own days 7-14. Levels
+    are steady / watch / concern / urgent, each signal comes with a plain reason, and there
+    are supportive suggestions. Safety rule: PHQ-2 5-6 plus one other sign is always urgent.
+  - **Who sees what:** the astronaut sees everything. Commander/ground see it only if the
+    astronaut shared it (per target), or automatically at urgent, and then only the level
+    and areas, never the answers. Crewmates never see it. The crew view shows crew-wide
+    trends without names, only with ≥3 people; PHQ-2 is never aggregated.
+  - **Notifications:** live SSE event **`notice`**, delivered only to the right screen:
+    the commander's own console (`a1`'s crew stream), the astronaut themselves, and the
+    astronaut's ground stream (delayed; held during a blackout). Also `GET /notifications?viewer=`.
+  - **Endpoints:** `GET /checkin/questions` (exact PHQ-2 wording + reaction test),
+    `GET /astronauts/{id}/wellbeing?viewer=`, `PUT /astronauts/{id}/wellbeing/sharing?viewer=`
+    `{commander?, ground?}` (only the astronaut), `GET /crew/wellbeing?viewer=a1|ground`.
+    `POST /checkin` gains optional `phq2 {little_interest, feeling_down}` (0-3 each) and
+    `reaction_test {mean_rt_ms, lapses, false_starts, duration_s}`.
+  - **`viewer`** = the signed-in astronaut's id, or `ground`. **@NotKaemy:** this is what the
+    per-astronaut login should send. Demo-level, not real security.
+  - **Demo (repeatable):** seed → `a2` starts at **watch** (mood down after the midpoint,
+    slower reactions, drifting bedtimes) → a2 check-in with PHQ-2 = 3 → **concern** → a2
+    taps "share with commander" → the commander's console gets the notice.
+    `POST /debug/scenario {a3, "strain"}` → **urgent** → commander + ground notified
+    automatically, a3 is told. `clear` resets.
+- **@NotKaemy, UI asks:** PHQ-2 + reaction test in the check-in (wording from
+  `/checkin/questions`); a "My wellbeing" card (level, reasons, suggestions, share toggles
+  for commander and ground); a commander view (`/crew/wellbeing?viewer=a1`, notices); on
+  Ground, notices and the crew view (`viewer=ground`). Listen for SSE `notice`.
+- **@Luca: please merge `backend` into `main`.** `main` still runs the morning's mock
+  backend, so none of today's backend work (database, conditions, sensors, blackout, reports,
+  mental health) is on `main` yet. The watch fix (`.last` → `.first`) is still open too.
 - **Blocked on:** nothing.
 
 ## Presentation — dbm711

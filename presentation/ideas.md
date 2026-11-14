@@ -310,3 +310,31 @@ to tighten, not final claims.**
   3. SANS early warning between OCT scans
   4. the astronaut confirming or correcting sensor errors in their own history
   5. explanations and protocols that need no internet
+## 2026-11-14 — TEAM DECISION: mental health is the focus
+
+- **The story now:** *"Months from Earth, in a small crew, the hardest thing to see is how
+  someone is really doing. We build a wellbeing profile from many small signals, and the
+  astronaut stays in control of who sees it."*
+- **NASA grounding (name both on a slide):** HRP risks *Adverse Cognitive or Behavioral
+  Conditions and Psychiatric Disorders* and *Inadequate Cooperation, Coordination,
+  Communication and Psychosocial Adaptation within a Team*. https://www.nasa.gov/hrp/risks
+- **Signals, each vs the astronaut's own normal:** mood, sleep and body clock (from the
+  station lighting), NASA's 3-minute reaction test, resting heart rate, and **PHQ-2**, two
+  validated questions that use their standard cut-off. *"Validated questions, not
+  invented ones."*
+- **Astronaut first is the ethics answer:** the astronaut sees it first and chooses whether
+  the commander and/or the flight surgeon see it. Only an urgent level is passed on
+  automatically, and the astronaut is told it was. Even then: *"the level and which areas,
+  never your answers."* This answers the under-reporting problem: people report more
+  honestly when they're in control.
+- **The crew view separates "it's the mission" from "it's me":** if most of the crew
+  sleeps less, it's probably the schedule or environment, and the app tells each astronaut
+  that ("it may be the schedule, not you"). Crew-wide trends never name anyone and need at
+  least 3 people.
+- **Demo (~30 s, repeatable):** a2's profile shows *watch* (mood down after the mission
+  midpoint, slower reactions, drifting bedtimes) → a2's check-in → *concern* → a2 taps
+  "share with commander" → the commander's console gets a notice. Then show the urgent case
+  (a3): commander and flight surgeon notified automatically, and a3 sees "you were notified".
+- **Keep SANS, circadian and blackout as supporting features.** One line each: they show
+  the same baseline engine works for the body too.
+- **Say it:** decision support, never a diagnosis; PHQ-2 is a screen, not a diagnosis.
