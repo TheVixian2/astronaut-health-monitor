@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS samples (            -- one row per tick, per astrona
   sleep_h_last_night REAL, mood_1to5 INTEGER,
   cabin_co2_mmhg REAL,                          -- the astronaut's module; feeds co2 and sans
   source       TEXT NOT NULL,                   -- 'real' | 'simulated'
+  quality      TEXT NOT NULL DEFAULT 'ok',      -- ok | suspect | implausible | artifact (quality.py)
   PRIMARY KEY (astronaut_id, ts)
 );
 CREATE INDEX IF NOT EXISTS idx_samples_recent ON samples (astronaut_id, ts DESC);
@@ -77,9 +78,18 @@ def _db():
         con.close()
 
 
+SAMPLE_COLUMNS = ("astronaut_id", "ts", *VITAL_FIELDS, "cabin_co2_mmhg", "source")
+_INSERT_SAMPLE = (f"INSERT OR REPLACE INTO samples ({', '.join(SAMPLE_COLUMNS)}, quality) "
+                  f"VALUES ({', '.join('?' * (len(SAMPLE_COLUMNS) + 1))})")
+USABLE = "quality IN ('ok', 'suspect')"  # what charts and reports show; the baseline uses only 'ok'
+
+
 def init() -> None:
     with _db() as con:
         con.executescript(SCHEMA)
+        columns = {row[1] for row in con.execute("PRAGMA table_info(samples)")}
+        if "quality" not in columns:  # database created before sensor-quality flags existed
+            con.execute("ALTER TABLE samples ADD COLUMN quality TEXT NOT NULL DEFAULT 'ok'")
 
 
 # --- Background writer -------------------------------------------------------
@@ -136,9 +146,18 @@ def _write(sql: str, params: tuple) -> None:
         log.warning("DB write queue full; dropping a write")
 
 
-def add_sample(aid: str, ts: str, vitals: dict, cabin_co2: float, source: str) -> None:
-    _write("INSERT OR REPLACE INTO samples VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-           (aid, ts, *[vitals[f] for f in VITAL_FIELDS], cabin_co2, source))
+def add_sample(aid: str, ts: str, vitals: dict, cabin_co2: float, source: str, quality: str = "ok") -> None:
+    _write(_INSERT_SAMPLE, (aid, ts, *[vitals[f] for f in VITAL_FIELDS], cabin_co2, source, quality))
+
+
+def mark_artifact(aid: str, start: str, end: str) -> None:
+    """The astronaut didn't feel it: flag the readings as a likely sensor error (never delete)."""
+    _write("UPDATE samples SET quality = 'artifact' WHERE astronaut_id = ? AND ts >= ? AND ts <= ? "
+           "AND quality != 'implausible'", (aid, start, end))
+
+
+def update_alert(alert: dict) -> None:
+    _write("UPDATE alerts SET alert_json = ? WHERE id = ?", (json.dumps(alert), alert["id"]))
 
 
 def save_alert(alert: dict) -> None:
@@ -183,7 +202,7 @@ def baseline(aid: str, start: str, end: str) -> Optional[dict]:
     with _db() as con:
         rows = con.execute(
             f"SELECT {', '.join(VITAL_FIELDS)} FROM samples "
-            "WHERE astronaut_id = ? AND ts >= ? AND ts < ?", (aid, start, end)).fetchall()
+            "WHERE astronaut_id = ? AND ts >= ? AND ts < ? AND quality = 'ok'", (aid, start, end)).fetchall()
     if len(rows) < MIN_BASELINE_SAMPLES:
         return None
     cols = list(zip(*rows))
@@ -209,12 +228,12 @@ def co2_avg(aid: str, since: str) -> Optional[float]:
 
 
 def history(aid: str, since: str, bucket_s: int) -> list[dict]:
-    """Vitals averaged into time buckets, oldest first, for charts."""
+    """Vitals averaged into time buckets, oldest first, for charts. Sensor errors are left out."""
     avgs = ", ".join(f"AVG({f}) AS {f}" for f in VITAL_FIELDS)
     with _db() as con:
         rows = con.execute(
             f"SELECT (CAST(strftime('%s', ts) AS INTEGER) / ?) * ? AS b, {avgs}, AVG(cabin_co2_mmhg) "
-            "FROM samples WHERE astronaut_id = ? AND ts >= ? GROUP BY b ORDER BY b",
+            f"FROM samples WHERE astronaut_id = ? AND ts >= ? AND {USABLE} GROUP BY b ORDER BY b",
             (bucket_s, bucket_s, aid, since)).fetchall()
     out = []
     for b, *vals in rows:
@@ -223,6 +242,22 @@ def history(aid: str, since: str, bucket_s: int) -> list[dict]:
         point["cabin_co2_mmhg"] = round(vals[-1], 2) if vals[-1] is not None else None
         out.append(point)
     return out
+
+
+def quality_counts(aid: str, since: str) -> dict[str, int]:
+    with _db() as con:
+        rows = con.execute("SELECT quality, COUNT(*) FROM samples WHERE astronaut_id = ? AND ts >= ? "
+                           "GROUP BY quality", (aid, since)).fetchall()
+    return dict(rows)
+
+
+def period_stats(aid: str, since: str) -> dict[str, dict]:
+    """Average, min and max of each vital since `since`, sensor errors excluded."""
+    cols = ", ".join(f"AVG({f}), MIN({f}), MAX({f})" for f in VITAL_FIELDS)
+    with _db() as con:
+        row = con.execute(f"SELECT {cols} FROM samples WHERE astronaut_id = ? AND ts >= ? AND {USABLE}",
+                          (aid, since)).fetchone()
+    return {f: dict(avg=row[3 * i], min=row[3 * i + 1], max=row[3 * i + 2]) for i, f in enumerate(VITAL_FIELDS)}
 
 
 def delete_checkins_after(aid: str, ts: str) -> None:
@@ -242,8 +277,9 @@ def meta_set(key: str, value: str) -> None:
 
 
 def insert_samples(rows: list[tuple]) -> None:
+    """Rows in SAMPLE_COLUMNS order; quality defaults to 'ok'."""
     with _db() as con:
-        con.executemany("INSERT OR REPLACE INTO samples VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+        con.executemany(_INSERT_SAMPLE, [(*r, "ok") for r in rows])
 
 
 def insert_checkins(rows: list[tuple[str, str, dict]]) -> None:

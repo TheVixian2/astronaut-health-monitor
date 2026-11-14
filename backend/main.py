@@ -34,6 +34,7 @@ import circadian
 import engine
 import horizons
 import insight_service
+import quality
 import store
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
@@ -87,16 +88,27 @@ class Baseline(BaseModel):
     mood_1to5: int
 
 
+Quality = Literal["ok", "suspect", "implausible"]
+
+
 class Vitals(Baseline):
     timestamp: datetime
     source: Source
     baseline: Baseline
+    quality: Quality = "ok"  # PROVISIONAL: sensor check of this reading (quality.py)
 
 
 class Insight(BaseModel):
     why: str
     trend: str
     recommended_action: str
+
+
+class Confirmation(BaseModel):  # PROVISIONAL
+    status: Literal["pending", "felt", "not_felt"]
+    question: str
+    answered_at: Optional[datetime] = None
+    note: Optional[str] = None
 
 
 class Alert(BaseModel):
@@ -111,6 +123,9 @@ class Alert(BaseModel):
     act_within_s: int
     ground_eta_s: int
     insight: Optional[Insight] = None
+    # PROVISIONAL additions (not yet in docs/api-spec.md)
+    data_quality: Literal["ok", "suspect"] = "ok"   # suspect = a sensor glitch was seen at the time
+    confirmation: Optional[Confirmation] = None     # "do you feel this?"; null for check-in-based alerts
 
 
 class Mission(BaseModel):
@@ -123,6 +138,10 @@ class Mission(BaseModel):
         if self.real_one_way_delay_s is None:
             self.real_one_way_delay_s = self.one_way_delay_s
         return self
+
+
+class MissionView(Mission):
+    blackout: bool = False  # PROVISIONAL, read-only here: set it with PUT /mission/blackout
 
 
 class Vision(BaseModel):
@@ -145,6 +164,121 @@ class ScenarioRequest(BaseModel):
 
 
 # PROVISIONAL additions (not yet in docs/api-spec.md)
+
+class ConfirmRequest(BaseModel):
+    felt: bool
+    note: Optional[str] = Field(default=None, max_length=500)
+
+
+BLACKOUT_REASON = "Solar conjunction: the Sun blocks radio contact with Earth (about 2 weeks on a Mars mission)."
+
+
+class BlackoutRequest(BaseModel):
+    active: bool
+    until: Optional[datetime] = None
+    reason: str = BLACKOUT_REASON
+
+
+class Blackout(BaseModel):
+    active: bool
+    started_at: Optional[datetime] = None
+    until: Optional[datetime] = None
+    reason: Optional[str] = None
+    note: str = ("During a blackout everything on board keeps working: monitoring, alerts, explanations and "
+                 "protocols need no link to Earth. Data for the flight surgeon is held and delivered when "
+                 "contact returns.")
+
+
+class SensorSignal(BaseModel):
+    field: str
+    status: Literal["ok", "spike", "implausible", "flatline", "dropout"]
+    detail: str
+    source: Source
+
+
+class SensorReport(BaseModel):
+    astronaut_id: str
+    quality: Quality
+    signals: list[SensorSignal]
+    stored_last_hour: dict[str, int]  # readings stored in the last hour, by quality flag
+    events_last_hour: dict[str, int]  # spikes / implausible / flatline / dropout seen in the last hour
+    ok_pct_last_hour: Optional[float]
+    note: str
+
+
+class Protocol(BaseModel):
+    profile: str
+    act_within_s: int
+    onboard_action: str
+    steps: list[str]
+    note: str
+
+
+class VitalSummary(BaseModel):
+    field: str
+    label: str
+    baseline: float
+    average: Optional[float]
+    low: Optional[float]
+    high: Optional[float]
+    deviation_pct: Optional[float]
+
+
+class ReportAlert(BaseModel):
+    id: str
+    profile: str
+    severity: Severity
+    started_at: datetime
+    still_active: bool
+    astronaut_confirmation: Optional[str]  # pending | felt | not_felt | null
+    data_quality: str
+
+
+class CheckinSummary(BaseModel):
+    count: int
+    mood_avg: Optional[float]
+    headaches: int
+    amsler_distortions: int
+    latest_acuity: Optional[int]
+    baseline_acuity: Optional[float]
+    private_not_included: int  # ground view: check-ins the astronaut kept private
+
+
+class DataQualitySummary(BaseModel):
+    readings: int
+    ok_pct: Optional[float]
+    suspect: int
+    sensor_errors: int  # readings the astronaut said they didn't feel
+    implausible: int
+
+
+class TimeToAction(BaseModel):
+    alerts_answered: int
+    median_response_s: Optional[float]  # alert raised -> astronaut answered "do you feel this?"
+    round_trip_to_earth_s: int          # what waiting for Houston would cost instead
+    note: str
+
+
+class Report(BaseModel):
+    astronaut_id: str
+    name: str
+    view: Literal["crew", "ground"]
+    generated_at: datetime
+    period_days: int
+    mission_day: int
+    vitals: list[VitalSummary]
+    alerts: list[ReportAlert]
+    checkins: CheckinSummary
+    sans_score: int
+    sans_trigger_at: int
+    circadian: Optional[circadian.CircadianSummary]  # null in the ground view if the astronaut opted out
+    data_quality: DataQualitySummary
+    time_to_action: TimeToAction
+    delivery: str
+    text: str        # compact plain-language summary, the store-and-forward packet for the flight surgeon
+    size_bytes: int
+    note: str
+
 
 class LightTime(BaseModel):
     environment: Environment
@@ -222,6 +356,13 @@ class AstronautState:
         self.checkins: list[tuple[str, dict]] = []  # last 14 days, oldest first
         self.baseline_acuity: Optional[float] = None
         self.co2_avg_7d: Optional[float] = None
+        self.sensors = quality.SensorMonitor()
+        self.quality: str = "ok"            # quality flag of the latest reading
+        self.muted: dict[str, int] = {}     # profile -> calm ticks; astronaut said "I don't feel it"
+
+    def watch_dropout(self) -> bool:
+        loop = asyncio.get_running_loop()
+        return self.real_hr is not None and loop.time() - self.real_hr[1] >= REAL_HR_FRESH_S
 
     def target(self, field: str) -> float:
         base = getattr(self.baseline, field)
@@ -261,7 +402,7 @@ class AstronautState:
             diastolic_mmhg=round(v["diastolic_mmhg"]), spo2_pct=round(v["spo2_pct"]),
             temp_c=round(v["temp_c"], 1), resp_rate_bpm=round(v["resp_rate_bpm"]),
             sleep_h_last_night=round(v["sleep_h_last_night"], 1),
-            mood_1to5=max(1, min(5, round(v["mood_1to5"]))))
+            mood_1to5=max(1, min(5, round(v["mood_1to5"]))), quality=self.quality)
 
     def context(self, t: datetime) -> engine.Context:
         cutoff = store.iso(t - timedelta(hours=24))
@@ -289,6 +430,8 @@ class AstronautState:
 crew = {aid: AstronautState(aid) for aid in engine.CREW}
 # Demo default: Mars, Ground stream compressed to 20 s; the verdict uses the real 22 min.
 mission = Mission(environment="mars", one_way_delay_s=20, real_one_way_delay_s=1320)
+blackout = Blackout(active=False)
+blackout_resumed_at = 0.0  # loop time when the last blackout ended (held ground data waits for it)
 mission_start = now() - timedelta(days=DEFAULT_MISSION_DAY - 1)
 seeded_until: Optional[str] = None
 light_time: dict = {"live_one_way_delay_s": None, "computed_for": None}
@@ -354,18 +497,34 @@ async def refresh_from_store() -> None:
 
 # --- Alerts ------------------------------------------------------------------------
 
+def blackout_left_s() -> Optional[float]:
+    """None when Earth is reachable; seconds of blackout left otherwise (0 = end unknown)."""
+    if not blackout.active:
+        return None
+    return max(0.0, (blackout.until - now()).total_seconds()) if blackout.until else 0.0
+
+
+def ground_eta_s() -> int:
+    """When the flight surgeon will see something sent now: light time, plus any blackout left."""
+    return int(mission.real_one_way_delay_s + (blackout_left_s() or 0))
+
+
 async def attach_insight(s: AstronautState, alert: Alert, v: dict, ctx: engine.Context,
                          sans_parts: Optional[list[engine.SansComponent]]) -> None:
     # The same alert id is re-sent with insight filled in (null until then).
     b = s.baseline.model_dump()
+    left = blackout_left_s()
     fallback = insight_service.Insight(**engine.fallback_insight(
-        alert.profile, v, b, ctx, mission.real_one_way_delay_s, sans_parts))
+        alert.profile, v, b, ctx, mission.real_one_way_delay_s, sans_parts, left))
     case_vitals = dict(v)
     if sans_parts:
         case_vitals["sans_risk_components"] = [p.__dict__ for p in sans_parts]
-    result = await insight_service.generate_insight(
-        alert.profile, case_vitals, b, onboard_action=alert.onboard_action,
-        act_within_s=alert.act_within_s, one_way_delay_s=mission.real_one_way_delay_s, fallback=fallback)
+    if left is not None:
+        result = fallback  # no link to Earth, so no cloud model: the on-board explanation is used
+    else:
+        result = await insight_service.generate_insight(
+            alert.profile, case_vitals, b, onboard_action=alert.onboard_action,
+            act_within_s=alert.act_within_s, one_way_delay_s=mission.real_one_way_delay_s, fallback=fallback)
     alert.insight = Insight(**result.model_dump())
     store.set_insight(alert.model_dump(mode="json"))
     publish(s.id, "alert", alert)
@@ -374,11 +533,14 @@ async def attach_insight(s: AstronautState, alert: Alert, v: dict, ctx: engine.C
 def raise_alert(s: AstronautState, profile: str, v: dict, ctx: engine.Context,
                 sans_parts: Optional[list[engine.SansComponent]] = None) -> Alert:
     p = engine.PROFILES[profile]
+    question = engine.CONFIRM_QUESTIONS.get(profile)
     alert = Alert(
         id=f"al-{uuid.uuid4().hex[:8]}", astronaut_id=s.id, profile=profile,
         severity=p["severity"], hazard=p["hazard"], body_region=p["body_region"],
         started_at=now(), onboard_action=p["onboard_action"], act_within_s=p["act_within_s"],
-        ground_eta_s=mission.real_one_way_delay_s, insight=None)
+        ground_eta_s=ground_eta_s(), insight=None,
+        data_quality="suspect" if s.quality == "suspect" else "ok",
+        confirmation=Confirmation(status="pending", question=question) if question else None)
     s.alerts.append(alert)
     s.active[profile] = alert
     s.misses[profile] = 0
@@ -397,19 +559,32 @@ def clear_alert(s: AstronautState, profile: str) -> None:
         log.info("%s: %s alert cleared", s.id, profile)
 
 
-def evaluate_vitals(s: AstronautState, snap: Vitals, t: datetime) -> None:
+def evaluate_vitals(s: AstronautState, snap: Vitals, t: datetime) -> bool:
+    """Run the vitals profiles. Returns True if a profile the astronaut said they don't feel still matches."""
+    if s.quality == "implausible":
+        return False  # a reading no body can produce never raises or clears an alert
     v = snap.model_dump(include=set(store.VITAL_FIELDS))
     b = s.baseline.model_dump()
     ctx = s.context(t)
+    muted_match = False
     for profile in engine.VITALS_PROFILES:
         if engine.matches(profile, v, b, ctx):
             s.misses[profile] = 0
-            if profile not in s.active:  # the NEW-match gate
+            if profile in s.muted:
+                s.muted[profile] = 0
+                muted_match = True
+            elif profile not in s.active:  # the NEW-match gate
                 raise_alert(s, profile, v, ctx)
-        elif profile in s.active:
-            s.misses[profile] = s.misses.get(profile, 0) + 1
-            if s.misses[profile] >= engine.CLEAR_AFTER_TICKS:
-                clear_alert(s, profile)
+        else:
+            if profile in s.muted:  # unmute once readings have been calm for a while
+                s.muted[profile] += 1
+                if s.muted[profile] >= engine.CLEAR_AFTER_TICKS:
+                    del s.muted[profile]
+            if profile in s.active:
+                s.misses[profile] = s.misses.get(profile, 0) + 1
+                if s.misses[profile] >= engine.CLEAR_AFTER_TICKS:
+                    clear_alert(s, profile)
+    return muted_match
 
 
 def evaluate_sans(s: AstronautState, t: datetime) -> None:
@@ -429,13 +604,19 @@ async def tick_loop() -> None:
         await asyncio.sleep(TICK_S)
         try:
             t = now()
+            if blackout.active and blackout.until and t >= blackout.until:
+                end_blackout()
             for aid, s in crew.items():
                 s.tick()
                 snap = s.snapshot()
-                store.add_sample(aid, store.iso(t), snap.model_dump(include=set(store.VITAL_FIELDS)),
-                                 round(s.cabin_co2, 2), snap.source)
+                v = snap.model_dump(include=set(store.VITAL_FIELDS))
+                s.quality, _ = s.sensors.check(v, snap.source, s.watch_dropout())
+                muted_match = evaluate_vitals(s, snap, t)
+                if muted_match and s.quality == "ok":
+                    s.quality = "suspect"  # the same episode the astronaut said they don't feel
+                snap.quality = s.quality
+                store.add_sample(aid, store.iso(t), v, round(s.cabin_co2, 2), snap.source, s.quality)
                 publish(aid, "vitals", snap)
-                evaluate_vitals(s, snap, t)
             ticks += 1
             if ticks % REFRESH_EVERY_TICKS == 0:
                 await refresh_from_store()
@@ -443,6 +624,14 @@ async def tick_loop() -> None:
                     evaluate_sans(s, t)
         except Exception:
             log.exception("tick failed; carrying on")  # the demo must keep running
+
+
+def end_blackout() -> None:
+    global blackout, blackout_resumed_at
+    if blackout.active:
+        blackout_resumed_at = asyncio.get_running_loop().time()
+        log.info("Blackout over: contact with Earth restored; held data is being delivered")
+    blackout = Blackout(active=False)
 
 
 async def fetch_light_time() -> None:
@@ -537,18 +726,30 @@ async def event_stream(request: Request, aid: str, view: str):
         yield f": connected view={view} one_way_delay_s={mission.one_way_delay_s}\n\n"
         if view == "crew":
             yield sse("vitals", crew[aid].snapshot().model_dump_json())
+        elif blackout.active:
+            yield ": blackout - Earth is out of contact; data is held until contact returns\n\n"
         while not await request.is_disconnected():
+            # Blackout (store-and-forward): the ground view holds everything until contact returns,
+            # keeping every alert but only the latest vitals; after that, data still takes the light time.
+            held = view == "ground" and blackout.active
+            resume_at = blackout_resumed_at + mission.one_way_delay_s if view == "ground" else 0.0
             timeout = 15.0
-            if pending:
-                timeout = max(0.0, min(timeout, pending[0][0] - loop.time()))
+            if pending and not held:
+                timeout = max(0.0, min(timeout, max(pending[0][0], resume_at) - loop.time()))
             try:
                 event, data = await asyncio.wait_for(q.get(), timeout)
+                if held and event == "vitals":
+                    pending = deque(p for p in pending if p[1] != "vitals")
                 delay = mission.one_way_delay_s if view == "ground" else 0
                 pending.append((loop.time() + delay, event, data))
             except asyncio.TimeoutError:
-                if not pending:
+                if held:
+                    yield ": blackout\n\n"
+                elif not pending:
                     yield ": keepalive\n\n"
-            while pending and pending[0][0] <= loop.time():
+            if held:
+                continue
+            while pending and pending[0][0] <= loop.time() and loop.time() >= resume_at:
                 _, event, data = pending.popleft()
                 yield sse(event, data)
     finally:
@@ -568,16 +769,58 @@ async def get_alerts(aid: str) -> list[Alert]:
     return list(reversed(get_state(aid).alerts))  # newest first
 
 
+@app.post("/astronauts/{aid}/alerts/{alert_id}/confirm")
+async def confirm_alert(aid: str, alert_id: str, body: ConfirmRequest) -> Alert:
+    # PROVISIONAL. "Do you feel this?" Sensors aren't right 100% of the time; if the astronaut
+    # doesn't feel it, the readings around the alert are marked as a likely sensor error in their
+    # history (kept, never deleted) and left out of the baseline, charts and reports.
+    s = get_state(aid)
+    alert = next((a for a in s.alerts if a.id == alert_id), None)
+    if alert is None:
+        raise HTTPException(404, f"No alert '{alert_id}' for {aid}")
+    if alert.confirmation is None:
+        raise HTTPException(409, "This alert comes from the astronaut's own check-in, so there is nothing to confirm.")
+    t = now()
+    alert.confirmation = Confirmation(status="felt" if body.felt else "not_felt",
+                                      question=alert.confirmation.question, answered_at=t, note=body.note)
+    if not body.felt:
+        store.mark_artifact(aid, store.iso(alert.started_at - timedelta(minutes=2)), store.iso(t))
+        if s.active.get(alert.profile) is alert:
+            clear_alert(s, alert.profile)
+        s.muted[alert.profile] = 0  # don't re-raise this episode; unmutes after readings calm down
+    store.update_alert(alert.model_dump(mode="json"))
+    publish(aid, "alert", alert)  # same id, re-sent with the answer
+    return alert
+
+
 @app.get("/mission")
-async def get_mission() -> Mission:
-    return mission
+async def get_mission() -> MissionView:
+    return MissionView(**mission.model_dump(), blackout=blackout.active)
 
 
 @app.put("/mission")
-async def put_mission(body: Mission) -> Mission:
+async def put_mission(body: Mission) -> MissionView:
     global mission
     mission = body
-    return mission
+    return MissionView(**mission.model_dump(), blackout=blackout.active)
+
+
+@app.get("/mission/blackout")
+async def get_blackout() -> Blackout:  # PROVISIONAL
+    return blackout
+
+
+@app.put("/mission/blackout")
+async def put_blackout(body: BlackoutRequest) -> Blackout:
+    # PROVISIONAL. Communications blackout (e.g. solar conjunction): everything on board keeps
+    # working; the ground view holds data and delivers it when contact returns.
+    global blackout
+    if body.active:
+        blackout = Blackout(active=True, started_at=now(), until=body.until, reason=body.reason)
+        log.info("Blackout started: %s", body.reason)
+    else:
+        end_blackout()
+    return blackout
 
 
 async def record_checkin(s: AstronautState, body: CheckinRequest) -> None:
@@ -605,6 +848,11 @@ async def debug_scenario(body: ScenarioRequest) -> Accepted:
     if body.scenario == "clear":
         s.scenario = None
         s.manual.clear()
+        s.muted.clear()
+        # Snap vitals back to baseline so leftover drift can't raise a stray alert after a demo run.
+        s.values.update({f: float(getattr(s.baseline, f)) for f in WALK_STEP})
+        s.cabin_co2 = engine.CABIN_CO2_NOMINAL_MMHG
+        s.sensors.prev = {}
         for profile in list(s.active):
             clear_alert(s, profile)
         if seeded_until:  # drop live check-ins so the SANS demo can run again
@@ -620,6 +868,151 @@ async def debug_scenario(body: ScenarioRequest) -> Accepted:
         s.scenario = body.scenario
         s.manual.clear()
     return Accepted()
+
+
+# --- PROVISIONAL: sensor accuracy, protocols, reports (not yet in docs/api-spec.md) ---
+
+SENSOR_NOTE = ("Sensors are not right 100% of the time. Every reading is checked for impossible values, "
+               "sudden jumps, a stuck sensor and watch dropouts. Suspicious readings are kept but flagged, "
+               "and a vitals alert asks whether you actually feel it. Readings you say you didn't feel are "
+               "marked as sensor errors in your history (never deleted) and left out of your baseline, "
+               "charts and reports.")
+VITAL_LABELS = {"heart_rate_bpm": "Heart rate (bpm)", "systolic_mmhg": "Systolic BP (mmHg)",
+                "diastolic_mmhg": "Diastolic BP (mmHg)", "spo2_pct": "SpO2 (%)", "temp_c": "Temperature (°C)",
+                "resp_rate_bpm": "Breathing (/min)", "sleep_h_last_night": "Sleep (h)", "mood_1to5": "Mood (1-5)"}
+QUALITY_FLAGS = ("ok", "suspect", "implausible", "artifact")
+
+
+@app.get("/astronauts/{aid}/sensors")
+async def get_sensors(aid: str) -> SensorReport:
+    s = get_state(aid)
+    counts = await asyncio.to_thread(store.quality_counts, aid, store.iso(now() - timedelta(hours=1)))
+    stored = {flag: counts.get(flag, 0) for flag in QUALITY_FLAGS}
+    total = sum(stored.values())
+    return SensorReport(
+        astronaut_id=aid, quality=s.quality,
+        signals=[SensorSignal(field=c.field, status=c.status, detail=c.detail, source=c.source)
+                 for c in s.sensors.last_checks],
+        stored_last_hour=stored, events_last_hour=dict(s.sensors.recent_counts()),
+        ok_pct_last_hour=round(100 * stored["ok"] / total, 1) if total else None, note=SENSOR_NOTE)
+
+
+@app.get("/protocols")
+async def get_protocols() -> list[Protocol]:
+    # Works with no link to Earth: what to do on board when help is late or unreachable.
+    return [Protocol(profile=p, act_within_s=engine.PROFILES[p]["act_within_s"],
+                     onboard_action=engine.PROFILES[p]["onboard_action"], steps=steps,
+                     note="Suggested steps for the demo; check against the onboard medical checklist. "
+                          "Not medical advice.")
+            for p, steps in engine.PROTOCOLS.items()]
+
+
+def _report_text(s: AstronautState, days: int, t: datetime, vitals: list[VitalSummary],
+                 alerts: list[ReportAlert], ck: CheckinSummary, sans_score: int,
+                 circ: Optional[circadian.CircadianSummary], dq: DataQualitySummary, view: str,
+                 tta: TimeToAction) -> str:
+    lines = [f"Health report: {s.name} ({s.id}), mission day {mission_day(t)}, last {days} days.",
+             "Compared with the astronaut's own baseline (mission days 7-14):"]
+    for vs in vitals:
+        if vs.average is not None and vs.field != "mood_1to5":
+            dev = f" ({vs.deviation_pct:+.0f}%)" if vs.deviation_pct is not None else ""
+            lines.append(f"- {vs.label}: avg {vs.average:g} vs baseline {vs.baseline:g}{dev}, "
+                         f"range {vs.low:g}-{vs.high:g}")
+    if alerts:
+        lines.append(f"Alerts ({len(alerts)}):")
+        answer = {"felt": "astronaut felt it", "not_felt": "astronaut did not feel it, marked as a likely "
+                  "sensor error and excluded", "pending": "not answered yet", None: "from check-ins"}
+        for a in alerts:
+            lines.append(f"- {a.started_at:%d %b %H:%M} {a.profile} ({a.severity}): {answer[a.astronaut_confirmation]}"
+                         + ("; sensor glitch seen at the time" if a.data_quality == "suspect" else ""))
+    else:
+        lines.append("Alerts: none.")
+    acuity = (f", acuity line {ck.latest_acuity} (baseline {ck.baseline_acuity:g})"
+              if ck.latest_acuity is not None and ck.baseline_acuity is not None else "")
+    mood = f", mood avg {ck.mood_avg:.1f}/5" if ck.mood_avg is not None else ""
+    lines.append(f"Check-ins: {ck.count}{mood}, headaches {ck.headaches}, Amsler distortion {ck.amsler_distortions}"
+                 f"{acuity}" + (f"; {ck.private_not_included} kept private" if ck.private_not_included else "") + ".")
+    lines.append(f"SANS risk score: {sans_score}/100 (watch at {engine.SANS_TRIGGER}). A risk score, not a diagnosis.")
+    if circ:
+        lines.append(f"Sleep and light: avg {circ.sleep_avg_h} h, bedtime spread {circ.bedtime_spread_min / 60:.1f} h, "
+                     f"drift {circ.drift_min_per_night:+.0f} min/night, status {circ.status}.")
+    elif view == "ground":
+        lines.append("Sleep and light: not shared by the astronaut.")
+    if tta.median_response_s is not None:
+        lines.append(f"Time to action: the astronaut answered {tta.alerts_answered} alert(s) in a median of "
+                     f"{tta.median_response_s:.0f} s, vs a {tta.round_trip_to_earth_s / 60:.0f}-min round trip to Earth.")
+    if dq.readings:
+        lines.append(f"Data quality: {dq.ok_pct:.1f}% of {dq.readings} readings OK; {dq.sensor_errors} marked as "
+                     f"sensor errors by the astronaut, {dq.suspect} flagged as suspect, {dq.implausible} impossible "
+                     f"values ignored.")
+    lines.append("Decision support only, never a diagnosis.")
+    return "\n".join(lines)
+
+
+@app.get("/astronauts/{aid}/report")
+async def get_report(aid: str, days: int = Query(7, ge=1, le=42),
+                     view: Literal["crew", "ground"] = "crew") -> Report:
+    """The astronaut's history as one compact report: the store-and-forward packet for the flight surgeon."""
+    s = get_state(aid)
+    t = now()
+    since = store.iso(t - timedelta(days=days))
+    stats, counts, checks = await asyncio.gather(
+        asyncio.to_thread(store.period_stats, aid, since),
+        asyncio.to_thread(store.quality_counts, aid, since),
+        asyncio.to_thread(store.checkins_between, aid, since))
+    b = s.baseline.model_dump()
+    vitals = []
+    for f, st in stats.items():
+        avg = round(st["avg"], 1) if st["avg"] is not None else None
+        vitals.append(VitalSummary(
+            field=f, label=VITAL_LABELS[f], baseline=b[f], average=avg,
+            low=round(st["min"], 1) if st["min"] is not None else None,
+            high=round(st["max"], 1) if st["max"] is not None else None,
+            deviation_pct=round(100 * engine.pct(avg, b[f]), 1) if avg is not None else None))
+    alerts = [ReportAlert(id=a.id, profile=a.profile, severity=a.severity, started_at=a.started_at,
+                          still_active=s.active.get(a.profile) is a,
+                          astronaut_confirmation=a.confirmation.status if a.confirmation else None,
+                          data_quality=a.data_quality)
+              for a in s.alerts if store.iso(a.started_at) >= since]
+    private = [c for c in checks if not c[1].get("share_with_ground")]
+    if view == "ground":
+        checks = [c for c in checks if c[1].get("share_with_ground")]
+    moods = [p["mood_1to5"] for _, p in checks if p.get("mood_1to5") is not None]
+    acuities = [p["vision"]["acuity_line"] for _, p in checks if (p.get("vision") or {}).get("acuity_line") is not None]
+    ck = CheckinSummary(
+        count=len(checks), mood_avg=round(statistics.fmean(moods), 1) if moods else None,
+        headaches=sum("headache" in (p.get("symptoms") or []) for _, p in checks),
+        amsler_distortions=sum(bool((p.get("vision") or {}).get("amsler_distortion")) for _, p in checks),
+        latest_acuity=acuities[-1] if acuities else None, baseline_acuity=s.baseline_acuity,
+        private_not_included=len(private) if view == "ground" else 0)
+    sans_score, _ = s.sans(t)
+    circ = None if (view == "ground" and not circadian.is_shared(aid)) else \
+        circadian.assess(aid, t, mission.environment).summary
+    readings = sum(counts.values())
+    dq = DataQualitySummary(
+        readings=readings, ok_pct=round(100 * counts.get("ok", 0) / readings, 1) if readings else None,
+        suspect=counts.get("suspect", 0), sensor_errors=counts.get("artifact", 0),
+        implausible=counts.get("implausible", 0))
+    answered = [(a.confirmation.answered_at - a.started_at).total_seconds() for a in s.alerts
+                if store.iso(a.started_at) >= since and a.confirmation and a.confirmation.answered_at]
+    tta = TimeToAction(
+        alerts_answered=len(answered),
+        median_response_s=round(statistics.median(answered), 1) if answered else None,
+        round_trip_to_earth_s=2 * mission.real_one_way_delay_s,
+        note="Seconds from an alert to the astronaut's answer, compared with waiting for a reply from Earth.")
+    text = _report_text(s, days, t, vitals, alerts, ck, sans_score, circ, dq, view, tta)
+    size = len(text.encode("utf-8"))
+    left = blackout_left_s()
+    if left is not None:
+        delivery = (f"Communications blackout: saved on board ({size} bytes); it reaches the flight surgeon about "
+                    f"{mission.real_one_way_delay_s / 60:.0f} min after contact returns.")
+    else:
+        delivery = f"Reaches the flight surgeon about {mission.real_one_way_delay_s / 60:.0f} min after sending ({size} bytes)."
+    return Report(
+        astronaut_id=aid, name=s.name, view=view, generated_at=t, period_days=days, mission_day=mission_day(t),
+        vitals=vitals, alerts=alerts, checkins=ck, sans_score=sans_score, sans_trigger_at=engine.SANS_TRIGGER,
+        circadian=circ, data_quality=dq, time_to_action=tta, delivery=delivery, text=text, size_bytes=size,
+        note="Built from the stored history. Readings the astronaut marked as sensor errors are left out.")
 
 
 # --- PROVISIONAL: SANS risk, history, live light time (not yet in docs/api-spec.md) ---

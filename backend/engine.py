@@ -55,6 +55,48 @@ PROFILES = {
 }
 VITALS_PROFILES = ("orthostatic", "co2", "fever", "sleep_debt")
 
+# Sensors aren't right 100% of the time, so a vitals alert asks whether the astronaut
+# actually feels it. "No" marks the readings as a likely sensor error in their history.
+CONFIRM_QUESTIONS = {
+    "orthostatic": "Do you feel dizzy or light-headed, especially when you move or stand?",
+    "co2": "Are you short of breath or do you have a headache?",
+    "fever": "Do you feel feverish, hot or shivery?",
+    "sleep_debt": "Do you feel more tired than usual?",
+}
+
+# Suggested on-board steps for when help from Earth is late or unreachable.
+# PLACEHOLDERS for the demo: check against the onboard medical checklist. Not medical advice.
+PROTOCOLS = {
+    "orthostatic": [
+        "Lie down and raise your legs.",
+        "Drink about 500 ml of fluid with salt tablets.",
+        "Re-measure heart rate and blood pressure after 10 minutes.",
+        "If you faint, feel worse, or it doesn't settle: tell a crewmate and the Crew Medical Officer now.",
+    ],
+    "co2": [
+        "Move to a well-ventilated module.",
+        "Check the cabin CO2 readout and the scrubber status.",
+        "Tell the crew, since CO2 affects everyone in the module.",
+        "If breathing or a headache gets worse: alert the Crew Medical Officer now.",
+    ],
+    "fever": [
+        "Rest and drink fluids.",
+        "Log your temperature every hour.",
+        "Limit close contact with crewmates until it settles.",
+        "If temperature keeps rising or you feel very unwell: alert the Crew Medical Officer.",
+    ],
+    "sleep_debt": [
+        "Consider pre-sleep lighting (2700K) about 1 hour before bed, and screens aside.",
+        "Use the eye mask and earplugs.",
+        "A private conference with the flight surgeon is always an option, even if it's delayed.",
+    ],
+    "sans": [
+        "Do the Amsler grid and visual acuity check today.",
+        "Log any headache or blurred vision.",
+        "Ask whether an OCT scan is worthwhile at the next opportunity.",
+    ],
+}
+
 # What POST /debug/scenario does to the simulation: vitals drift toward
 # baseline x MULT (+ ADD), so they move together coherently. `sans` instead
 # injects a check-in, the same path a real astronaut's check-in takes.
@@ -145,10 +187,21 @@ def _signed(x: float) -> str:
 
 
 def fallback_insight(profile: str, v: dict, b: dict, ctx: Context, real_one_way_delay_s: int,
-                     sans_parts: Optional[list[SansComponent]] = None) -> dict:
-    """The explanation shown when Claude isn't available, built from the real numbers."""
+                     sans_parts: Optional[list[SansComponent]] = None,
+                     blackout_left_s: Optional[float] = None) -> dict:
+    """The explanation shown when Claude isn't available, built from the real numbers.
+
+    blackout_left_s: None = Earth reachable; a number = communications blackout, with
+    that many seconds left (0 = end unknown).
+    """
     act_within = PROFILES[profile]["act_within_s"]
-    if acts_on_board(act_within, real_one_way_delay_s):
+    if blackout_left_s is not None:
+        until = (f"for about {blackout_left_s / 86400:.0f} more days" if blackout_left_s >= 86400
+                 else f"for about {_mins(blackout_left_s)} more min" if blackout_left_s > 0 else "for now")
+        verdict = (f"Earth is out of contact {until} (communications blackout). Follow the on-board steps and "
+                   f"tell a crewmate or the Crew Medical Officer. This is saved and will be sent to the flight "
+                   f"surgeon as soon as contact returns.")
+    elif acts_on_board(act_within, real_one_way_delay_s):
         verdict = (f"Ground will see this in about {_mins(real_one_way_delay_s)} min, and a reply takes about "
                    f"{_mins(2 * real_one_way_delay_s)} min. That is longer than this can safely wait, so the "
                    f"on-board step comes first.")

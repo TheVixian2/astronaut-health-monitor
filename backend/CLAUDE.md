@@ -52,7 +52,10 @@ Env vars: `AHM_DB` (database path, default `data/ahm.db`), `AHM_LIVE_LIGHT_TIME=
 
 - `main.py` — FastAPI app, state, tick loop, alert gate, endpoints.
 - `engine.py` — crew baselines, condition profiles, thresholds, SANS risk score,
-  scenario shifts, fallback explanations.
+  scenario shifts, "do you feel this?" questions, on-board protocols, fallback
+  explanations (blackout-aware).
+- `quality.py` — sensor checks per reading: impossible values, spikes, stuck sensor,
+  watch dropout. Sensor errors the astronaut reports are flagged `artifact`, never deleted.
 - `store.py` — SQLite schema, background writer, reads (baseline, history, check-ins).
 - `circadian.py` — lighting log and the circadian countermeasure loop.
 - `horizons.py` — live Earth-Mars light time from NASA JPL Horizons.
