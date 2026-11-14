@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · AHM</title>
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+  <main class="login-box card">
+    <h1>Astronaut Health Monitor</h1>
+    <p class="muted">Sign in to continue.</p>
+    <form id="login" class="login-form" autocomplete="off">
+      <label>Username <input name="user" required autofocus autocapitalize="none" spellcheck="false"></label>
+      <label>Password <input name="password" type="password" required></label>
+      <button type="submit">Sign in</button>
+      <p id="loginError" class="err small" role="alert" hidden>Wrong username or password.</p>
+    </form>
+    <p class="muted small">Demo build: one shared account for the whole team.</p>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const next = AHMAuth.safeNext(params.get("next"));
+    if (AHMAuth.session()) location.replace(next);   // already signed in
+
+    document.getElementById("login").addEventListener("submit", e => {
+      e.preventDefault();
+      const f = e.target;
+      if (AHMAuth.login(f.user.value, f.password.value)) {
+        location.replace(next);
+      } else {
+        document.getElementById("loginError").hidden = false;
+        f.password.value = "";
+        f.password.focus();
+      }
+    });
+  </script>
+</body>
+</html>
