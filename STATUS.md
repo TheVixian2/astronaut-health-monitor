@@ -102,13 +102,20 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
-- **Done — Phase 2 step 5 (merged to `main`):** `web/index.html` stream check.
-  Connects to `/astronauts/{id}/stream?view=crew|ground`, shows latest vitals vs
-  baseline, upserts alerts **by `id`** (so the insight re-send updates in
-  place), computes the verdict from `GET /mission`, shows active view + data
-  age, logs raw events. `index.html?mock` runs with no backend (`web/mock.js`
-  mirrors the backend mock). Tested in mock mode only — not yet against the
-  real backend.
+- **Done — Self-check view (merged to `main`):** `web/self-check.html`. Alert
+  banner with the verdict + one-line `onboard_action` + insight behind a
+  toggle; clickable body figure (regions take their alert's severity colour);
+  vitals tiles vs baseline; Chart.js trend with baseline dashed; check-in form
+  matching `POST /checkin` (`share_with_ground` **off by default**); session
+  alert history. `web/index.html` is now a landing page; the old placeholder
+  is `web/stream-check.html` (raw SSE debug). Verdict rule lives only in
+  `web/common.js`.
+- **Run without a backend:** add `?mock` to any page (`web/mock.js` mirrors the
+  backend mock). **Tested in mock mode only — not yet against the real
+  backend** (no Python on my machine). Luca, if you run the backend, opening
+  `web/index.html` -> Self-check is a quick end-to-end check.
+- **Check-in uses the current spec fields.** The PHQ-2 -> AI summary ->
+  review -> transmit flow waits for the post-pivot spec.
 - **Luca, please decide — the demo verdict contradicts the rule.** CLAUDE.md:
   "round trip > `act_within_s` -> Act on board now". With the demo-compressed
   20 s one-way delay, round trip is 40 s, far under `orthostatic`'s 600 s, so
@@ -118,6 +125,6 @@ Branch: `web`
   countdown, e.g. a new `verdict_delay_s` or `real_one_way_delay_s` in
   `GET /mission`; (b) demo with a delay over 300 s. Web currently follows the
   rule as written; (a) is a one-line change here once the field exists.
-- **Next:** real Self-check view (vitals + trend chart, body figure, check-in
-  form), then Ground.
+- **Next:** Ground view — whole crew, `view=ground`, incoming-alert countdown,
+  real Mars delay always shown in the header.
 - **Blocked on:** nothing.
