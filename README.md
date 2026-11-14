@@ -3,14 +3,16 @@
 NASA Space Apps Challenge 2026 — *Create Health Monitoring Software for
 Astronauts on Space Missions*.
 
-A health monitor that compares each astronaut's vitals to **their own personal
-baseline** rather than to population averages, and flags named condition
-profiles. Decision support only — it never issues a diagnosis.
+**Dr. Galactic** watches the **behavioral (mental) health** of a crew of four on
+a long Mars mission. It compares each astronaut's signals (heart rate, sleep,
+mood, a validated two-question depression screen, a reaction-time test) to
+**their own personal baseline**, not to population averages. Decision support
+only: it never issues a diagnosis.
 
-The astronaut is the primary user. On a Mars mission the ground is up to ~22
-minutes away one way, so the crew member is the first responder. Every alert
-answers the question "can this wait for Houston, or do I act now?" by comparing
-the round-trip light time against the condition's own `act_within_s`.
+On Mars, Mission Control is up to 22 minutes away one way, so help has to start
+on board. A flag goes to the **commander** first, who decides when to tell the
+astronaut; if the commander is the one flagged, it goes to the deputy.
+Mission Control receives it after the light delay.
 
 ## The three parts
 
@@ -18,18 +20,19 @@ the round-trip light time against the condition's own `act_within_s`.
 |---|---|---|
 | **Watch app** | `/watch-app` | Native SwiftUI, standalone watchOS app, no iPhone companion. Shows the wearer's vitals and alert banners. |
 | **Backend** | `/backend` | Python FastAPI. Vitals store, personal baseline, condition engine, Claude insight service, SSE streams. |
-| **Web app** | `/web` | Plain HTML/CSS/JS, no build step, Chart.js via CDN. A Self-check view for the astronaut and a light-time-delayed Ground view for the flight surgeon. |
+| **Web app** | `/web` | Plain HTML/CSS/JS, no build step, Chart.js via CDN. A Self-check view for the astronaut and a light-time-delayed Ground view for Mission Control. |
 
 Only heart rate is real (from the watchOS Simulator — there is no physical
 watch). The other vitals are simulated server-side from a per-astronaut scenario
-so they move together coherently. Radiation uses live NOAA GOES proton data.
+so they move together coherently.
 
-## Condition profiles
+## What it monitors
 
-Cardiovascular deconditioning, fever / possible infection, CO2 exposure, sleep
-debt / behavioural strain, and solar particle events. Each one maps to a space
-hazard (gravity, environment, isolation, radiation, distance), a body region, a
-severity, and one pre-written on-board action line.
+**Behavioral health** of a crew of four on a long Mars mission: a wellbeing level
+per astronaut built from PHQ-2, mood, sleep and body clock, a 3-minute reaction
+test and resting heart rate, each against the astronaut's own baseline, plus a
+`sleep_debt` alert. Each flag maps to a NASA spaceflight hazard and Human Research
+Program risk.
 
 Thresholds are placeholders pending tuning — see `CLAUDE.md`.
 

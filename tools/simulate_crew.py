@@ -8,11 +8,11 @@ Run with the backend's virtual environment, from the repo root:
   --reset-db        wipe backend/data/ahm.db (samples, alerts, check-ins)
   --seed-baseline   write six weeks of mission history, so the personal baseline
                     (mission days 7-14) is a real SELECT the moment the server
-                    starts. a1's SANS risk sits just below its trigger, and a2's
-                    wellbeing (mood, PHQ-2, reaction time, sleep) declines after the
-                    midpoint to just below "concern": one check-in tips either over
+                    starts. a2's wellbeing (mood, PHQ-2, reaction time, sleep)
+                    declines after the midpoint to just below "concern": one
+                    check-in tips it over
   --run             drive a running backend: scheduled scenarios
-                    (--scenario a3:fever:60 = a3 gets fever 60 s after start)
+                    (--scenario a3:strain:60 = a3 reaches "urgent" 60 s after start)
                     and, with --post-hr, heart rate for a2-a4 every 3 s
 
 Seed before starting the server, or restart it after seeding. Deterministic:
@@ -33,7 +33,6 @@ import store  # noqa: E402
 MISSION_DAYS = 42   # "today" is mission day 42: six weeks in
 STEP_MIN = 10       # one stored sample every 10 min (live ticks are every 3 s)
 CHECKIN_EVERY_DAYS = 2
-ACUITY_BASELINE = {"a1": 9, "a2": 10, "a3": 9, "a4": 10}
 PRIVATE_CHECKINS = {"a2"}  # a2 keeps check-ins private, so the ground view shows redaction
 RT_BASELINE_MS = {"a1": 248, "a2": 262, "a3": 255, "a4": 270}  # reaction test, 3-min PVT-B
 
@@ -48,7 +47,6 @@ def seed(rng: random.Random, seed_value: int = 42) -> None:
     samples, checkins = [], []
     for aid, (_, _, b) in engine.CREW.items():
         v = {k: float(x) for k, x in b.items()}
-        co2 = engine.CABIN_CO2_NOMINAL_MMHG
         t, sleep_h = start, b["sleep_h_last_night"]
         while t < end:
             day = (t - start).days + 1
@@ -61,23 +59,16 @@ def seed(rng: random.Random, seed_value: int = 42) -> None:
             adapt = (7 - day) / 6 if day < 7 else 0.0
             targets = {
                 "heart_rate_bpm": b["heart_rate_bpm"] * (0.88 if asleep else 1.0) * (1 + 0.08 * adapt),
-                "systolic_mmhg": b["systolic_mmhg"] * (1 - 0.05 * adapt),
-                "diastolic_mmhg": b["diastolic_mmhg"],
                 "spo2_pct": b["spo2_pct"],
                 "temp_c": b["temp_c"] + (-0.3 if asleep else 0.1) + 0.2 * adapt,
                 "resp_rate_bpm": b["resp_rate_bpm"] * (0.9 if asleep else 1.0),
             }
-            steps = {"heart_rate_bpm": 1.5, "systolic_mmhg": 1.5, "diastolic_mmhg": 1.0,
-                     "spo2_pct": 0.3, "temp_c": 0.03, "resp_rate_bpm": 0.4}
+            steps = {"heart_rate_bpm": 1.5, "spo2_pct": 0.3, "temp_c": 0.03, "resp_rate_bpm": 0.4}
             for f, target in targets.items():
                 v[f] = _walk(rng, v[f], target, steps[f])
             v["spo2_pct"] = min(100.0, v["spo2_pct"])
-            # a1's module CO2 creeps up over the last two weeks: one of the SANS inputs.
-            co2_target = 3.3 if aid == "a1" and day > MISSION_DAYS - 14 else engine.CABIN_CO2_NOMINAL_MMHG
-            co2 = max(0.0, _walk(rng, co2, co2_target, 0.08))
-            samples.append((aid, store.iso(t), round(v["heart_rate_bpm"], 1), round(v["systolic_mmhg"], 1),
-                            round(v["diastolic_mmhg"], 1), round(v["spo2_pct"], 1), round(v["temp_c"], 2),
-                            round(v["resp_rate_bpm"], 1), sleep_h, b["mood_1to5"], round(co2, 2), "simulated"))
+            samples.append((aid, store.iso(t), round(v["heart_rate_bpm"], 1), round(v["spo2_pct"], 1), round(v["temp_c"], 2),
+                            round(v["resp_rate_bpm"], 1), sleep_h, b["mood_1to5"], "simulated"))
             t += timedelta(minutes=STEP_MIN)
 
         # Check-ins get their own fixed random sequence: the number of vitals samples above depends
@@ -87,13 +78,6 @@ def seed(rng: random.Random, seed_value: int = 42) -> None:
             ts = start + timedelta(days=day - 1, hours=8)
             if ts >= end:
                 break
-            acuity = ACUITY_BASELINE[aid]
-            symptoms = []
-            if aid == "a1":  # slow SANS build-up, stopping just short of the trigger
-                if day >= 34:
-                    acuity -= 1
-                if day in (38, 40):
-                    symptoms.append("headache")
             mood = b["mood_1to5"] + rng_ck.choice((0, 0, 0, -1))
             phq = (rng_ck.choice((0, 0, 0, 1)), 0)
             rt = rng_ck.gauss(RT_BASELINE_MS[aid], 8)
@@ -110,12 +94,9 @@ def seed(rng: random.Random, seed_value: int = 42) -> None:
                 lapses = 2 + round(min(3, weeks_in))
             payload = {"timestamp": store.iso(ts), "share_with_ground": aid not in PRIVATE_CHECKINS,
                        "mood_1to5": max(1, min(5, mood)),
-                       "vision": {"amsler_distortion": False, "acuity_line": acuity},
                        "phq2": {"little_interest": phq[0], "feeling_down": phq[1]},
                        "reaction_test": {"mean_rt_ms": round(rt), "lapses": lapses, "false_starts": 0,
                                          "duration_s": 180}}
-            if symptoms:
-                payload["symptoms"] = symptoms
             checkins.append((aid, store.iso(ts), payload))
 
     store.init()

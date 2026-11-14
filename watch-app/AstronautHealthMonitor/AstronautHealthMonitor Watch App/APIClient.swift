@@ -19,8 +19,6 @@ struct VitalsAlert: Decodable, Identifiable, Equatable {
 /// Only `heartRateBpm` is real; everything else is simulated server-side.
 struct VitalsSnapshot: Decodable, Equatable {
     let heartRateBpm: Double
-    let systolicMmhg: Double
-    let diastolicMmhg: Double
     let spo2Pct: Double
     let tempC: Double
     let respRateBpm: Double
@@ -36,14 +34,24 @@ struct VitalsSnapshot: Decodable, Equatable {
 
     struct Baseline: Decodable, Equatable {
         let heartRateBpm: Double
-        let systolicMmhg: Double
-        let diastolicMmhg: Double
         let spo2Pct: Double
         let tempC: Double
         let respRateBpm: Double
         let sleepHLastNight: Double
         let mood1To5: Int   // capital T — see the note above
     }
+}
+
+/// One point of the stored heart-rate history (GET /history), for the chart.
+struct HistoryPoint: Decodable {
+    let ts: Date
+    let heartRateBpm: Double?
+}
+
+/// One night from the on-board lighting log (GET /circadian).
+struct SleepNight: Decodable {
+    let nightOf: String
+    let sleepH: Double
 }
 
 /// Talks to the backend at localhost. The watchOS Simulator reaches the Mac's
@@ -65,6 +73,7 @@ actor APIClient {
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
+        d.dateDecodingStrategy = .iso8601
         return d
     }()
 
@@ -79,11 +88,13 @@ actor APIClient {
     private struct IngestBody: Encodable {
         let timestamp: Date
         let heartRateBpm: Double
+        let hrvSdnnMs: Double   // PROVISIONAL: the backend ignores these two
+        let activeMin: Double   // until it stores HRV and activity
         let source: String
     }
 
     /// POST /astronauts/{id}/ingest
-    func ingest(heartRate: Double) async throws {
+    func ingest(_ sample: WatchSample) async throws {
         let url = Self.baseURL
             .appendingPathComponent("astronauts")
             .appendingPathComponent(astronautID)
@@ -93,7 +104,8 @@ actor APIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(
-            IngestBody(timestamp: Date(), heartRateBpm: heartRate, source: "simulated")
+            IngestBody(timestamp: Date(), heartRateBpm: sample.heartRateBpm, hrvSdnnMs: sample.hrvSdnnMs,
+                       activeMin: sample.activeMin, source: "simulated")
         )
 
         let (_, response) = try await session.data(for: request)
@@ -132,5 +144,35 @@ actor APIClient {
             throw URLError(.badServerResponse)
         }
         return try decoder.decode([VitalsAlert].self, from: data)
+    }
+
+    /// GET /astronauts/{id}/history?hours=1 — the stored readings for the chart.
+    func lastHour() async throws -> [HistoryPoint] {
+        var url = Self.baseURL
+            .appendingPathComponent("astronauts")
+            .appendingPathComponent(astronautID)
+            .appendingPathComponent("history")
+        url.append(queryItems: [URLQueryItem(name: "hours", value: "1")])
+        return try await get(url)
+    }
+
+    /// GET /astronauts/{id}/circadian?view=crew — only the nights are used here.
+    func sleepNights() async throws -> [SleepNight] {
+        struct Circadian: Decodable { let nights: [SleepNight] }
+        var url = Self.baseURL
+            .appendingPathComponent("astronauts")
+            .appendingPathComponent(astronautID)
+            .appendingPathComponent("circadian")
+        url.append(queryItems: [URLQueryItem(name: "view", value: "crew")])
+        let c: Circadian = try await get(url)
+        return c.nights
+    }
+
+    private func get<T: Decodable>(_ url: URL) async throws -> T {
+        let (data, response) = try await session.data(from: url)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try decoder.decode(T.self, from: data)
     }
 }

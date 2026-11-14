@@ -19,7 +19,7 @@ there is no day or night at all, so the lighting is the only cue left. Linked, n
 proven, so all wording stays suggestive.
 
 Ethics rules for this module (sleeping-quarters data is personal):
-- Shared with the flight surgeon by default, like a doctor would see it (team
+- Shared with Mission Control by default, like a doctor would see it (team
   decision, NotKaemy 2026-11-14). The astronaut can opt out at any time, and the
   ground view then gets 403. On the shared ship console the web app keeps it
   hidden until the astronaut taps to show it.
@@ -333,7 +333,7 @@ def _plan(a: _Astronaut, s: Stats, accepted: bool) -> Plan:
         step(bed, wake, "off", "Dark for sleep."),
     ]
     note = ("This is a suggestion, and you choose whether to follow it. The app never changes the lights "
-            "itself. Phase-shift lighting is normally used with flight-surgeon guidance, so it may be "
+            "itself. Phase-shift lighting is normally used with Mission Control guidance, so it may be "
             "worth mentioning at your next private medical conference.")
     return Plan(goal=goal, steps=steps, accepted=accepted, accepted_on=a.plan_accepted_on,
                 note=note, source=SSLA_SOURCE, source_url=SSLA_URL)

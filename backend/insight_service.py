@@ -138,11 +138,11 @@ async def generate_insight(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     sample = asyncio.run(generate_insight(
-        "orthostatic",
-        vitals={"heart_rate_bpm": 76, "systolic_mmhg": 92, "diastolic_mmhg": 64},
-        baseline={"heart_rate_bpm": 58, "systolic_mmhg": 112, "diastolic_mmhg": 72},
-        onboard_action="Lie flat, legs raised. Drink 500 ml with salt tablets, re-measure in 10 min.",
-        act_within_s=600,
+        "sleep_debt",
+        vitals={"heart_rate_bpm": 66, "sleep_h_last_night": 5.0, "mood_1to5": 2},
+        baseline={"heart_rate_bpm": 58, "sleep_h_last_night": 7.2, "mood_1to5": 4},
+        onboard_action="Consider pre-sleep lighting (2700K) 1 h before bed, screens aside, eye mask.",
+        act_within_s=86400,
         one_way_delay_s=780,
     ))
     print(f"model={MODEL} key_set={bool(os.getenv('ANTHROPIC_API_KEY'))}")

@@ -1,35 +1,29 @@
+import Charts
 import SwiftUI
 
 struct ContentView: View {
     @State private var model = MonitorModel()
+    /// Starting page. `SIMCTL_CHILD_AHM_PAGE=2 xcrun simctl launch …` opens on a
+    /// given page, which is how screenshots of every page are taken for the deck.
+    @State private var page = Int(ProcessInfo.processInfo.environment["AHM_PAGE"] ?? "") ?? 0
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                if let alert = model.alert {
-                    AlertBanner(alert: alert)
-                }
-
-                HeartRateCard(
-                    bpm: model.heartRate,
-                    baseline: model.snapshot?.baseline.heartRateBpm,
-                    isConnected: model.isConnected
-                )
-
+        NavigationStack {
+        TabView(selection: $page) {
+            TodayPage(model: model).tag(0)
+            HeartPage(model: model).tag(1)
+            SleepPage(model: model).tag(2)
+            ScrollView {
                 if let s = model.snapshot {
                     VitalsList(snapshot: s)
+                } else {
+                    Text("Waiting for the station…").font(.footnote).foregroundStyle(.secondary)
                 }
-
-                #if DEBUG
-                Button("Simulate exertion") {
-                    model.simulateExertion()
-                }
-                .font(.footnote)
-                .buttonStyle(.bordered)
-                .padding(.top, 2)
-                #endif
             }
-            .padding(.horizontal, 2)
+            .navigationTitle("Vitals")
+            .tag(3)
+        }
+        .tabViewStyle(.verticalPage)
         }
         .onAppear { model.start() }
         .onDisappear { model.stop() }
@@ -67,40 +61,6 @@ struct AlertBanner: View {
     }
 }
 
-// MARK: - Heart rate
-
-struct HeartRateCard: View {
-    let bpm: Double
-    let baseline: Double?
-    let isConnected: Bool
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                Image(systemName: "heart.fill").foregroundStyle(.pink).font(.caption2)
-                Text("HEART RATE").font(.caption2).foregroundStyle(.secondary)
-            }
-            Text(bpm > 0 ? "\(Int(bpm))" : "--")
-                .font(.system(size: 44, weight: .semibold, design: .rounded))
-                .contentTransition(.numericText())
-                .animation(.default, value: bpm)
-
-            if let base = baseline, bpm > 0 {
-                // The whole point of the product: compared to THEIR normal,
-                // not to a population threshold.
-                Deviation(value: bpm, baseline: base, mode: .percent)
-                    .font(.caption2)
-            } else {
-                Text(isConnected ? "bpm" : "bpm · offline")
-                    .font(.caption2)
-                    .foregroundStyle(isConnected ? Color.secondary : Color.orange)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
-    }
-}
-
 // MARK: - Other vitals
 
 struct VitalsList: View {
@@ -120,9 +80,6 @@ struct VitalsList: View {
                      format: "%.1f°C", mode: .points(warn: 0.5, bad: 1.0))
             VitalRow(label: "Resp", value: snapshot.respRateBpm, baseline: snapshot.baseline.respRateBpm,
                      format: "%.0f", mode: .percent)
-            VitalRow(label: "BP", value: snapshot.systolicMmhg, baseline: snapshot.baseline.systolicMmhg,
-                     format: "%.0f", mode: .percent,
-                     override: "\(Int(snapshot.systolicMmhg))/\(Int(snapshot.diastolicMmhg))")
             VitalRow(label: "Sleep", value: snapshot.sleepHLastNight, baseline: snapshot.baseline.sleepHLastNight,
                      format: "%.1fh", mode: .points(warn: 1.0, bad: 2.0))
             VitalRow(label: "Mood", value: Double(snapshot.mood1To5), baseline: Double(snapshot.baseline.mood1To5),
@@ -140,13 +97,12 @@ struct VitalRow: View {
     let baseline: Double
     let format: String
     let mode: DeviationMode
-    var override: String? = nil
 
     var body: some View {
         HStack(spacing: 4) {
             Text(label).font(.caption2).foregroundStyle(.secondary)
             Spacer(minLength: 2)
-            Text(override ?? String(format: format, value))
+            Text(String(format: format, value))
                 .font(.caption.monospacedDigit())
             Deviation(value: value, baseline: baseline, mode: mode)
                 .font(.system(size: 9).monospacedDigit())
@@ -209,4 +165,191 @@ struct Deviation: View {
 
 #Preview {
     ContentView()
+}
+
+// MARK: - Page 1: Today
+
+/// Three rings, each filled to the share of the wearer's OWN normal:
+/// sleep last night, HRV now, active minutes today. Deliberately not one
+/// combined score: the wellbeing level is never shown on the watch.
+struct TodayPage: View {
+    let model: MonitorModel
+
+    private var sleep: (Double, Double)? {
+        guard let s = model.snapshot else { return nil }
+        return (s.sleepHLastNight, s.baseline.sleepHLastNight)
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            if let alert = model.alert {
+                AlertBanner(alert: alert)
+            }
+            ZStack {
+                Ring(fraction: ratio(sleep?.0, sleep?.1), color: .indigo, width: 9)
+                    .frame(width: 92, height: 92)
+                Ring(fraction: ratio(model.sample?.hrvSdnnMs, model.hrvBaselineMs), color: .teal, width: 9)
+                    .frame(width: 70, height: 70)
+                Ring(fraction: ratio(model.sample?.activeMin, model.activeMinBaseline), color: .orange, width: 9)
+                    .frame(width: 48, height: 48)
+            }
+            .padding(.top, 2)
+            VStack(spacing: 1) {
+                legend("Sleep", sleep.map { String(format: "%.1fh", $0.0) }, ratio(sleep?.0, sleep?.1), .indigo)
+                legend("HRV", model.sample.map { "\(Int($0.hrvSdnnMs)) ms" },
+                       ratio(model.sample?.hrvSdnnMs, model.hrvBaselineMs), .teal)
+                legend("Move", model.sample.map { "\(Int($0.activeMin)) min" },
+                       ratio(model.sample?.activeMin, model.activeMinBaseline), .orange)
+            }
+            .font(.caption2)
+        }
+        .navigationTitle("Today")
+    }
+
+    private func ratio(_ value: Double?, _ normal: Double?) -> Double {
+        guard let v = value, let n = normal, n > 0 else { return 0 }
+        return v / n
+    }
+
+    private func legend(_ name: String, _ value: String?, _ r: Double, _ color: Color) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(name).foregroundStyle(.secondary)
+            Spacer(minLength: 2)
+            Text(value ?? "--").monospacedDigit()
+            Text(r > 0 ? "\(Int((r * 100).rounded()))%" : "")
+                .foregroundStyle(r >= 0.85 ? Color.secondary : .orange)
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize()
+                .frame(minWidth: 36, alignment: .trailing)
+        }
+    }
+}
+
+struct Ring: View {
+    let fraction: Double
+    let color: Color
+    let width: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(color.opacity(0.22), lineWidth: width)
+            Circle()
+                .trim(from: 0, to: min(max(fraction, 0), 1))
+                .stroke(color, style: StrokeStyle(lineWidth: width, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.easeOut(duration: 0.6), value: fraction)
+        }
+    }
+}
+
+// MARK: - Page 2: Heart
+
+struct HeartPage: View {
+    let model: MonitorModel
+
+    private var points: [(Date, Double)] {
+        model.hrHistory.compactMap { p in p.heartRateBpm.map { (p.ts, $0) } }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Image(systemName: "heart.fill").foregroundStyle(.pink).font(.caption)
+                    Text(model.sample.map { "\(Int($0.heartRateBpm))" } ?? "--")
+                        .font(.system(size: 34, weight: .semibold, design: .rounded))
+                        .contentTransition(.numericText())
+                        .animation(.default, value: model.sample?.heartRateBpm)
+                    Text("bpm").font(.caption2).foregroundStyle(.secondary)
+                    Spacer()
+                    if let s = model.sample, let base = model.snapshot?.baseline.heartRateBpm {
+                        Deviation(value: s.heartRateBpm, baseline: base, mode: .percent).font(.caption2)
+                    }
+                }
+
+                if points.count > 1 {
+                    Chart {
+                        ForEach(points, id: \.0) { p in
+                            LineMark(x: .value("Time", p.0), y: .value("bpm", p.1))
+                                .foregroundStyle(.pink)
+                                .interpolationMethod(.catmullRom)
+                        }
+                        if let base = model.snapshot?.baseline.heartRateBpm {
+                            RuleMark(y: .value("Your normal", base))
+                                .foregroundStyle(.secondary)
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                        }
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYScale(domain: .automatic(includesZero: false))
+                    .frame(height: 64)
+                    Text("Last hour · dashed = your normal").font(.system(size: 9)).foregroundStyle(.secondary)
+                } else {
+                    Text(model.isConnected ? "Loading history…" : "Offline — live reading only")
+                        .font(.caption2).foregroundStyle(.orange)
+                }
+
+                HStack {
+                    Text("HRV").foregroundStyle(.secondary)
+                    Spacer()
+                    Text(model.sample.map { "\(Int($0.hrvSdnnMs)) ms" } ?? "--").monospacedDigit()
+                    if let s = model.sample {
+                        Deviation(value: s.hrvSdnnMs, baseline: model.hrvBaselineMs, mode: .percent)
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                }
+                .font(.caption)
+                .padding(.top, 2)
+
+                #if DEBUG
+                Button("Simulate exertion") { model.simulateExertion() }
+                    .font(.footnote)
+                    .buttonStyle(.bordered)
+                    .padding(.top, 2)
+                #endif
+            }
+            .padding(.horizontal, 4)
+        }
+        .navigationTitle("Heart")
+    }
+}
+
+// MARK: - Page 3: Sleep
+
+struct SleepPage: View {
+    let model: MonitorModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(model.snapshot.map { String(format: "%.1f", $0.sleepHLastNight) } ?? "--")
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                Text("h last night").font(.caption2).foregroundStyle(.secondary)
+            }
+            if let usual = model.snapshot?.baseline.sleepHLastNight {
+                Text(String(format: "Your usual: %.1f h", usual)).font(.caption2).foregroundStyle(.secondary)
+            }
+            if !model.nights.isEmpty {
+                Chart {
+                    ForEach(model.nights, id: \.nightOf) { n in
+                        BarMark(x: .value("Night", String(n.nightOf.suffix(2))), y: .value("Hours", n.sleepH))
+                            .foregroundStyle(.indigo.gradient)
+                            .cornerRadius(3)
+                    }
+                    if let usual = model.snapshot?.baseline.sleepHLastNight {
+                        RuleMark(y: .value("Usual", usual))
+                            .foregroundStyle(.secondary)
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    }
+                }
+                .chartYAxis(.hidden)
+                .frame(height: 70)
+                Text("Last 7 nights").font(.system(size: 9)).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 4)
+        .navigationTitle("Sleep")
+    }
 }

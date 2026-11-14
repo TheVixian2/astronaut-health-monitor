@@ -22,7 +22,7 @@ log = logging.getLogger("store")
 
 DB_PATH = Path(os.getenv("AHM_DB") or Path(__file__).with_name("data") / "ahm.db")
 
-VITAL_FIELDS = ("heart_rate_bpm", "systolic_mmhg", "diastolic_mmhg", "spo2_pct", "temp_c",
+VITAL_FIELDS = ("heart_rate_bpm", "spo2_pct", "temp_c",
                 "resp_rate_bpm", "sleep_h_last_night", "mood_1to5")
 MIN_BASELINE_SAMPLES = 50
 
@@ -30,10 +30,9 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS samples (            -- one row per tick, per astronaut
   astronaut_id TEXT NOT NULL,
   ts           TEXT NOT NULL,                   -- ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ
-  heart_rate_bpm REAL, systolic_mmhg REAL, diastolic_mmhg REAL,
+  heart_rate_bpm REAL,
   spo2_pct REAL, temp_c REAL, resp_rate_bpm REAL,
   sleep_h_last_night REAL, mood_1to5 INTEGER,
-  cabin_co2_mmhg REAL,                          -- the astronaut's module; feeds co2 and sans
   source       TEXT NOT NULL,                   -- 'real' | 'simulated'
   quality      TEXT NOT NULL DEFAULT 'ok',      -- ok | suspect | implausible | artifact (quality.py)
   PRIMARY KEY (astronaut_id, ts)
@@ -47,7 +46,7 @@ CREATE TABLE IF NOT EXISTS alerts (             -- so an alert survives a restar
   insight_json TEXT                             -- cached: never explain the same alert twice
 );
 
-CREATE TABLE IF NOT EXISTS checkins (           -- vision + mood history = the SANS trend
+CREATE TABLE IF NOT EXISTS checkins (           -- mood, PHQ-2, reaction tests = the wellbeing trend
   astronaut_id TEXT NOT NULL, ts TEXT NOT NULL, payload_json TEXT NOT NULL,
   PRIMARY KEY (astronaut_id, ts)
 );
@@ -83,7 +82,7 @@ def _db():
         con.close()
 
 
-SAMPLE_COLUMNS = ("astronaut_id", "ts", *VITAL_FIELDS, "cabin_co2_mmhg", "source")
+SAMPLE_COLUMNS = ("astronaut_id", "ts", *VITAL_FIELDS, "source")
 _INSERT_SAMPLE = (f"INSERT OR REPLACE INTO samples ({', '.join(SAMPLE_COLUMNS)}, quality) "
                   f"VALUES ({', '.join('?' * (len(SAMPLE_COLUMNS) + 1))})")
 USABLE = "quality IN ('ok', 'suspect')"  # what charts and reports show; the baseline uses only 'ok'
@@ -151,8 +150,8 @@ def _write(sql: str, params: tuple) -> None:
         log.warning("DB write queue full; dropping a write")
 
 
-def add_sample(aid: str, ts: str, vitals: dict, cabin_co2: float, source: str, quality: str = "ok") -> None:
-    _write(_INSERT_SAMPLE, (aid, ts, *[vitals[f] for f in VITAL_FIELDS], cabin_co2, source, quality))
+def add_sample(aid: str, ts: str, vitals: dict, source: str, quality: str = "ok") -> None:
+    _write(_INSERT_SAMPLE, (aid, ts, *[vitals[f] for f in VITAL_FIELDS], source, quality))
 
 
 def mark_artifact(aid: str, start: str, end: str) -> None:
@@ -240,26 +239,21 @@ def checkins_between(aid: str, start: str, end: Optional[str] = None) -> list[tu
     return [(ts, json.loads(p)) for ts, p in rows]
 
 
-def co2_avg(aid: str, since: str) -> Optional[float]:
-    with _db() as con:
-        (avg,) = con.execute("SELECT AVG(cabin_co2_mmhg) FROM samples WHERE astronaut_id = ? AND ts >= ?",
-                             (aid, since)).fetchone()
-    return avg
-
-
 def history(aid: str, since: str, bucket_s: int) -> list[dict]:
-    """Vitals averaged into time buckets, oldest first, for charts. Sensor errors are left out."""
-    avgs = ", ".join(f"AVG({f}) AS {f}" for f in VITAL_FIELDS)
+    """Vitals per time bucket (average, low, high), oldest first, for charts. Sensor errors are left out."""
+    avgs = ", ".join(f"AVG({f}), MIN({f}), MAX({f})" for f in VITAL_FIELDS)
     with _db() as con:
         rows = con.execute(
-            f"SELECT (CAST(strftime('%s', ts) AS INTEGER) / ?) * ? AS b, {avgs}, AVG(cabin_co2_mmhg) "
+            f"SELECT (CAST(strftime('%s', ts) AS INTEGER) / ?) * ? AS b, {avgs} "
             f"FROM samples WHERE astronaut_id = ? AND ts >= ? AND {USABLE} GROUP BY b ORDER BY b",
             (bucket_s, bucket_s, aid, since)).fetchall()
     out = []
     for b, *vals in rows:
         point = {"ts": iso(datetime.fromtimestamp(b, timezone.utc))}
-        point.update({f: (round(v, 1) if v is not None else None) for f, v in zip(VITAL_FIELDS, vals[:-1])})
-        point["cabin_co2_mmhg"] = round(vals[-1], 2) if vals[-1] is not None else None
+        r = [round(v, 1) if v is not None else None for v in vals]
+        point.update({f: r[3 * i] for i, f in enumerate(VITAL_FIELDS)})
+        point["low"] = {f: r[3 * i + 1] for i, f in enumerate(VITAL_FIELDS)}
+        point["high"] = {f: r[3 * i + 2] for i, f in enumerate(VITAL_FIELDS)}
         out.append(point)
     return out
 
