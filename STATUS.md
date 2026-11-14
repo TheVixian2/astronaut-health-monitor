@@ -43,11 +43,26 @@ Branch: `watch`
 
 Branch: `backend`
 
-- **Working:** nothing yet — Phase 2 not started.
-- **Next:** mock `main.py` returning canned data for every endpoint in the spec,
-  including a working SSE stream. This unblocks both other lanes, so it is the
-  first thing built.
-- **Blocked on:** nothing.
+- **PHASE 2 IS GO (Luca, 2026-11-14).** Start with step 1 only.
+- **Build now — the mock (`backend/main.py`):** every endpoint from
+  `docs/api-spec.md` returning realistic canned data, CORS open for local dev,
+  and a working SSE stream on `/astronauts/{id}/stream` emitting a `vitals`
+  event every 3 s and a fake `alert` every ~60 s. Both other lanes are blocked
+  until this runs, so ship it before anything else.
+- **Two things to skip** — the spec is mid-pivot (see Contract changes above):
+  - **Skip `/space-weather`** entirely. The `spe` profile is being cut.
+  - **Stub `/debug/scenario`** but don't wire real scenarios yet — the enum
+    is changing.
+  Every other endpoint's *shape* is stable, so build them as written.
+- **After the mock:** `insight_service.py` (with the canned fallback — it must
+  never raise into the request path), then `tools/simulate_crew.py`
+  (`--seed-baseline` + deterministic seed; the crew wander near their own
+  distinct baselines via random walk with mean reversion — see
+  `docs/monitored-signals.md` §2).
+- **Do NOT build the condition engine from `docs/api-spec.md` yet** — the five
+  profiles there are pre-pivot. `docs/monitored-signals.md` §6 has the current
+  intent. Ask Luca before implementing conditions.
+- **Blocked on:** nothing for step 1.
 
 ## Web — NotKaemy
 
