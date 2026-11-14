@@ -81,3 +81,8 @@ profile also stores `onboard_action` (one line for the watch) and `body_region`
 4. Never edit `docs/api-spec.md` unless the owner asks.
 5. This file holds stable decisions only — not progress. Progress lives in the
    team's plan doc checklist.
+6. **`/presentation` is shared — everyone writes there** (the one exception to
+   rule 1). If an idea belongs in the pitch rather than the code — a framing, a
+   number worth quoting, a demo beat — append it to `presentation/ideas.md`
+   straight away, in the same session it came up. Ideas left in a Claude Code
+   conversation are lost when it's cleared.
