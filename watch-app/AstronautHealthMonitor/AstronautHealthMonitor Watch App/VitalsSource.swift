@@ -1,14 +1,26 @@
 import Foundation
 
-/// A source of heart-rate samples.
-///
-/// Heart rate is the ONLY real signal in this project — every other vital is
-/// simulated server-side. The watch pulls one sample per tick and posts it.
-protocol VitalsSource: AnyObject {
-    /// The next heart-rate sample, in bpm.
-    func nextSample() -> Double
+/// One reading from the watch's own sensors.
+struct WatchSample {
+    let heartRateBpm: Double
+    /// Heart-rate variability (SDNN). Lower HRV tracks stress and depression
+    /// (Kemp et al. 2010 meta-analysis), and the watch measures it for free.
+    let hrvSdnnMs: Double
+    /// Active minutes so far today. Crews grew steadily more sedentary over the
+    /// 520-day Mars-500 isolation study (Basner et al. 2013).
+    let activeMin: Double
+}
 
-    /// Debug builds only: ramp the heart rate so a presenter can trigger an
-    /// alert live during the demo.
+/// A source of watch readings. There is no physical watch in this project:
+/// `SimulatedSource` provides everything; `HealthKitSource` is a stub.
+protocol VitalsSource: AnyObject {
+    func nextSample() -> WatchSample
+
+    /// The wearer's normal HRV and daily active minutes. PROVISIONAL: these move
+    /// to the backend's stored mission days 7-14 once it stores HRV and activity.
+    var hrvBaselineMs: Double { get }
+    var activeMinBaseline: Double { get }
+
+    /// Debug builds only: ramp the heart rate so a presenter can show it live.
     func simulateExertion()
 }
