@@ -55,11 +55,11 @@
   --wash: rgba(255, 255, 255, .03);    /* quiet fill (inactive tiles, tracks) */
   --wash-2: rgba(255, 255, 255, .065); /* hover */
 
-  --body: #1c1f27;                     /* body figure */
+  --body: #2b303b;                     /* body silhouette */
   --body-line: #3a3f4c;
   --lungs: #22325f;                    /* palette blue, darkened */
   --heart: var(--mars-dark);
-  --region-hover: #2b3f7a;
+  --region-hover: #2f3f6e;
 
   --ok: #3ccf8e;        --ok-ink: #3ccf8e;    --ok-bg: rgba(60, 207, 142, .15);
   --sev-watch: #f5c542; --watch-ink: #f5c542; --watch-bg: rgba(245, 197, 66, .15);
@@ -103,7 +103,7 @@ html[data-light="pre_sleep"], html[data-light="off"] {
   --wash: rgba(255, 236, 228, .035);
   --wash-2: rgba(255, 236, 228, .07);
 
-  --body: #241A18;
+  --body: #2E211E;
   --body-line: #4E3A35;
   --lungs: #3B2723;
   --heart: var(--mars-dark);
@@ -267,11 +267,22 @@ a.home:hover { text-decoration: underline; }
 .body-card { display: flex; flex-direction: column; }
 .body-card svg { display: block; width: 100%; height: 0; flex: 1 1 0; min-height: 190px; margin: 0 auto; }
 .region { cursor: pointer; outline: none; }
-.region > * { fill: var(--body); stroke: var(--body-line); stroke-width: 1.5; stroke-linejoin: round; transition: fill .15s; }
+/* One solid silhouette: head, torso and limbs are edged in their own fill
+   colour, so the seams between regions only show on hover or selection. */
+.region > * { fill: var(--body); stroke: var(--body); stroke-width: 1; stroke-linejoin: round; transition: fill .15s, stroke .15s; }
+.region:hover > *, .region:focus-visible > * { fill: var(--region-hover); stroke: var(--region-hover); }
+.region[data-region="lungs"] > *, .region[data-region="heart"] > * { stroke: var(--body-line); stroke-width: 1.2; }
 .region[data-region="lungs"] > * { fill: var(--lungs); }
 .region[data-region="heart"] > * { fill: var(--heart); }
-.region:hover > *, .region:focus-visible > * { fill: var(--region-hover); }
-.region.selected > * { stroke: var(--accent); stroke-width: 3; }
+.region[data-region="lungs"]:is(:hover, :focus-visible) > *,
+.region[data-region="heart"]:is(:hover, :focus-visible) > * { fill: var(--region-hover); }
+.region.selected > * { stroke: var(--accent); stroke-width: 2.5; }
+/* "Whole body" outlines the whole silhouette (filter #bodyOutline in the
+   figure), not the torso piece. */
+.region[data-region="whole_body"].selected > * { stroke: var(--body); stroke-width: 1; }
+.region[data-region="whole_body"].selected:is(:hover, :focus-visible) > * { stroke: var(--region-hover); }
+#body:has(.region[data-region="whole_body"].selected) .figure { filter: url(#bodyOutline); }
+#bodyOutline feFlood { flood-color: var(--accent); }
 /* The heart icon has thin vessels, so its selection outline is thinner. */
 .region[data-region="heart"].selected > * { stroke-width: 1.6; }
 .region.sev-watch > * { fill: var(--sev-watch); }
