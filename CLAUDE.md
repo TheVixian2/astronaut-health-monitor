@@ -55,7 +55,11 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - `index.html` — presenter-only page: the four profiles as a **2 × 2 grid** of
   cards (role icon, the real name from `GET /crew` by role, Ground's light
   time from `GET /mission`, the profile's tabs, its login), plus the live demo
-  link. One column under 720 px. Keeps `?mock`/`?base`/`?aid`. Card styles:
+  link. **Fills the window exactly** (screens ≥ 721 × 521): a small script in
+  `index.html` finds the largest font size at which all four cards fit and
+  sets `--fit`; every size on the page is in `em` of it, so it all scales
+  together and re-fits on resize. Narrower or shorter: one column, normal
+  scrolling. Keeps `?mock`/`?base`/`?aid`. Card styles:
   `.profiles` / `.profile` in `style.css`, tinted with the area tokens
   `--onboard-*` / `--ground-*`.
 - **Menus** (the `.appnav` bar at the top of each page; "All views" link only

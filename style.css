@@ -316,11 +316,12 @@ a.home:hover { text-decoration: underline; }
 /* ---- presenter page: the four profiles, 2 x 2 ------------------------------ */
 /* Area colours: On board = Mars red (the spacecraft), Ground = palette blue.
    Each card sets --tint / --tint-bg / --tint-fg and the rest follows. */
-body.presenter { max-width: 1080px; margin: 0 auto; }
+/* Every size inside a card is in em, so the whole card scales with one font
+   size (14px by default, the fitted size in fit mode below). */
 .profiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 @media (max-width: 720px) { .profiles { grid-template-columns: minmax(0, 1fr); } }
 .profile { --tint: var(--mars); --tint-bg: var(--onboard-bg); --tint-fg: var(--onboard-fg);
-  display: flex; flex-direction: column; gap: 14px; padding: 22px; color: inherit; text-decoration: none;
+  display: flex; flex-direction: column; gap: 1em; padding: 1.55em; color: inherit; text-decoration: none;
   border-top: 4px solid var(--tint);
   background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--tint) 14%, transparent), transparent 60%), var(--panel);
   transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
@@ -328,23 +329,40 @@ body.presenter { max-width: 1080px; margin: 0 auto; }
 .profile:hover, .profile:focus-visible { transform: translateY(-2px); border-color: var(--tint);
   box-shadow: 0 10px 28px -14px var(--tint); outline: none; }
 .profile.ground:hover, .profile.ground:focus-visible { border-color: var(--accent); }
-.p-head { display: flex; gap: 16px; align-items: center; }
-.p-icon { flex: none; width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center;
+.p-head { display: flex; gap: 1.15em; align-items: center; }
+.p-icon { flex: none; width: 4.3em; height: 4.3em; border-radius: 1.15em; display: grid; place-items: center;
   background: var(--tint-bg); color: var(--tint-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint-fg) 22%, transparent); }
-.p-icon svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.8;
+.p-icon svg { width: 2.3em; height: 2.3em; fill: none; stroke: currentColor; stroke-width: 1.8;
   stroke-linecap: round; stroke-linejoin: round; }
-.profile h2 { font-size: 20px; text-transform: none; letter-spacing: 0; margin: 6px 0 2px; }
+.profile .area-tag { font-size: .78em; padding: .18em .73em; }
+.profile h2 { font-size: 1.43em; text-transform: none; letter-spacing: 0; margin: .3em 0 .1em; }
+.profile .small { font-size: .86em; }
 .p-who { color: var(--text-strong); font-weight: 600; }
 .p-who .muted { font-weight: 400; }
 .p-text { margin: 0; color: var(--text); }
-.p-tabs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.p-tabs li { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.p-tabs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .43em; }
+.p-tabs li { font-size: .86em; padding: .25em .83em; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 .p-tabs li.key { border-color: color-mix(in srgb, var(--tint-fg) 45%, transparent); color: var(--tint-fg); background: var(--tint-bg); }
-.p-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line);
-  display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.p-foot { margin-top: auto; padding-top: .86em; border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center; gap: .57em; }
 .p-open { font-weight: 700; color: var(--tint-fg); }
 .p-open span { display: inline-block; transition: transform .15s ease; }
-.profile:hover .p-open span { transform: translateX(4px); }
+.profile:hover .p-open span { transform: translateX(.3em); }
+
+/* Fit mode (screens at least 721 x 521): the page fills the window exactly,
+   no scrolling. The script in index.html sets --fit to the largest font size
+   at which all four cards still fit their quarter, and re-fits on resize.
+   Header, cards and note are all in em of it, so everything scales together. */
+body.presenter.fit { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
+  padding-bottom: .9em; font-size: var(--fit, 14px); }
+body.presenter.fit .bar { padding: .75em 0; }
+body.presenter.fit h1 { font-size: 1.3em; }
+body.presenter.fit .bar .small, body.presenter.fit .bar button.link { font-size: .86em; }
+body.presenter.fit .bar .small button.link { font-size: 1em; }
+body.presenter.fit .pick { margin: .8em 0 .7em; }
+body.presenter.fit .profiles { flex: 1; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 1.15em; }
+body.presenter.fit .profile { overflow: hidden; }
+body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .86em; }
 @media (prefers-reduced-motion: reduce) { .profile, .p-open span { transition: none; } .profile:hover { transform: none; } }
 .area-tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
   padding: 2px 8px; border-radius: 999px; }
