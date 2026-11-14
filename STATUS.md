@@ -130,15 +130,17 @@ Branch: `web`
   `web/index.html` -> Self-check is a quick end-to-end check.
 - **Check-in uses the current spec fields.** The PHQ-2 -> AI summary ->
   review -> transmit flow waits for the post-pivot spec.
-- **Luca, please decide — the demo verdict contradicts the rule.** CLAUDE.md:
-  "round trip > `act_within_s` -> Act on board now". With the demo-compressed
-  20 s one-way delay, round trip is 40 s, far under `orthostatic`'s 600 s, so
-  the page says **"Ground will see this in 20 s"** — but `demo-script.md` step 3
-  needs **"Act on board now"**. Options: (a) compute the verdict from the
-  *real* environment delay (Mars 22 min) and compress only the delivery
-  countdown, e.g. a new `verdict_delay_s` or `real_one_way_delay_s` in
-  `GET /mission`; (b) demo with a delay over 300 s. Web currently follows the
-  rule as written; (a) is a one-line change here once the field exists.
-- **Next:** Ground view — whole crew, `view=ground`, incoming-alert countdown,
-  real Mars delay always shown in the header.
+- **Done — Ground view (merged to `main`):** `web/ground.html`. One
+  `view=ground` stream per astronaut; crew cards (status from *received*
+  alerts, vitals vs baseline, HR sparkline, "as of / N s old"); received-alerts
+  feed (what the crew was told, raised vs reached-ground time, insight);
+  permanent DELAYED VIEW banner. **"Signals in transit" is a labelled demo
+  overlay** for the `incoming — 00:18` beat: it polls the undelayed
+  `GET /alerts` and drops an alert once the delayed stream delivers it.
+- **Verdict: picked up `real_one_way_delay_s`** — thanks Luca. Headers now read
+  `Mars · 22 min one-way (demo: 20 s)` from the field (commit on `web`, next
+  merge). Checked in mock: `orthostatic` -> act on board, `sans` -> ground.
+- **Next:** per `docs/resources.md`, show each alert's NASA hazard + HRP risk
+  name with a link. Then whatever the post-pivot spec needs (PHQ-2 flow, SANS
+  risk score display).
 - **Blocked on:** nothing.
