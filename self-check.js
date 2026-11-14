@@ -494,51 +494,45 @@
     <section class="card body-card" data-tab="health">
       <h2>Body <span class="muted">tap a region</span></h2>
       <svg id="body" viewBox="0 0 200 400" role="group" aria-label="Body regions">
+        <!-- Front view of a person in the anatomical position (arms a little away
+             from the body), so the astronaut's left is the viewer's right. Limbs are
+             drawn first; the torso's shoulder caps and pelvis overlap their tops, and
+             the head overlaps the neck. -->
         <g class="region" data-region="skin" tabindex="0" role="button" aria-label="Skin">
-          <rect x="30" y="92" width="22" height="125" rx="11"/>
-          <rect x="148" y="92" width="22" height="125" rx="11"/>
-          <rect x="66" y="222" width="30" height="160" rx="13"/>
-          <rect x="104" y="222" width="30" height="160" rx="13"/>
+          <path d="M63 96 C61 118 58 140 56 158 C54 178 51 196 49 214 C50 223 50 233 48 243 C47 249 43 253 39 252 C35 251 32 246 32 239 C32 231 34 222 35 214 C36 196 38 178 40 160 C41 140 43 115 49 95 C52 87 58 84 63 88 Z"/>
+          <path d="M 137 96 C 139 118 142 140 144 158 C 146 178 149 196 151 214 C 150 223 150 233 152 243 C 153 249 157 253 161 252 C 165 251 168 246 168 239 C 168 231 166 222 165 214 C 164 196 162 178 160 160 C 159 140 157 115 151 95 C 148 87 142 84 137 88 Z"/>
+          <path d="M66 178 C61 199 59 222 61 245 C62 262 64 275 66 288 C63 302 62 318 65 333 C67 345 70 356 71 366 C70 372 67 377 65 382 C64 386 66 389 70 389 L87 389 C90 389 92 386 91 382 C89 376 87 371 86 366 C86 352 90 338 90 322 C90 306 88 297 88 288 C89 270 92 250 95 226 C97 215 99 209 100 205 L100 180 Z"/>
+          <path d="M 134 178 C 139 199 141 222 139 245 C 138 262 136 275 134 288 C 137 302 138 318 135 333 C 133 345 130 356 129 366 C 130 372 133 377 135 382 C 136 386 134 389 130 389 L 113 389 C 110 389 108 386 109 382 C 111 376 113 371 114 366 C 114 352 110 338 110 322 C 110 306 112 297 112 288 C 111 270 108 250 105 226 C 103 215 101 209 100 205 L 100 180 Z"/>
         </g>
         <g class="region" data-region="whole_body" tabindex="0" role="button" aria-label="Whole body">
-          <rect x="88" y="72" width="24" height="18" rx="4"/>
-          <rect x="58" y="86" width="84" height="142" rx="22"/>
+          <path d="M90 50 L90 62 C88 69 79 71 68 74 C59 76.5 53 81 52 90 C51.5 97 55 103 61 107 C62 120 63 133 68 148 C70 156 67 168 64 180 C62 188 63 194 66 198 C80 202 94 204 100 209 C106 204 120 202 134 198 C137 194 138 188 136 180 C133 168 130 156 132 148 C137 133 138 120 139 107 C145 103 148.5 97 148 90 C147 81 141 76.5 132 74 C121 71 112 69 110 62 L110 50 Z"/>
         </g>
-        <!-- Front view, so the astronaut's left is the viewer's right.
-             Heart is drawn BEFORE the lungs so the lungs overlap it, as in a
+        <!-- Heart is drawn BEFORE the lungs so the lungs overlap it, as in a
              real front view: it shows between the lungs and in the cardiac
              notch. Flat anatomical icon, not a valentine: ventricles tapering to
              the apex (down, astronaut's left, resting on the diaphragm), the
              superior vena cava on the astronaut's right, the aortic arch with
              its three branches. -->
         <g class="region" data-region="heart" tabindex="0" role="button" aria-label="Heart">
-          <!-- superior vena cava -->
-          <rect x="95.5" y="121" width="4.5" height="21" rx="2"/>
-          <!-- aortic arch branches: brachiocephalic, left common carotid, left subclavian -->
-          <rect x="101.6" y="114" width="2.4" height="9" rx="1.2"/>
-          <rect x="105" y="112" width="2.4" height="10" rx="1.2"/>
-          <rect x="108.6" y="114" width="2.4" height="8" rx="1.2"/>
-          <!-- ascending aorta and arch, descending behind the left lung -->
-          <path d="M100.5 141 L100.5 129 C100.5 119 114 119 114 128 L114 136 L109.5 136 L109.5 128.5
-                   C109.5 124 105 124 105 129 L105 141 Z"/>
-          <!-- atria + ventricles, apex down and to the astronaut's left -->
-          <path d="M95 139 C91 146 91 156 96 163 C102 169 114 170 124 167 C128 165 128 161 127 157
-                   C125 150 121 142 115 138 C109 135 101 136 95 139 Z"/>
+          <rect x="96.1" y="98.4" width="3.9" height="18.1" rx="1.7"/>
+          <rect x="101.4" y="92.3" width="2.1" height="7.7" rx="1"/>
+          <rect x="104.3" y="90.6" width="2.1" height="8.6" rx="1"/>
+          <rect x="107.4" y="92.3" width="2.1" height="6.9" rx="1"/>
+          <path d="M 100.4 115.6 L 100.4 105.2 C 100.4 96.6 112 96.6 112 104.4 L 112 111.3 L 108.2 111.3 L 108.2 104.8 C 108.2 100.9 104.3 100.9 104.3 105.2 L 104.3 115.6 Z"/>
+          <path d="M 95.7 113.8 C 92.3 119.9 92.3 128.5 96.6 134.5 C 101.7 139.6 112 140.5 120.6 137.9 C 124.1 136.2 124.1 132.8 123.2 129.3 C 121.5 123.3 118.1 116.4 112.9 113 C 107.7 110.4 100.9 111.3 95.7 113.8 Z"/>
         </g>
-        <!-- Lungs: narrow rounded apex under the collarbone, broad base curving
-             over the diaphragm dome (~y 168), straight inner (medial) border.
-             The astronaut's left lung (viewer's right) is narrower and has the
+        <!-- Lungs: narrow rounded apex just above the collarbone, broad base curving
+             over the diaphragm dome, straight inner (medial) border. The
+             astronaut's left lung (viewer's right) is narrower and has the
              cardiac notch where the heart shows through. -->
         <g class="region" data-region="lungs" tabindex="0" role="button" aria-label="Lungs">
-          <!-- right lung (viewer's left): larger -->
-          <path d="M84 96 C74 100 66 120 65 145 C64 158 65 166 68 170 Q81 158 94 166
-                   C96 150 95 120 93 104 C91 98 88 95 84 96 Z"/>
-          <!-- left lung (viewer's right): narrower, with the cardiac notch -->
-          <path d="M116 96 C126 100 134 120 135 145 C136 158 135 166 132 170 Q126 162 121 168
-                   C125 160 127 147 119 139 C112 133 107 124 107 104 C109 98 112 95 116 96 Z"/>
+          <path d="M 86.2 76.9 C 77.6 80.3 70.8 97.5 69.9 119 C 69 130.2 69.9 137.1 72.5 140.5 Q 83.7 130.2 94.8 137.1 C 96.6 123.3 95.7 97.5 94 83.7 C 92.3 78.6 89.7 76 86.2 76.9 Z"/>
+          <path d="M 113.8 76.9 C 122.4 80.3 129.2 97.5 130.1 119 C 131 130.2 130.1 137.1 127.5 140.5 Q 122.4 133.6 118.1 138.8 C 121.5 131.9 123.2 120.7 116.3 113.8 C 110.3 108.7 106 100.9 106 83.7 C 107.7 78.6 110.3 76 113.8 76.9 Z"/>
         </g>
         <g class="region" data-region="head" tabindex="0" role="button" aria-label="Head">
-          <circle cx="100" cy="42" r="30"/>
+          <ellipse cx="80.5" cy="36" rx="3.5" ry="7"/>
+          <ellipse cx="119.5" cy="36" rx="3.5" ry="7"/>
+          <path d="M100 12 C111.5 12 119 20.5 119 32 C119 38.5 118 44 116 48 C113.5 53.5 107.5 58 100 58 C92.5 58 86.5 53.5 84 48 C82 44 81 38.5 81 32 C81 20.5 88.5 12 100 12 Z"/>
         </g>
       </svg>
       <div id="regionInfo" class="region-info"></div>
