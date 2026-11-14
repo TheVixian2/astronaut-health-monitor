@@ -188,11 +188,23 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - **Colour palette** (team decision, 2026-11-14): Light Silver `#C0C6D4`, Mars
   Orange Red `#D62828`, Dark Mars Red `#8F1F0F`, Black `#0B0B0B`, Blue
   `#1B3A8A`. They live as tokens at the top of `style.css`; use the tokens,
-  never raw hex, in new CSS and JS (the chart reads them with
-  `getComputedStyle`). On board = Mars red, Ground = blue. Thin lines and link
-  text use `--accent`, a lighter tint of the blue, because `#1B3A8A` is too
-  dark to read on black. Status colours (ok green, watch yellow, alert orange)
-  stay outside the palette because they carry meaning.
+  never raw hex, in new CSS and JS (charts read them with
+  `getComputedStyle`). On board = Mars red, Ground = blue. Status colours (ok
+  green, watch yellow, alert orange) stay outside the palette because they
+  carry meaning; use `--*-ink` for them as text, the plain ones for fills.
+- **Design system** (frontend-design pass, NotKaemy 2026-11-14; full notes at
+  the top of `style.css`): the console is a piece of the ship. **Silver is the
+  page**, black is the type, panels are lighter silver plates (`--panel`,
+  6 px radius). **Type is Archivo** (Google Fonts, one family at three
+  widths): 125 % heavy for the wordmark and page titles, 75 % semibold
+  tabular for readouts (vitals, counts, big stats), normal for the rest.
+  Sentence case everywhere: no ALL-CAPS labels, no "A · B · C" strings, no
+  "→" on links. The six vitals are **one instrument strip** (cells divided by
+  rules, charted one marked with a Mars-red top bar), not six cards.
+  **The console follows the module's lighting:** in Pre-sleep or lights off
+  (`GET /circadian` → `lighting.mode`) `html[data-light]` switches to a dark,
+  warm, blue-free set, with "Pre-sleep light: screen dimmed" in the header.
+  Add `?light=pre_sleep` to any URL to show it in a demo.
 - The long Claude explanation (`insight.why` / `trend` / `recommended_action`)
   is shown **here only** — the watch gets just the one-line `onboard_action`.
 - `insight` can be `null`; render the alert without it rather than waiting.

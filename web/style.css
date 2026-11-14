@@ -1,8 +1,27 @@
-/* Team colour palette (2026-11-14):
+/* Dr. Galactic — design system (frontend-design pass, 2026-11-14)
+
+   Concept: the console is a piece of the ship. Light Silver is the panel the
+   screen sits in, black is the engraved type, Mars red marks things on board,
+   blue marks Earth / Mission Control. Numbers are the loudest thing on screen.
+
+   The one bold move: the console follows the module's lighting. When the
+   station lights go to Pre-sleep (SSLA, 2700 K) or off, html[data-light] turns
+   the whole interface dark, warm and blue-free — the console does what the
+   Sleep & light tab tells the crew to do. self-check.js sets it from
+   GET /circadian; ?light=pre_sleep forces it for a demo (auth.js).
+
+   Team colour palette (2026-11-14):
      Light Silver #C0C6D4 · Mars Orange Red #D62828 · Dark Mars Red #8F1F0F
      Black #0B0B0B · Blue #1B3A8A
-   Everything else below is a shade or tint of those five, except the status
-   colours (ok green, watch yellow, alert orange), which carry meaning. */
+   Everything below is a tint or shade of those five, except the status
+   colours (ok green, watch yellow, alert orange), which carry meaning.
+
+   Type: Archivo, one family at three widths (font-stretch):
+     125% heavy  — the wordmark and page titles (a hull nameplate)
+     75% semibold — telemetry readouts, tabular figures
+     100%        — everything else
+   Scale (1.25 from 15 px): 12 · 13 · 15 · 19 · 23 · 29 · 37 · 46. */
+
 :root {
   /* palette */
   --silver: #C0C6D4;
@@ -11,37 +30,103 @@
   --black: #0B0B0B;
   --blue: #1B3A8A;
 
-  /* roles */
-  --bg: var(--black);
-  --panel: #141519;          /* black, lifted one step */
-  --line: #2a2d35;           /* silver at low strength on black */
-  --text: var(--silver);
-  --text-strong: #e6e9f0;    /* lighter silver for headings and key numbers */
-  --muted: #868c99;          /* dimmed silver */
-  --accent: #6f8fe6;         /* tint of the palette blue: #1B3A8A is too dark for thin lines/text on black */
-  --blue-hover: #24479f;
-  --body: #1c1f27;           /* body figure */
-  --ok: #3ccf8e;
+  /* type */
+  --font: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --t-xs: 12px; --t-sm: 13px; --t-base: 15px; --t-md: 19px; --t-lg: 23px;
+  --t-xl: 29px; --t-2xl: 37px; --t-3xl: 46px;
+  --wide: 125%; --narrow: 75%;
 
-  /* area tints: On board = Mars red, Ground = blue (tags, presenter cards) */
-  --onboard-bg: rgba(143, 31, 15, .45);   /* dark Mars red, see-through */
-  --onboard-fg: #f0a49a;                  /* Mars red, lightened to read on black */
-  --ground-bg: rgba(27, 58, 138, .5);     /* palette blue, see-through */
-  --ground-fg: #b9c8f2;                   /* palette blue, lightened */
+  /* shape: plates are machined (small radius), status pills are round */
+  --r-plate: 6px; --r-control: 4px;
 
-  /* vital icons (common.js vitalIcon): one colour per vital, all from the palette */
+  /* ---- General light (day): the silver panel ---- */
+  --bg: var(--silver);                 /* the panel the screen sits in */
+  --panel: #D5DAE3;                    /* silver, lifted: a plate */
+  --line: #A2A9B8;                     /* silver, pressed: rules */
+  --line-strong: #6E7585;
+  --text: #23262E;                     /* black ink, softened for body text */
+  --text-strong: var(--black);
+  --muted: #4D5363;                    /* 5:1+ on the panel */
+  --accent: var(--blue);               /* links, chart line, focus */
+  --btn-bg: var(--blue);
+  --btn-fg: #EEF1F6;
+  --btn-hover: #24479f;
+  --wash: rgba(11, 11, 11, .045);      /* quiet fill (inactive tiles, tracks) */
+  --wash-2: rgba(11, 11, 11, .085);    /* hover */
+
+  --body: #AEB4C2;                     /* body figure */
+  --body-line: #6E7585;
+  --lungs: #8193C2;
+  --heart: var(--mars-dark);
+  --region-hover: #97A3C6;
+
+  --ok: #1F8A5B;        --ok-ink: #17643F;    --ok-bg: rgba(31, 138, 91, .15);
+  --sev-watch: #D9A300; --watch-ink: #6B4E00; --watch-bg: rgba(217, 163, 0, .2);
+  --sev-alert: #E07A10; --alert-ink: #8A4300; --alert-bg: rgba(224, 122, 16, .17);
+  --sev-critical: var(--mars); --crit-ink: var(--mars-dark); --crit-bg: rgba(214, 40, 40, .13);
+
+  /* areas: On board = Mars red, Ground = blue */
+  --onboard: var(--mars);
+  --onboard-bg: rgba(214, 40, 40, .12);
+  --onboard-fg: var(--mars-dark);
+  --ground: var(--blue);
+  --ground-bg: rgba(27, 58, 138, .12);
+  --ground-fg: var(--blue);
+
+  /* vital icons (common.js vitalIcon) */
   --ic-heart: var(--mars);
-  --ic-spo2: var(--accent);
-  --ic-resp: var(--ground-fg);
-  --ic-temp: var(--onboard-fg);
-  --ic-sleep: #8e9bc7;                    /* silver-blue, between --silver and --blue */
-  --ic-mood: var(--text-strong);
+  --ic-spo2: var(--blue);
+  --ic-resp: #4C66AE;
+  --ic-temp: #6E7585;
+  --ic-sleep: #34406B;
+  --ic-mood: #3A3F4C;
+  --ic-detail: rgba(255, 255, 255, .82);
+  --ic-mercury: var(--mars);
 
-  /* Severity colours stay yellow / orange / red (web/CLAUDE.md); critical
-     uses the palette's Mars red. */
-  --sev-watch: #f5c542;
-  --sev-alert: #f28c28;
-  --sev-critical: var(--mars);
+  color-scheme: light;
+}
+
+/* ---- Pre-sleep / lights off: dark, warm, no blue ---- */
+html[data-light="pre_sleep"], html[data-light="off"] {
+  --bg: var(--black);
+  --panel: #160F0E;                    /* black warmed with dark Mars red */
+  --line: #33241F;
+  --line-strong: #5E433C;
+  --text: #CDBDB7;                     /* silver warmed: no blue */
+  --text-strong: #EDE1DC;
+  --muted: #94817B;
+  --accent: #E0705B;                   /* Mars red, lifted for thin lines */
+  --btn-bg: var(--mars-dark);
+  --btn-fg: #F3E7E3;
+  --btn-hover: #A62A17;
+  --wash: rgba(255, 236, 228, .035);
+  --wash-2: rgba(255, 236, 228, .07);
+
+  --body: #241A18;
+  --body-line: #4E3A35;
+  --lungs: #3B2723;
+  --heart: var(--mars-dark);
+  --region-hover: #4D2F28;
+
+  --ok: #3ccf8e;        --ok-ink: #3ccf8e;    --ok-bg: rgba(60, 207, 142, .14);
+  --sev-watch: #f5c542; --watch-ink: #f5c542; --watch-bg: rgba(245, 197, 66, .14);
+  --sev-alert: #f28c28; --alert-ink: #f28c28; --alert-bg: rgba(242, 140, 40, .14);
+  --crit-ink: #F08A78;  --crit-bg: rgba(214, 40, 40, .16);
+
+  --onboard-bg: rgba(143, 31, 15, .45);
+  --onboard-fg: #F0A49A;
+  --ground: #8E7C77;                   /* Earth without the blue */
+  --ground-bg: rgba(205, 189, 183, .1);
+  --ground-fg: #CDBDB7;
+
+  --ic-heart: var(--mars);
+  --ic-spo2: #E0705B;
+  --ic-resp: #B89A93;
+  --ic-temp: #94817B;
+  --ic-sleep: #CDBDB7;
+  --ic-mood: #EDE1DC;
+  --ic-detail: rgba(11, 11, 11, .55);
+
   color-scheme: dark;
 }
 
@@ -52,115 +137,121 @@ body {
   padding: 0 16px 32px;
   background: var(--bg);
   color: var(--text);
-  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 400 var(--t-base)/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
 }
+/* The theme change is the one orchestrated motion: a slow dim, like the lights. */
+body, .card, .appnav, .tile, .tiles { transition: background-color .8s ease, color .8s ease, border-color .8s ease; }
 
-h1 { font-size: 18px; margin: 0; color: var(--text-strong); }
-h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-strong); }
-h1 .muted, h2 .muted { color: var(--muted); }
+/* Page titles: the wide face. Section titles: plain sentence case. */
+h1 { font-size: var(--t-md); font-stretch: var(--wide); font-weight: 800; letter-spacing: -.005em; margin: 0; color: var(--text-strong); }
+h2 { font-size: var(--t-base); font-weight: 650; margin: 0 0 12px; color: var(--text-strong); }
+h3 { font-weight: 650; }
+h1 .muted, h2 .muted { color: var(--muted); font-weight: 400; }
 /* The app name "Dr. Galactic": 20% larger than the text around it (owner's
-   call, 2026-11-14) — 18 → 21.6 px in headings, 14 → 16.8 px in the menu bar. */
-.app-name, .appnav .brand { font-size: 1.2em; }
-code { font-family: ui-monospace, Consolas, monospace; }
+   call, 2026-11-14), in the wide heavy face. */
+.app-name, .appnav .brand { font-size: 1.2em; font-stretch: var(--wide); font-weight: 850; letter-spacing: -.01em; }
+/* Account names and ids: the narrow face, not a monospace. */
+code { font-family: var(--font); font-stretch: var(--narrow); font-weight: 650; font-size: 1.05em; color: var(--text-strong); }
 .muted { color: var(--muted); font-weight: normal; text-transform: none; letter-spacing: 0; }
-.small { font-size: 12px; }
+.small { font-size: var(--t-sm); }
 
 .bar {
-  display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center;
-  justify-content: space-between; padding: 14px 0;
+  display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center;
+  justify-content: space-between; padding: 12px 0 12px;
   border-bottom: 1px solid var(--line);
 }
 .controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
 .controls label { display: flex; gap: 6px; align-items: center; color: var(--muted); }
 input, select, button {
   font: inherit; color: var(--text); background: var(--panel);
-  border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+  border: 1px solid var(--line); border-radius: var(--r-control); padding: 5px 9px;
 }
-input[type=checkbox] { padding: 0; }
-button { cursor: pointer; background: var(--blue); border-color: var(--blue); color: var(--text-strong); }
-button:hover { background: var(--blue-hover); }
-input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-button.link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 0 4px; font-size: 12px; }
+input[type=checkbox] { padding: 0; accent-color: var(--mars); }
+button { cursor: pointer; background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-fg); font-weight: 600; }
+button:hover { background: var(--btn-hover); }
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 0 4px; font-size: var(--t-sm); font-weight: 400; }
 
+/* Status line in each header: separate readings, no dot-joined strings. */
 .status {
-  display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center;
   padding: 12px 0; color: var(--muted);
 }
-.status strong { color: var(--text); }
-.pill { padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; }
-.pill-on { background: rgba(60, 207, 142, .15); color: var(--ok); }
-.pill-off { background: rgba(214, 40, 40, .15); color: var(--sev-critical); }
-.pill-wait { background: rgba(245, 197, 66, .15); color: var(--sev-watch); }
-.stale { color: var(--sev-alert); }
+.status strong { color: var(--text-strong); font-weight: 650; }
+.pill { padding: 2px 10px; border-radius: 999px; font-weight: 650; font-size: var(--t-xs); }
+.pill-on { background: var(--ok-bg); color: var(--ok-ink); }
+.pill-off { background: var(--crit-bg); color: var(--crit-ink); }
+.pill-wait { background: var(--watch-bg); color: var(--watch-ink); }
+.stale { color: var(--alert-ink); }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-plate); padding: 16px 18px; min-width: 0; }
 .wide { grid-column: 1 / -1; }
 
 table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
-th { color: var(--muted); font-weight: 500; font-size: 12px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; font-size: var(--t-sm); }
 td.num { font-variant-numeric: tabular-nums; }
-.up { color: var(--sev-alert); }
+.up { color: var(--alert-ink); }
 .down { color: var(--accent); }
 
+/* Severity words ("watch", "alert") are written in sentence case, in colour. */
+.sev { font-weight: 700; text-transform: capitalize; font-size: var(--t-sm); }
+
 .alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.alert { border-left: 4px solid var(--muted); padding: 8px 10px; background: rgba(255,255,255,.03); border-radius: 0 6px 6px 0; }
+.alert { border-left: 4px solid var(--muted); padding: 8px 10px; background: var(--wash); border-radius: 0 var(--r-control) var(--r-control) 0; }
 .alert.sev-watch { border-color: var(--sev-watch); }
 .alert.sev-alert { border-color: var(--sev-alert); }
 .alert.sev-critical { border-color: var(--sev-critical); }
 .alert .head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
-.alert .sev { font-weight: 700; text-transform: uppercase; font-size: 11px; }
-.sev-watch .sev { color: var(--sev-watch); }
-.sev-alert .sev { color: var(--sev-alert); }
-.sev-critical .sev { color: var(--sev-critical); }
-.alert .verdict { font-weight: 600; margin: 4px 0; }
+.sev-watch .sev { color: var(--watch-ink); }
+.sev-alert .sev { color: var(--alert-ink); }
+.sev-critical .sev { color: var(--crit-ink); }
+.alert .verdict { font-weight: 650; margin: 4px 0; }
 .alert dl { margin: 6px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; }
 .alert dt { color: var(--muted); }
 .alert dd { margin: 0; }
 
+/* Raw stream debug page: real raw data, so a real monospace. */
 .log {
-  margin: 0; max-height: 280px; overflow: auto; font-size: 12px;
+  margin: 0; max-height: 280px; overflow: auto; font-size: var(--t-xs);
   font-family: ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word;
   color: var(--text);
 }
 
 /* ---- shared bits ------------------------------------------------------- */
-a { color: var(--accent); }
+a { color: var(--accent); text-underline-offset: 2px; }
 a.home { color: inherit; text-decoration: none; }
 a.home:hover { text-decoration: underline; }
-.ok { color: var(--ok); }
-.err { color: var(--sev-critical); }
+.ok { color: var(--ok-ink); }
+.err { color: var(--crit-ink); }
 [hidden] { display: none !important; }
 
 /* ---- presenter page (index.html); its profile cards are further down ---- */
 .landing-note { margin-top: 18px; }
 
-/* ---- self-check -------------------------------------------------------- */
-.who { margin-top: 2px; }
+/* ---- console pages (self-check, captain, doctor) ----------------------- */
+.who { margin-top: 3px; }
 .selfcheck .status { padding: 0; }
 
-.sc-grid { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 16px; }
+.sc-grid { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 16px; margin-top: 14px; }
 @media (max-width: 760px) { .sc-grid { grid-template-columns: minmax(0, 1fr); } }
 
-/* alert banner */
+/* alert banner (kept for pages that still show alerts) */
 .banner {
   display: flex; gap: 16px; align-items: flex-start; justify-content: space-between;
-  margin: 16px 0; padding: 14px 16px; border-radius: 10px;
+  margin: 16px 0; padding: 14px 16px; border-radius: var(--r-plate);
   background: var(--panel); border: 1px solid var(--line); border-left: 8px solid var(--muted);
 }
 .banner.sev-watch { border-left-color: var(--sev-watch); }
 .banner.sev-alert { border-left-color: var(--sev-alert); }
 .banner.sev-critical { border-left-color: var(--sev-critical); }
-.banner .sev { font-weight: 700; text-transform: uppercase; font-size: 11px; }
-.banner.sev-watch .sev { color: var(--sev-watch); }
-.banner.sev-alert .sev { color: var(--sev-alert); }
-.banner.sev-critical .sev { color: var(--sev-critical); }
 .b-top { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
-.b-name { font-size: 17px; }
-.b-verdict { font-size: 20px; font-weight: 700; margin: 6px 0 4px; }
-.b-verdict.onboard { color: var(--sev-critical); }
-.b-action { font-size: 15px; }
+.b-name { font-size: var(--t-md); }
+.b-verdict { font-size: var(--t-lg); font-weight: 700; margin: 6px 0 4px; }
+.b-verdict.onboard { color: var(--crit-ink); }
+.b-action { font-size: var(--t-base); }
 .banner details, .alert details { margin-top: 8px; }
 .banner summary, .alert summary { cursor: pointer; color: var(--accent); }
 .banner dl { margin: 6px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; }
@@ -173,129 +264,152 @@ a.home:hover { text-decoration: underline; }
    vitals card). height: 0 + flex-basis 0 so the drawing itself never makes
    the card taller; it scales to fit and stays centred (viewBox, "meet"). */
 .body-card { display: flex; flex-direction: column; }
-.body-card svg { display: block; width: 100%; height: 0; flex: 1 1 0; min-height: 340px; margin: 0 auto; }
+.body-card svg { display: block; width: 100%; height: 0; flex: 1 1 0; min-height: 190px; margin: 0 auto; }
 .region { cursor: pointer; outline: none; }
-.region > * { fill: var(--body); stroke: #3a3f4c; stroke-width: 1.5; transition: fill .15s; }
-.region[data-region="lungs"] > * { fill: #22325f; }          /* palette blue, darkened */
-.region[data-region="heart"] > * { fill: var(--mars-dark); }  /* palette dark Mars red */
-.region:hover > *, .region:focus-visible > * { fill: #2b3f7a; }
+.region > * { fill: var(--body); stroke: var(--body-line); stroke-width: 1.5; transition: fill .15s; }
+.region[data-region="lungs"] > * { fill: var(--lungs); }
+.region[data-region="heart"] > * { fill: var(--heart); }
+.region:hover > *, .region:focus-visible > * { fill: var(--region-hover); }
 .region.selected > * { stroke: var(--accent); stroke-width: 3; }
+/* The heart icon has thin vessels, so its selection outline is thinner. */
+.region[data-region="heart"].selected > * { stroke-width: 1.6; }
 .region.sev-watch > * { fill: var(--sev-watch); }
 .region.sev-alert > * { fill: var(--sev-alert); }
 .region.sev-critical > * { fill: var(--sev-critical); }
-.region-info h3 { font-size: 14px; margin: 12px 0 4px; }
+.region-info h3 { font-size: var(--t-base); margin: 12px 0 4px; }
 .mini { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
 .mini .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
 .mini .sev-watch .dot { background: var(--sev-watch); }
 .mini .sev-alert .dot { background: var(--sev-alert); }
 .mini .sev-critical .dot { background: var(--sev-critical); }
 
-/* vitals tiles */
-/* Vitals tiles: tall, and auto-fit so they always stretch across the whole row. */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+/* Vitals: one instrument strip, not six cards. Cells are divided by rules
+   (each cell draws its left and top rule; the strip clips the outer ones, so
+   it also works when the cells wrap onto two rows). The charted reading is
+   marked by a Mars-red bar along its top edge. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0;
+  border: 1px solid var(--line); border-radius: var(--r-plate); overflow: hidden; background: var(--wash); }
 .tile {
-  display: flex; flex-direction: column; justify-content: space-between; gap: 8px; text-align: left;
-  min-height: 132px; padding: 14px 16px; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 10px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 10px; text-align: left;
+  min-height: 118px; padding: 14px 18px 12px; color: var(--text);
+  background: transparent; border: 0; border-radius: 0; font-weight: 400;
+  box-shadow: -1px 0 0 var(--line), 0 -1px 0 var(--line);
 }
-.tile:hover { background: rgba(255,255,255,.06); }
-.tile.dim { opacity: .4; }
-.tile.charted { border-color: var(--accent); }
-.tile.off .t-delta { color: var(--sev-alert); font-weight: 700; }
-.t-label { color: var(--muted); font-size: 13px; }
+.tile:hover { background: var(--wash-2); }
+.tile.dim { opacity: .45; }
+.tile.charted { background: var(--panel); box-shadow: inset 0 3px 0 var(--mars), -1px 0 0 var(--line), 0 -1px 0 var(--line); }
+.tile.off .t-delta { color: var(--alert-ink); font-weight: 700; }
+.t-label { color: var(--muted); font-size: var(--t-sm); font-weight: 500; }
 .t-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.t-value { font-size: var(--t-2xl); font-stretch: var(--narrow); font-weight: 650; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em; color: var(--text-strong); }
+.t-unit { font-size: var(--t-base); font-stretch: 100%; color: var(--muted); font-weight: 400; letter-spacing: 0; }
+.t-base { font-size: var(--t-sm); color: var(--muted); }
+.t-delta { font-variant-numeric: tabular-nums; }
 
 /* Flat vital icons (AHM.vitalIcon in common.js): filled shapes in the vital's
-   colour, details in a darker tone. */
-.vi { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px;
-  background: color-mix(in srgb, currentColor 14%, transparent); }
+   colour, details in a contrasting tone. */
+.vi { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: var(--r-plate);
+  background: color-mix(in srgb, currentColor 13%, transparent); }
 .vi svg { width: 24px; height: 24px; fill: currentColor; }
-.vi .d { fill: rgba(11, 11, 11, .55); }
-.vi .ds { fill: none; stroke: rgba(11, 11, 11, .6); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vi .d { fill: var(--ic-detail); }
+.vi .ds { fill: none; stroke: var(--ic-detail); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .vi .ds-light { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
-.vi .m { fill: var(--mars); }
+.vi .m { fill: var(--ic-mercury); }
 .vi-heart { color: var(--ic-heart); }
 .vi-spo2  { color: var(--ic-spo2); }
 .vi-resp  { color: var(--ic-resp); }
 .vi-temp  { color: var(--ic-temp); }
 .vi-sleep { color: var(--ic-sleep); }
 .vi-mood  { color: var(--ic-mood); }
-.t-value { font-size: 34px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
-.t-unit { font-size: 15px; color: var(--muted); font-weight: 400; }
-.t-base { font-size: 13px; }
+
 /* The vitals card stretches to the body card's height (same grid row); the
-   chart takes all the height left under the tiles. The canvas is absolutely
+   chart takes all the height left under the strip. The canvas is absolutely
    positioned in .chart-box so Chart.js sizes it from the box and can never
    push the card taller (no resize loop). */
 .vitals-card { display: flex; flex-direction: column; }
-/* On the My health tab the page fills the window: the console grid stretches
-   to the bottom and the chart takes the extra height (body[data-tab] is set by
-   self-check.js; also on the Commander's and doctor's pages). */
+/* My health, Check-in and Sleep & light fill the window (body[data-tab] is
+   set by self-check.js; also on the Commander's and doctor's pages). Zoom
+   scales vh too, so window heights are divided by --z (auth.js). */
 body.selfcheck[data-tab="health"], body.selfcheck[data-tab="checkin"], body.selfcheck[data-tab="sleep"] {
-  min-height: 100vh; min-height: calc(100dvh / var(--z, 1)); display: flex; flex-direction: column; }
+  min-height: 100vh; min-height: calc(100dvh / var(--z, 1)); display: flex; flex-direction: column; padding-bottom: 14px; }
 body.selfcheck[data-tab="health"] #console, body.selfcheck[data-tab="checkin"] #console,
 body.selfcheck[data-tab="sleep"] #console { flex: 1; }
-.chart-wrap { margin-top: 16px; flex: 1; min-height: 260px; display: flex; flex-direction: column; position: relative; min-width: 0; }
-.chart-wrap .chart-box { position: relative; flex: 1; min-height: 220px; }
+.chart-wrap { margin-top: 16px; flex: 1; min-height: 150px; display: flex; flex-direction: column; position: relative; min-width: 0; }
+.chart-wrap .chart-box { position: relative; flex: 1; min-height: 120px; }
 .chart-wrap .chart-box canvas { position: absolute; inset: 0; }
-.chart-head { margin-bottom: 6px; }
+/* Under the page zoom (auth.js) Chart.js measures its box in zoomed pixels and
+   would draw the canvas z times too big; pinning the canvas to its box keeps
+   it inside (drawing stays sharp, hover still lines up). auth.js scales the
+   chart text by the zoom instead. */
+.chart-box > canvas { width: 100% !important; height: 100% !important; }
+.chart-head { margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.chart-head strong { font-weight: 650; color: var(--text-strong); }
 
-/* check-in */
-/* Check-in wizard: one question at a time (self-check.js, "check-in"). */
+/* ---- check-in: one question at a time ----------------------------------- */
+/* This is a sequence, so the progress is numbered ("Question 2 of 5"). */
 .checkin-card { display: flex; flex-direction: column; }
 .ci-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.ci-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; margin-bottom: 8px; }
-#ciBarFill { height: 100%; width: 0; background: var(--mars); transition: width .2s ease; }
-.ci-wizard, .ci-done { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 24px;
-  width: 100%; max-width: 860px; margin: 0 auto; padding: 24px 0; }
+.ci-head h2 { margin: 0; }
+.ci-bar { height: 4px; border-radius: 2px; background: var(--wash-2); overflow: hidden; margin: 12px 0 8px; }
+#ciBarFill { height: 100%; width: 0; background: var(--mars); transition: width .25s ease; }
+.ci-wizard, .ci-done { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 26px;
+  width: 100%; max-width: 880px; margin: 0 auto; padding: 24px 0; }
 .ci-done { align-items: flex-start; }
-.ci-step { display: flex; flex-direction: column; gap: 16px; }
-.ci-q { margin: 0; font-size: 28px; font-weight: 600; line-height: 1.25; color: var(--text-strong); }
-.ci-hint { margin: 0; font-size: 15px; }
+.ci-step { display: flex; flex-direction: column; gap: 18px; }
+.ci-q { margin: 0; font-size: var(--t-xl); font-weight: 650; line-height: 1.2; letter-spacing: -.01em; color: var(--text-strong); max-width: 30ch; }
+.ci-hint { margin: 0; font-size: var(--t-base); }
 .ci-source { margin: 0; }
-.ci-options { display: grid; gap: 12px; }
+.ci-options { display: grid; gap: 10px; }
 .ci-five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .ci-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .ci-chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 640px) { .ci-five, .ci-four, .ci-chips { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ci-options label { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  min-height: 72px; padding: 14px 10px; text-align: center; cursor: pointer; font-size: 17px;
-  border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); transition: background .12s, border-color .12s; }
-.ci-options label:hover { background: rgba(255, 255, 255, .07); }
+  min-height: 76px; padding: 14px 10px; text-align: center; cursor: pointer; font-size: var(--t-md); font-weight: 500;
+  border: 1px solid var(--line); border-radius: var(--r-plate); background: var(--wash); color: var(--text);
+  transition: background .12s, border-color .12s, box-shadow .12s; }
+.ci-options label:hover { background: var(--wash-2); }
 .ci-options input { position: absolute; opacity: 0; pointer-events: none; }
-.ci-options label:has(input:checked) { border-color: var(--mars); background: var(--onboard-bg); color: var(--text-strong); }
+/* Chosen answer: the on-board Mars-red edge, the same mark as the charted reading. */
+.ci-options label:has(input:checked) { border-color: var(--mars); background: var(--onboard-bg); color: var(--text-strong);
+  box-shadow: inset 0 3px 0 var(--mars); }
 .ci-options label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ci-num { font-size: 32px; font-weight: 700; line-height: 1; color: var(--text-strong); }
-.ci-cap { font-size: 13px; color: var(--muted); }
+.ci-num { font-size: var(--t-2xl); font-stretch: var(--narrow); font-weight: 650; line-height: 1; color: var(--text-strong); }
+.ci-cap { font-size: var(--t-sm); color: var(--muted); }
 .ci-number { display: flex; align-items: center; gap: 14px; }
-.ci-number input { width: 4.5em; font-size: 36px; font-weight: 700; text-align: center; padding: 8px; }
-.ci-unit { font-size: 22px; color: var(--muted); }
-.ci-step-btn { width: 56px; height: 56px; font-size: 28px; line-height: 1; border-radius: 12px; }
+.ci-number input { width: 3.2em; font-size: var(--t-3xl); font-stretch: var(--narrow); font-weight: 650; text-align: center; padding: 6px 8px;
+  font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.ci-unit { font-size: var(--t-lg); color: var(--muted); }
+.ci-step-btn { width: 56px; height: 56px; font-size: var(--t-xl); line-height: 1; border-radius: var(--r-plate);
+  background: var(--panel); border-color: var(--line); color: var(--text-strong); }
+.ci-step-btn:hover { background: var(--wash-2); }
 .ci-nav { display: flex; gap: 12px; align-items: center; }
-.ci-nav button { min-width: 140px; padding: 12px 22px; font-size: 16px; border-radius: 10px; }
+.ci-nav button { min-width: 140px; padding: 12px 22px; font-size: var(--t-base); border-radius: var(--r-control); }
 .ci-nav #ciNext, .ci-nav #ciSubmit { margin-left: auto; }
-.ci-nav .ci-secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
-.ci-result { margin: 0; min-height: 1.4em; }
-.ci-done button { padding: 12px 22px; font-size: 16px; border-radius: 10px; }
+.ci-nav .ci-secondary { background: transparent; border: 1px solid var(--line-strong); color: var(--text-strong); }
+.ci-nav .ci-secondary:hover { background: var(--wash-2); }
+.ci-result { margin: 0; min-height: 1.5em; }
+.ci-done button { padding: 12px 22px; font-size: var(--t-base); border-radius: var(--r-control); }
 
-.foot { padding-top: 20px; }
+.foot { padding-top: 12px; color: var(--muted); }
 
-/* ---- ground ------------------------------------------------------------ */
+/* ---- ground (Mission Control) ------------------------------------------ */
 .ground .status { padding: 0; }
 .delay-banner {
   display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline;
-  margin: 16px 0; padding: 10px 14px; border-radius: 8px;
-  background: rgba(27, 58, 138, .28); border: 1px solid var(--blue);
+  margin: 16px 0; padding: 10px 14px; border-radius: var(--r-plate);
+  background: var(--ground-bg); border: 1px solid var(--ground);
 }
-.delay-banner strong { color: var(--accent); letter-spacing: .06em; }
+.delay-banner strong { color: var(--ground-fg); }
 
 .transit { margin-bottom: 16px; border-style: dashed; }
 .transit-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .transit-list li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
-.transit-list .count { font: 700 18px/1 ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
-.transit-list .sev { font-weight: 700; text-transform: uppercase; font-size: 11px; }
-.transit-list .sev-watch .sev, .transit-list .sev-watch .count { color: var(--sev-watch); }
-.transit-list .sev-alert .sev, .transit-list .sev-alert .count { color: var(--sev-alert); }
-.transit-list .sev-critical .sev, .transit-list .sev-critical .count { color: var(--sev-critical); }
+.transit-list .count { font-size: var(--t-md); font-stretch: var(--narrow); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.transit-list .sev-watch .sev, .transit-list .sev-watch .count { color: var(--watch-ink); }
+.transit-list .sev-alert .sev, .transit-list .sev-alert .count { color: var(--alert-ink); }
+.transit-list .sev-critical .sev, .transit-list .sev-critical .count { color: var(--crit-ink); }
 
 .ground-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .ground-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -306,15 +420,16 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .crew-card.st-alert { border-top-color: var(--sev-alert); }
 .crew-card.st-critical { border-top-color: var(--sev-critical); }
 .cc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-.st-pill { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: rgba(60, 207, 142, .15); color: var(--ok); }
-.st-watch .st-pill { background: rgba(245, 197, 66, .15); color: var(--sev-watch); }
-.st-alert .st-pill { background: rgba(242, 140, 40, .15); color: var(--sev-alert); }
-.st-critical .st-pill { background: rgba(214, 40, 40, .15); color: var(--sev-critical); }
+.st-pill { font-size: var(--t-xs); font-weight: 700; text-transform: capitalize; padding: 2px 9px; border-radius: 999px;
+  background: var(--ok-bg); color: var(--ok-ink); white-space: nowrap; }
+.st-watch .st-pill { background: var(--watch-bg); color: var(--watch-ink); }
+.st-alert .st-pill { background: var(--alert-bg); color: var(--alert-ink); }
+.st-critical .st-pill { background: var(--crit-bg); color: var(--crit-ink); }
 .cvs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .cv { display: flex; flex-direction: column; min-width: 0; }
-.cv-val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-strong); }
+.cv-val { font-size: var(--t-md); font-stretch: var(--narrow); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-strong); }
 .cv-val .t-unit { display: none; }
-.cv-off { color: var(--sev-alert); font-weight: 700; }
+.cv-off { color: var(--alert-ink); font-weight: 700; }
 .spark { display: block; width: 100%; height: 40px; }
 .sp-line { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .sp-base { stroke: var(--muted); stroke-dasharray: 4 4; stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -329,201 +444,203 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .nasa-ref a { color: var(--accent); }
 
 /* Self-check: light & sleep card */
-.sleep-note { margin: 0 0 8px; }
-.sleep-note.short { color: var(--sev-watch); font-weight: 600; }
-.tips { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 6px; }
+.sleep-note { margin: 0 0 10px; font-size: var(--t-md); color: var(--text-strong); }
+.sleep-note.short { color: var(--watch-ink); font-weight: 650; }
+.tips { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 6px; max-width: 75ch; }
 
 /* Self-check: live circadian data */
-.light-chip { margin-left: 8px; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0;
-  padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--text); vertical-align: middle; }
-.light-chip.lc-pre_sleep { background: rgba(242, 140, 40, .18); color: #f7b06b; }
-.light-chip.lc-general { background: rgba(192, 198, 212, .14); }
-.light-chip.lc-phase_shift { background: rgba(27, 58, 138, .45); color: var(--accent); }
-.light-chip.lc-off { background: rgba(255,255,255,.04); color: var(--muted); }
+.light-chip { margin-left: 8px; font-size: var(--t-xs); font-weight: 600; text-transform: none; letter-spacing: 0;
+  padding: 2px 9px; border-radius: 999px; background: var(--wash-2); color: var(--text); vertical-align: middle; }
+.light-chip.lc-pre_sleep { background: var(--alert-bg); color: var(--alert-ink); }
+.light-chip.lc-general { background: var(--wash-2); }
+.light-chip.lc-phase_shift { background: var(--ground-bg); color: var(--ground-fg); }
+.light-chip.lc-off { background: var(--wash); color: var(--muted); }
 .circ-card { margin: 0 0 10px; }
-.circ-card.watch { color: var(--sev-watch); }
+.circ-card.watch { color: var(--watch-ink); }
 .circ-rec { margin: 10px 0 4px; }
-.nights-head { margin-bottom: 4px; }
+.nights-head { margin-bottom: 6px; }
 .lg-bright { color: var(--sev-watch); }
-.nights { display: grid; gap: 3px; }
-.n-row { display: grid; grid-template-columns: 34px 1fr 40px; gap: 8px; align-items: center; }
-.n-track { position: relative; height: 12px; background: rgba(255,255,255,.03); border-radius: 3px; }
-.n-bar { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 3px; opacity: .85; }
-.n-bright { position: absolute; top: 2px; bottom: 2px; background: var(--sev-watch); border-radius: 2px; opacity: .8; }
-.n-h { text-align: right; font-variant-numeric: tabular-nums; }
-.n-axis .n-track { background: none; height: 14px; }
+.nights { display: grid; gap: 4px; }
+.n-row { display: grid; grid-template-columns: 34px 1fr 44px; gap: 8px; align-items: center; }
+.n-track { position: relative; height: 14px; background: var(--wash); border-radius: 2px; }
+.n-bar { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; opacity: .9; }
+.n-bright { position: absolute; top: 3px; bottom: 3px; background: var(--sev-watch); border-radius: 2px; opacity: .85; }
+.n-h { text-align: right; font-stretch: var(--narrow); font-weight: 600; font-variant-numeric: tabular-nums; }
+.n-axis .n-track { background: none; height: 16px; }
 .n-axis .n-track span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
 .n-axis .n-track span:first-child { transform: none; }
-.sleep-light details { margin-top: 10px; }
+.sleep-light details { margin-top: 12px; }
 .sleep-light summary { cursor: pointer; color: var(--accent); margin-bottom: 6px; }
 
 /* Ground: per-astronaut sleep & light line */
 .cc-circ { border-top: 1px solid var(--line); padding-top: 6px; }
-.cc-circ.watch { color: var(--sev-watch); }
+.cc-circ.watch { color: var(--watch-ink); }
 
 /* Self-check: shared-console privacy for sleep data */
-.sleep-gate { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 12px;
-  border: 1px dashed var(--line); border-radius: 8px; margin-bottom: 10px; }
+.sleep-gate { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 12px 14px;
+  border: 1px dashed var(--line-strong); border-radius: var(--r-plate); margin-bottom: 12px; }
 .sleep-gate p { margin: 0; }
-.private-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-bottom: 8px; }
+.private-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-bottom: 10px; }
 
 /* ---- login + area menus --------------------------------------------------- */
 .login-page { display: grid; place-items: center; min-height: 100vh; min-height: calc(100dvh / var(--z, 1)); }
-.login-box { width: min(360px, 100%); }
-.login-box h1 { margin-bottom: 4px; }
-.login-form { display: grid; gap: 12px; margin: 16px 0; }
-.login-form label { display: grid; gap: 4px; color: var(--muted); }
-.login-form input { padding: 8px 10px; }
-.login-form button { padding: 8px 14px; }
+.login-box { width: min(380px, 100%); padding: 24px 26px; }
+.login-box h1 { margin-bottom: 6px; font-size: var(--t-lg); }
+.login-form { display: grid; gap: 14px; margin: 18px 0; }
+.login-form label { display: grid; gap: 4px; color: var(--muted); font-weight: 500; }
+.login-form input { padding: 9px 11px; }
+.login-form button { padding: 10px 14px; }
 
 .user { color: var(--muted); }
 .pick { margin: 20px 0 12px; }
 
 /* ---- presenter page: the four profiles, 2 x 2 ------------------------------ */
-/* Area colours: On board = Mars red (the spacecraft), Ground = palette blue.
-   Each card sets --tint / --tint-bg / --tint-fg and the rest follows. */
-/* Every size inside a card is in em, so the whole card scales with one font
-   size (14px by default, the fitted size in fit mode below). */
+/* Four parallel profiles, so four equal plates is the honest layout. Each
+   card sets --tint / --tint-bg / --tint-fg (On board = Mars red, Ground =
+   blue). Every size inside a card is in em, so the whole card scales with
+   one font size (15px by default, the fitted size in fit mode below). */
 .profiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 @media (max-width: 720px) { .profiles { grid-template-columns: minmax(0, 1fr); } }
-.profile { --tint: var(--mars); --tint-bg: var(--onboard-bg); --tint-fg: var(--onboard-fg);
+.profile { --tint: var(--onboard); --tint-bg: var(--onboard-bg); --tint-fg: var(--onboard-fg);
   display: flex; flex-direction: column; gap: 1em; padding: 1.55em; color: inherit; text-decoration: none;
-  border-top: 4px solid var(--tint);
-  background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--tint) 14%, transparent), transparent 60%), var(--panel);
-  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
-.profile.ground { --tint: var(--blue); --tint-bg: var(--ground-bg); --tint-fg: var(--ground-fg); }
-.profile:hover, .profile:focus-visible { transform: translateY(-2px); border-color: var(--tint);
-  box-shadow: 0 10px 28px -14px var(--tint); outline: none; }
-.profile.ground:hover, .profile.ground:focus-visible { border-color: var(--accent); }
+  border-top: 4px solid var(--tint); transition: border-color .15s ease, background-color .15s ease; }
+.profile.ground { --tint: var(--ground); --tint-bg: var(--ground-bg); --tint-fg: var(--ground-fg); }
+.profile:hover, .profile:focus-visible { border-color: var(--tint); background: color-mix(in srgb, var(--panel) 88%, var(--tint)); outline: none; }
+.profile:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 .p-head { display: flex; gap: 1.15em; align-items: center; }
-.p-icon { flex: none; width: 4.3em; height: 4.3em; border-radius: 1.15em; display: grid; place-items: center;
-  background: var(--tint-bg); color: var(--tint-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint-fg) 22%, transparent); }
+.p-icon { flex: none; width: 4.3em; height: 4.3em; border-radius: .45em; display: grid; place-items: center;
+  background: var(--tint-bg); color: var(--tint-fg); }
 .p-icon svg { width: 2.3em; height: 2.3em; fill: none; stroke: currentColor; stroke-width: 1.8;
   stroke-linecap: round; stroke-linejoin: round; }
-.profile .area-tag { font-size: .78em; padding: .18em .73em; }
-.profile h2 { font-size: 1.43em; text-transform: none; letter-spacing: 0; margin: .3em 0 .1em; }
-.profile .small { font-size: .86em; }
+.profile .area-tag { font-size: .8em; padding: .15em .7em; }
+.profile h2 { font-size: 1.55em; font-stretch: var(--wide); font-weight: 800; letter-spacing: -.01em; margin: .3em 0 .1em; }
+.profile .small { font-size: .87em; }
 .p-who { color: var(--text-strong); font-weight: 600; }
 .p-who .muted { font-weight: 400; }
-.p-text { margin: 0; color: var(--text); }
+.p-text { margin: 0; color: var(--text); max-width: 62ch; }
 .p-tabs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .43em; }
-.p-tabs li { font-size: .86em; padding: .25em .83em; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
-.p-tabs li.key { border-color: color-mix(in srgb, var(--tint-fg) 45%, transparent); color: var(--tint-fg); background: var(--tint-bg); }
+.p-tabs li { font-size: .87em; padding: .2em .8em; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.p-tabs li.key { border-color: var(--tint); color: var(--tint-fg); background: var(--tint-bg); font-weight: 600; }
 .p-foot { margin-top: auto; padding-top: .86em; border-top: 1px solid var(--line);
   display: flex; justify-content: space-between; align-items: center; gap: .57em; }
 .p-open { font-weight: 700; color: var(--tint-fg); }
-.p-open span { display: inline-block; transition: transform .15s ease; }
-.profile:hover .p-open span { transform: translateX(.3em); }
 
 /* Fit mode (screens at least 721 x 521): the page fills the window exactly,
    no scrolling. The script in index.html sets --fit to the largest font size
    at which all four cards still fit their quarter, and re-fits on resize.
    Header, cards and note are all in em of it, so everything scales together. */
 body.presenter.fit { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
-  padding-bottom: .9em; font-size: var(--fit, 14px); }
+  padding-bottom: .9em; font-size: var(--fit, 15px); }
 body.presenter.fit .bar { padding: .75em 0; }
 body.presenter.fit h1 { font-size: 1.3em; }
-body.presenter.fit .bar .small, body.presenter.fit .bar button.link { font-size: .86em; }
+body.presenter.fit .bar .small, body.presenter.fit .bar button.link { font-size: .87em; }
 body.presenter.fit .bar .small button.link { font-size: 1em; }
 body.presenter.fit .pick { margin: .8em 0 .7em; }
 body.presenter.fit .profiles { flex: 1; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 1.15em; }
 body.presenter.fit .profile { overflow: hidden; }
-body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .86em; }
-@media (prefers-reduced-motion: reduce) { .profile, .p-open span { transition: none; } .profile:hover { transform: none; } }
-.area-tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-  padding: 2px 8px; border-radius: 999px; }
+body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
+/* Presenter header: the live light-time to Mars, the fact the whole app is built around. */
+.lighttime { display: flex; align-items: baseline; gap: .45em; color: var(--muted); }
+.lighttime strong { font-size: 1.6em; font-stretch: var(--narrow); font-weight: 700; color: var(--text-strong);
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+
+.area-tag { display: inline-block; font-size: var(--t-xs); font-weight: 650; padding: 2px 9px; border-radius: 999px; }
 .onboard .area-tag, .area-onboard .area-tag { background: var(--onboard-bg); color: var(--onboard-fg); }
 .ground .area-tag, .area-ground .area-tag { background: var(--ground-bg); color: var(--ground-fg); }
 
 /* the menu bar at the top of each area */
-.appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 0;
+.appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 0;
   border-bottom: 1px solid var(--line); }
-.appnav .brand { font-weight: 800; color: var(--text-strong); text-decoration: none; letter-spacing: .08em;
-  display: inline-flex; align-items: center; }
+.appnav .brand { color: var(--text-strong); text-decoration: none; display: inline-flex; align-items: center; }
 /* The palette's four-stripe mark (silver, Mars red, dark Mars red, blue) after
-   the brand name, and on the login and area pages. */
+   the brand name, and on the login and area pages. On the silver panel the
+   silver stripe gets a hairline so it doesn't vanish. */
 .appnav .brand::after, .stripe-mark {
-  content: ""; display: inline-block; width: 30px; height: 8px; margin-left: 8px; transform: skewX(-35deg);
+  content: ""; display: inline-block; width: 30px; height: 8px; margin-left: 9px; transform: skewX(-35deg);
   background: linear-gradient(90deg, var(--silver) 0 25%, var(--mars) 25% 50%, var(--mars-dark) 50% 75%, var(--blue) 75% 100%);
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
-.appnav .menu { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
-.appnav .menu a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; }
-.appnav .menu a:hover { color: var(--text); background: rgba(255,255,255,.05); }
-.appnav .menu a[aria-current="page"] { color: var(--text-strong); background: var(--panel); box-shadow: inset 0 -2px 0 var(--accent); }
-.area-onboard .menu a[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--mars); }
-.appnav .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px;
+.appnav .menu { display: flex; flex-wrap: wrap; gap: 2px; flex: 1; }
+.appnav .menu a { color: var(--muted); text-decoration: none; padding: 7px 12px; border-radius: var(--r-control); font-weight: 500; }
+.appnav .menu a:hover { color: var(--text-strong); background: var(--wash-2); }
+.appnav .menu a[aria-current="page"] { color: var(--text-strong); background: var(--panel); box-shadow: inset 0 -3px 0 var(--ground); font-weight: 650; }
+.area-onboard .menu a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--onboard); }
+.appnav .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: var(--t-xs);
   font-weight: 700; text-align: center; background: var(--sev-alert); color: #1a1205; }
 .embedded .appnav { display: none; }   /* inside demo.html the panes show content only */
 
 /* on-board tabs: a tab with a single card uses the full width */
 .sc-grid > .solo { grid-column: 1 / -1; }
 
-/* Body figure: the heart icon has thin vessels, so its selection outline is
-   thinner than other regions' or it swallows them. */
-.region[data-region="heart"].selected > * { stroke-width: 1.6; }
+/* Pre-sleep note in the console header (only shown in that light) */
+.light-note { color: var(--onboard-fg); font-weight: 600; }
 
 /* ---- Commander + ship's doctor ---------------------------------------------- */
-.captain-note, .sample-note { margin: 16px 0; padding: 10px 14px; border-radius: 8px;
-  background: rgba(143, 31, 15, .22); border: 1px solid var(--mars-dark); }
-.sample-note { background: rgba(27, 58, 138, .22); border-color: var(--blue); }
+.captain-note, .sample-note { margin: 16px 0; padding: 12px 14px; border-radius: var(--r-plate); max-width: 100ch;
+  background: var(--onboard-bg); border: 1px solid var(--onboard); }
+.sample-note { background: var(--ground-bg); border-color: var(--ground); }
 .captain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
 .cap-panel { border-top: 4px solid var(--ok); }
 .cap-panel.st-watch { border-top-color: var(--sev-watch); }
 .cap-panel.st-alert { border-top-color: var(--sev-alert); }
 .cap-panel.st-critical { border-top-color: var(--sev-critical); }
-.cap-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+.cap-panel h3 { font-size: var(--t-sm); font-weight: 650; color: var(--muted); margin: 16px 0 6px; }
 /* Habitat tab (habitat.js): one tall card per crew member, four across */
 .hab-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
 @media (max-width: 1100px) { .hab-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .hab-grid { grid-template-columns: minmax(0, 1fr); } }
 .hab-card { display: flex; flex-direction: column; gap: 18px; min-height: 360px; padding: 18px 18px 14px; }
-.hab-card .st-pill { white-space: nowrap; }
 .hab-stat { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; color: var(--text); }
-.hab-big { font-size: 38px; font-weight: 700; line-height: 1; color: var(--text-strong); }
-.hab-delta { font-weight: 600; margin-left: 4px; }
-.hab-delta.low { color: var(--sev-watch); }
-.hab-bar { position: relative; height: 16px; border-radius: 8px; background: rgba(255, 255, 255, .08); }
-.hab-fill { height: 100%; border-radius: 8px; }
-.hab-normal { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--text-strong); }
+.hab-big { font-size: var(--t-3xl); font-stretch: var(--narrow); font-weight: 650; line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.hab-delta { font-weight: 650; margin-left: 4px; }
+.hab-delta.low { color: var(--watch-ink); }
+.hab-bar { position: relative; height: 14px; border-radius: 2px; background: var(--wash-2); }
+.hab-fill { height: 100%; border-radius: 2px; }
+.hab-normal { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; border-radius: 1px; background: var(--text-strong); }
 .hab-today { width: 100%; margin-top: auto; border-collapse: collapse; }
 .hab-today caption { text-align: left; padding-bottom: 6px; }
-.hab-today th, .hab-today td { padding: 10px 0; border-top: 1px solid var(--line); text-align: left; font-size: 13px; }
+.hab-today th, .hab-today td { padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 0; text-align: left; font-size: var(--t-sm); }
 .hab-today th { color: var(--text); font-weight: 400; }
-.hab-today td.num { text-align: right; font-weight: 600; color: var(--text-strong); }
+.hab-today td.num { text-align: right; font-stretch: var(--narrow); font-weight: 650; font-size: var(--t-base); color: var(--text-strong); }
 .hab-today td.num.muted { color: var(--muted); font-weight: 400; }
+/* Habitat map (habitat.js draws the SVG; colours come from here) */
+.hab-hull { fill: none; stroke: var(--line-strong); stroke-width: 2; }
+.hab-room { stroke: var(--line-strong); stroke-width: 1; }
+.hab-room.shared { fill: var(--wash-2); }
+.hab-room.private { fill: var(--onboard-bg); }
+.hab-room.untracked { fill: var(--wash); stroke-dasharray: 6 4; }
+.hab-label { fill: var(--muted); font-family: var(--font); font-size: 12px; }
+.hab-dot-label { fill: #111; font-family: var(--font); font-size: 11px; font-weight: 700; }
 
 /* Crew wellbeing / Medications tab: heading row above the panels */
-.tab-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
-.tab-head h2 { margin: 0; }
-.you-tag { margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .05em; background: var(--mars-dark); color: var(--silver); vertical-align: middle; }
+.tab-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 16px; }
+.tab-head h2 { margin: 0; font-size: var(--t-md); }
+.you-tag { margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: var(--t-xs); font-weight: 700;
+  background: var(--mars-dark); color: var(--silver); vertical-align: middle; }
 
 .warns { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.warn { border-left: 4px solid var(--muted); padding: 8px 10px; background: rgba(255,255,255,.03); border-radius: 0 6px 6px 0; }
+.warn { border-left: 4px solid var(--muted); padding: 8px 10px; background: var(--wash); border-radius: 0 var(--r-control) var(--r-control) 0; }
 .warn.sev-watch { border-color: var(--sev-watch); }
 .warn.sev-alert { border-color: var(--sev-alert); }
 .warn.sev-critical { border-color: var(--sev-critical); }
 .warn .head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
-.warn .sev { font-weight: 700; text-transform: uppercase; font-size: 11px; }
-.warn.sev-watch .sev { color: var(--sev-watch); }
-.warn.sev-alert .sev { color: var(--sev-alert); }
-.warn.sev-critical .sev { color: var(--sev-critical); }
+.warn.sev-watch .sev { color: var(--watch-ink); }
+.warn.sev-alert .sev { color: var(--alert-ink); }
+.warn.sev-critical .sev { color: var(--crit-ink); }
 .advice { margin-top: 6px; }
-.advice-label { color: var(--accent); font-weight: 600; }
-.gate { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); }
-.gate.held { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; color: #f0a49a; }
-.gate.released { color: var(--ok); }
+.advice-label { color: var(--accent); font-weight: 650; }
 .warn .actions { margin-top: 6px; display: flex; gap: 10px; align-items: center; }
 
-.doc-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
+.doc-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; margin-top: 4px; }
 @media (max-width: 900px) { .doc-grid { grid-template-columns: minmax(0, 1fr); } }
 .table-wrap { overflow-x: auto; }
 #schedule td { vertical-align: top; }
 #schedule tr.st-given td { color: var(--muted); }
-.dose-status { font-size: 12px; font-weight: 600; white-space: nowrap; }
-.ds-overdue { color: var(--sev-alert); }
-.ds-due { color: var(--sev-watch); }
-.ds-given { color: var(--ok); }
+.dose-status { font-size: var(--t-sm); font-weight: 650; white-space: nowrap; }
+.ds-overdue { color: var(--alert-ink); }
+.ds-due { color: var(--watch-ink); }
+.ds-given { color: var(--ok-ink); }
 .ds-upcoming { color: var(--muted); font-weight: 400; }
-h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px;
+h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: var(--t-xs);
   font-weight: 700; text-align: center; background: var(--sev-alert); color: #1a1205; vertical-align: middle; }

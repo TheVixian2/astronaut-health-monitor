@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ground · Dr. Galactic</title>
   <script src="auth.js"></script>
+  <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="ground">
@@ -17,13 +21,13 @@
       <a data-href="history.html" href="history.html">History</a>
       <a data-href="stream-check.html" href="stream-check.html">Raw stream (debug)</a>
     </div>
-    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+    <div class="user small"><span data-user></span><span data-demo-only> <a data-href="index.html" href="index.html">All views</a></span> <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
   <header class="bar">
     <div>
       <h1>Mission Control</h1>
-      <div class="muted">Whole crew · delayed by light time</div>
+      <div class="muted">The whole crew, delayed by light time</div>
     </div>
     <div class="status" aria-live="polite">
       <span id="conn" class="pill pill-wait">connecting…</span>
@@ -33,14 +37,14 @@
 
   <!-- Always visible: this view is old by design. -->
   <section class="delay-banner" id="delayBanner">
-    <strong>DELAYED VIEW</strong>
+    <strong>Delayed view.</strong>
     <span id="delayText">Everything here is at least one light-time old.</span>
   </section>
 
   <!-- Demo overlay: alerts raised on board that have not reached ground yet.
        Ground cannot really know this; it is here so the audience can see the gap. -->
   <section class="card transit" id="transit" hidden>
-    <h2>Signals in transit <span class="muted">· demo overlay — ground can't see these yet</span></h2>
+    <h2>Signals in transit <span class="muted">(demo overlay: Mission Control can't see these yet)</span></h2>
     <ul id="transitList" class="transit-list"></ul>
   </section>
 
@@ -48,13 +52,13 @@
     <section class="crew" id="crew" aria-label="Crew"><p class="muted">Loading crew…</p></section>
 
     <section class="card">
-      <h2>Alerts received <span class="muted">· newest first</span></h2>
+      <h2>Alerts received <span class="muted">(newest first)</span></h2>
       <ul id="alerts" class="alerts"><li class="muted">Nothing received yet.</li></ul>
     </section>
   </main>
 
   <footer class="foot muted small">
-    Decision support only — not a diagnosis.
+    Decision support only, not a diagnosis.
     <label class="check"><input type="checkbox" id="showTransit" checked> Show in-transit overlay (demo)</label>
   </footer>
 

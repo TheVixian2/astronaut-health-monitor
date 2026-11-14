@@ -107,7 +107,7 @@
     const physical = [], psych = [];
     for (const a of latestPerProfile(c.alerts)) {
       const w = { severity: a.severity, title: profileName(a.profile), when: a.started_at,
-                  detail: `${REGION_NAMES[a.body_region] || a.body_region} · ${a.onboard_action}` };
+                  detail: `${REGION_NAMES[a.body_region] || a.body_region}: ${a.onboard_action}` };
       if (A.isPsychological(a)) psych.push({ ...w, advice: mind(a.profile) });
       else physical.push({ ...w, advice: phys(ADVICE[a.profile] ? a.profile : "physical") });
     }
@@ -147,24 +147,24 @@
   const WB_CLASS = { steady: "nominal", watch: "watch", concern: "alert", urgent: "critical" };
   function wellbeingLine(wb) {
     if (!wb || !wb.level) return "";
-    const areas = wb.areas && wb.areas.length ? ` · ${esc(wb.areas.join(", "))}` : "";
+    const areas = wb.areas && wb.areas.length ? `, ${esc(wb.areas.join(", "))}` : "";
     return `<p class="small">Wellbeing check: <span class="st-${WB_CLASS[wb.level] || "nominal"}"><span class="st-pill">${esc(wb.level)}</span></span>${areas}
-      <span class="muted">· level and areas only, never their answers${wb.visible_because === "commander_first" ? "; they haven't been told you can see it" : ""}</span></p>`;
+      <span class="muted">(level and areas only, never their answers${wb.visible_because === "commander_first" ? "; they haven't been told you can see it" : ""})</span></p>`;
   }
 
   function panel(aid, c, { name, self, physical, psych }) {
     const all = physical.concat(psych);
     const worst = all.reduce((w, x) => (!w || SEVERITY_RANK[x.severity] > SEVERITY_RANK[w] ? x.severity : w), null);
     const v = c.latest;
-    const stats = v ? `HR ${v.heart_rate_bpm} · mood ${v.mood_1to5}/5 · sleep ${v.sleep_h_last_night} h` : "No data yet";
+    const stats = v ? `HR ${v.heart_rate_bpm}, mood ${v.mood_1to5}/5, sleep ${v.sleep_h_last_night} h` : "No data yet";
     return `<article class="card cap-panel st-${worst || "nominal"}">
       <div class="cc-head">
-        <div><strong>${esc(c.info.name)}</strong>${self ? ' <span class="you-tag">you</span>' : ""}<div class="muted small">${esc(c.info.role)} · ${esc(aid)} · ${esc(stats)}</div></div>
+        <div><strong>${esc(c.info.name)}</strong>${self ? ' <span class="you-tag">you</span>' : ""}<div class="muted small">${esc(c.info.role)} (${esc(aid)}). ${esc(stats)}</div></div>
         <span class="st-pill">${esc(worst || "nominal")}</span>
       </div>
       <h3>Physical</h3>
       ${physical.length ? `<ul class="warns">${physical.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
-      <h3>Psychological <span class="muted small">· confidential</span></h3>
+      <h3>Psychological <span class="muted small">(confidential)</span></h3>
       ${wellbeingLine(c.wb)}
       ${psych.length ? `<ul class="warns">${psych.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
     </article>`;

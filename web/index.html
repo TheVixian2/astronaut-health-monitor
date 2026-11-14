@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dr. Galactic</title>
   <script src="auth.js"></script>
+  <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="presenter">
@@ -12,7 +16,9 @@
        its own interface by auth.js. -->
   <header class="bar">
     <h1><span class="app-name">Dr. Galactic</span> <span class="stripe-mark" aria-hidden="true"></span></h1>
-    <div class="user small"><span data-user></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+    <!-- The fact the whole app is built around: how far behind Earth is. -->
+    <div class="lighttime" id="lightTimeBox" hidden>Radio to Earth takes <strong id="lightTime"></strong> one way</div>
+    <div class="user small"><span data-user></span> <button type="button" class="link" data-signout>Sign out</button></div>
   </header>
 
   <p class="muted pick">Presenter: open any profile.</p>
@@ -30,13 +36,13 @@
         <div>
           <span class="area-tag">On board</span>
           <h2>Astronaut console</h2>
-          <div class="p-who">Any crew member <span class="muted">· a1–a4</span></div>
+          <div class="p-who">Any crew member <span class="muted">(a1 to a4)</span></div>
         </div>
       </div>
       <p class="p-text">Their own vitals against their own baseline, check-in and sleep
         log, live. Data only: no warnings.</p>
       <ul class="p-tabs" aria-label="Tabs"><li>My health</li><li>Check-in</li><li>Sleep &amp; light</li><li>History</li></ul>
-      <div class="p-foot"><span class="muted small">Login <code>crew</code></span><span class="p-open">Open <span aria-hidden="true">→</span></span></div>
+      <div class="p-foot"><span class="muted small">Account <code>crew</code></span><span class="p-open">Open</span></div>
     </a>
 
     <a class="card profile onboard" data-href="captain.html" href="captain.html">
@@ -54,7 +60,7 @@
       <p class="p-text">Their own data, plus every crew member's physical and
         psychological warnings, with advice on how to help. The crew never see these.</p>
       <ul class="p-tabs" aria-label="Tabs"><li>My health</li><li>Check-in</li><li>Sleep &amp; light</li><li>History</li><li class="key">Crew wellbeing</li><li class="key">Habitat</li></ul>
-      <div class="p-foot"><span class="muted small">Login <code>captain</code></span><span class="p-open">Open <span aria-hidden="true">→</span></span></div>
+      <div class="p-foot"><span class="muted small">Account <code>captain</code></span><span class="p-open">Open</span></div>
     </a>
 
     <a class="card profile onboard" data-href="doctor.html" href="doctor.html">
@@ -72,7 +78,7 @@
       <p class="p-text">Their own data, plus today's doses for the whole crew: due,
         overdue, and suggested by live alerts.</p>
       <ul class="p-tabs" aria-label="Tabs"><li>My health</li><li>Check-in</li><li>Sleep &amp; light</li><li>History</li><li class="key">Medications</li></ul>
-      <div class="p-foot"><span class="muted small">Login <code>doctor</code></span><span class="p-open">Open <span aria-hidden="true">→</span></span></div>
+      <div class="p-foot"><span class="muted small">Account <code>doctor</code></span><span class="p-open">Open</span></div>
     </a>
 
     <a class="card profile ground" data-href="ground.html" href="ground.html">
@@ -84,13 +90,13 @@
         <div>
           <span class="area-tag">Ground</span>
           <h2>Mission Control</h2>
-          <div class="p-who">On Earth <span class="muted" id="delay"></span></div>
+          <div class="p-who">On Earth<span class="muted" id="delay"></span></div>
         </div>
       </div>
       <p class="p-text">The whole crew at once, arriving one light-time late, with
         what's still in transit.</p>
       <ul class="p-tabs" aria-label="Tabs"><li class="key">Crew overview</li><li>History</li><li>Raw stream (debug)</li></ul>
-      <div class="p-foot"><span class="muted small">Login <code>ground</code></span><span class="p-open">Open <span aria-hidden="true">→</span></span></div>
+      <div class="p-foot"><span class="muted small">Account <code>ground</code></span><span class="p-open">Open</span></div>
     </a>
   </main>
 
@@ -142,13 +148,17 @@
         const crew = await AHM.getJSON(cfg.base, "/crew", cfg.mock);
         document.querySelectorAll("[data-crew-role]").forEach(el => {
           const c = crew.find(x => x.role === el.dataset.crewRole);
-          if (c) el.innerHTML = `${AHM.esc(c.name)} <span class="muted">· ${AHM.esc(c.id)}</span>`;
+          if (c) el.innerHTML = `${AHM.esc(c.name)} <span class="muted">(${AHM.esc(c.id)})</span>`;
         });
       } catch { /* keep the fallback names */ }
       try {
         const m = await AHM.getJSON(cfg.base, "/mission", cfg.mock);
         const s = m.real_one_way_delay_s ?? m.one_way_delay_s;
-        if (s) document.getElementById("delay").textContent = `· ${AHM.dur(s)} away`;
+        if (s) {
+          document.getElementById("delay").textContent = `, ${AHM.dur(s)} away`;
+          document.getElementById("lightTime").textContent = AHM.dur(s);
+          document.getElementById("lightTimeBox").hidden = false;
+        }
       } catch { /* no delay shown */ }
       window.fitPage();
     })();

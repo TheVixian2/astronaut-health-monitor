@@ -70,7 +70,7 @@
       if (own) cfg.aid = own.id;
       const me = crew.find(c => c.id === cfg.aid);
       $("name").textContent = me ? me.name : cfg.aid;
-      $("role").textContent = me ? `${me.role} · ${me.id}` : "";
+      $("role").textContent = me ? `${me.role} (${me.id})` : "";
     } catch { $("name").textContent = cfg.aid; }
 
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
@@ -150,12 +150,12 @@
       // 2026-11-14); only the 7-night log and lighting stay behind the gate.
       // Plain numbers: the difference from baseline is shown, never coloured as a warning.
       const p = deltaPct(now, base);
-      const delta = p == null ? "" : `${p >= 0 ? "+" : ""}${p.toFixed(0)}%`;
+      const delta = p == null ? "" : ` (${p >= 0 ? "+" : "−"}${Math.abs(p).toFixed(0)}%)`;
       const cls = ["tile", inRegion ? "" : "dim", f.key === chartField ? "charted" : ""].join(" ");
       return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">
         <span class="t-top"><span class="t-label">${f.label}</span>${A.vitalIcon(f.key)}</span>
         <span class="t-value">${fmt(now)}<span class="t-unit"> ${f.unit}</span></span>
-        <span class="t-base muted">yours: ${fmt(base)} <span class="t-delta">${delta}</span></span></button>`;
+        <span class="t-base">usual ${fmt(base)}<span class="t-delta">${delta}</span></span></button>`;
     }).join("");
   }
 
@@ -229,9 +229,10 @@
     if (!live) return;
 
     const L = circ.lighting || {};
-    const since = L.since ? ` · since ${utcTime(L.since)}` : "";
+    setLight(L.mode);
+    const since = L.since ? `, since ${utcTime(L.since)}` : "";
     $("lightChip").textContent = L.mode === "off" ? `Lights off${since}`
-      : `${A.LIGHTING_NAMES[L.mode] || L.mode} · ${L.cct_k} K${since}`;
+      : `${A.LIGHTING_NAMES[L.mode] || L.mode} light, ${L.cct_k} K${since}`;
     $("lightChip").className = `light-chip lc-${L.mode}`;
 
     $("nightsChart").innerHTML = (circ.nights || []).map(nightRow).join("") + axisRow();
@@ -246,7 +247,7 @@
   function renderSleep(v) {
     const h = v.sleep_h_last_night, base = v.baseline?.sleep_h_last_night;
     $("sleepNote").textContent = typeof h !== "number" ? "No sleep data yet."
-      : `Last night: ${h} h${typeof base === "number" ? ` · your usual: ${base} h` : ""}`;
+      : `Last night: ${h} h${typeof base === "number" ? `, usually ${base} h` : ""}`;
   }
 
   // ---- shared-console privacy ----------------------------------------------
@@ -424,19 +425,36 @@
   // ---- status --------------------------------------------------------------
 
   function renderMission() {
-    if (!mission) { $("mission").textContent = "Mission: unknown"; return; }
+    if (!mission) { $("mission").textContent = "Mission unknown"; return; }
     const realS = mission.real_one_way_delay_s ?? mission.one_way_delay_s;
     const demo = realS > mission.one_way_delay_s ? ` <span class="muted">(demo: ${dur(mission.one_way_delay_s)})</span>` : "";
-    $("mission").innerHTML = `${esc(A.ENV_NAMES[mission.environment] || mission.environment)} · ground is <strong>${dur(realS)}</strong> away${demo}`;
+    const where = mission.environment === "mars" ? "Earth" : "Ground";
+    $("mission").innerHTML = `${where} is <strong>${dur(realS)}</strong> away${demo}`;
   }
 
   function renderAge() {
     const el = $("age");
-    if (!lastVitalsAt) { el.textContent = "—"; el.className = ""; return; }
+    if (!lastVitalsAt) { el.textContent = "waiting"; el.className = ""; return; }
     const s = Math.max(0, Math.round((Date.now() - lastVitalsAt) / 1000));
-    el.textContent = `${dur(s)} old`;
+    el.textContent = `${dur(s)} ago`;
     el.className = s > STALE_S ? "stale" : "";
   }
+
+  // ---- the console follows the module's lighting -----------------------------
+  // Pre-sleep (2700 K) or lights off: html[data-light] switches style.css to the
+  // dark, warm, blue-free set, as the Sleep & light tab advises. ?light=… (set
+  // by auth.js) overrides it for a demo. The chart reads colours from CSS, so
+  // it is rebuilt when the light changes.
+  const forcedLight = new URLSearchParams(location.search).get("light");
+  function setLight(mode) {
+    const want = forcedLight || mode || "general";
+    if ($("lightNote")) $("lightNote").hidden = !(want === "pre_sleep" || want === "off");
+    if (document.documentElement.dataset.light === want) return;
+    document.documentElement.dataset.light = want;
+    try { sessionStorage.setItem("ahm-light", want); } catch { /* fine without */ }
+    if (chart) setTimeout(rebuildChart, 850);   // after the CSS colour fade
+  }
+  setLight(document.documentElement.dataset.light);   // note for a mode restored by auth.js
 
   function setConn(text, cls) { const el = $("conn"); el.textContent = text; el.className = `pill ${cls}`; }
 
@@ -530,7 +548,7 @@
       <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
       <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
       <div class="chart-wrap">
-        <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small">last few minutes · dashed = your baseline · tap a tile to change</span></div>
+        <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small">Last few minutes. Dashed line: your usual. Tap a reading to chart it.</span></div>
         <!-- The chart fills whatever height the card has left (style.css). -->
         <div class="chart-box"><canvas id="chart"></canvas></div>
         <p id="chartFallback" class="muted small" hidden>Chart unavailable (Chart.js did not load — offline?).</p>
@@ -612,12 +630,12 @@
 
       <div id="sleepPrivate" hidden>
       <div class="private-bar small muted">
-        <span>Visible to anyone near this console · hides again in <span id="hideIn">2:00</span></span>
+        <span>Visible to anyone near this console. Hides again in <span id="hideIn">2:00</span>.</span>
         <button type="button" id="hideSleep" class="link">Hide now</button>
       </div>
 
       <div id="circLive" hidden>
-        <div class="nights-head small muted">Last 7 nights · bar = asleep · <span class="lg-bright">■</span> bright light in the last hour before sleep</div>
+        <div class="nights-head small muted">Last 7 nights. Bars show when you slept; <span class="lg-bright">■</span> marks bright light in the hour before.</div>
         <div id="nightsChart" class="nights"></div>
         <label class="row share">
           <input type="checkbox" id="circShare"> Share sleep &amp; lighting with ground
@@ -645,7 +663,7 @@
         emerging, much of it from animal studies. Suggestions, not a diagnosis.</p>
       <div class="nasa-ref small">
         Sources: <a href="https://ntrs.nasa.gov/citations/20160005080" target="_blank" rel="noopener">NASA ISS Solid-State Lighting Assembly (NTRS)</a>
-        · NASA risk: <a href="https://www.nasa.gov/reference/risk-from-inadequate-sleep-and-irregular-schedules/" target="_blank" rel="noopener">Risk of Inadequate Sleep and Irregular Schedules</a>
+        and NASA risk <a href="https://www.nasa.gov/reference/risk-from-inadequate-sleep-and-irregular-schedules/" target="_blank" rel="noopener">Risk of Inadequate Sleep and Irregular Schedules</a>
       </div>
     </section>
 `;

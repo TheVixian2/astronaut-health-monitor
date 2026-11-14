@@ -116,9 +116,9 @@
     if (!c.circ) return "";
     if (c.circ.state === "private") return '<div class="small muted cc-circ">Sleep &amp; light: not shared by the astronaut</div>';
     const d = c.circ.data, s = d.summary || {}, L = d.lighting || {};
-    const light = L.mode ? ` · lighting: ${esc(A.LIGHTING_NAMES[L.mode] || L.mode)}${L.cct_k ? ` ${L.cct_k} K` : ""}` : "";
+    const light = L.mode ? `, lighting ${esc(A.LIGHTING_NAMES[L.mode] || L.mode)}${L.cct_k ? ` ${L.cct_k} K` : ""}` : "";
     if (s.status === "watch") {
-      return `<div class="small cc-circ watch">Sleep &amp; light: bedtime varied ${hoursLikePython(s.bedtime_spread_min)} h · ` +
+      return `<div class="small cc-circ watch">Sleep &amp; light: bedtime varied ${hoursLikePython(s.bedtime_spread_min)} h, ` +
              `bright light before sleep ${s.nights_bright_before_sleep}/${s.nights} nights${light}</div>`;
     }
     return `<div class="small muted cc-circ">Sleep &amp; light: nothing stands out${light}</div>`;
@@ -168,10 +168,10 @@
       const left = Math.max(0, (Date.parse(a.started_at) + delayMs - Date.now()) / 1000);
       const name = crew.get(a.astronaut_id)?.info.name || a.astronaut_id;
       return `<li class="sev-${esc(a.severity)}">
-        <span class="count">incoming — ${clock(left)}</span>
+        <span class="count">arrives in ${clock(left)}</span>
         <span class="sev">${esc(a.severity)}</span>
         <strong>${esc(profileName(a.profile))}</strong>
-        <span class="muted">${esc(name)} · raised on board ${esc(time(a.started_at))}</span></li>`;
+        <span class="muted">${esc(name)}, raised on board ${esc(time(a.started_at))}</span></li>`;
     }).join("");
   }
 
@@ -212,13 +212,13 @@
     el.className = `card crew-card st-${status}`;
     el.innerHTML = `
       <div class="cc-head">
-        <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} · ${esc(aid)}</div></div>
+        <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} (${esc(aid)})</div></div>
         <span class="st-pill">${esc(status)}</span>
       </div>
       <div class="cvs">${rows}</div>
       ${spark(c.hr, c.baseHr)}
       <div class="small cc-age" data-aid="${esc(aid)}">${ageText(c)}</div>
-      ${latestAlert ? `<div class="small cc-alert sev-${esc(latestAlert.severity)}"><span class="dot"></span>${esc(profileName(latestAlert.profile))} · ${esc(REGION_NAMES[latestAlert.body_region] || latestAlert.body_region)}</div>` : ""}
+      ${latestAlert ? `<div class="small cc-alert sev-${esc(latestAlert.severity)}"><span class="dot"></span>${esc(profileName(latestAlert.profile))}, ${esc(REGION_NAMES[latestAlert.body_region] || latestAlert.body_region)}</div>` : ""}
       ${circLine(c)}`;
   }
 
@@ -239,7 +239,7 @@
     if (!c.at) return '<span class="muted">No data received yet</span>';
     const s = Math.max(0, Math.round((Date.now() - c.at) / 1000));
     const limit = (mission ? mission.one_way_delay_s : 0) + 10;
-    return `<span class="${s > limit ? "stale" : "muted"}">As of ${esc(time(c.at))} · <strong>${dur(s)} old</strong></span>`;
+    return `<span class="${s > limit ? "stale" : "muted"}">As of ${esc(time(c.at))}, <strong>${dur(s)} old</strong></span>`;
   }
 
   function renderAlerts() {
@@ -258,9 +258,9 @@
       return `<li class="alert sev-${esc(a.severity)}">
         <div class="head"><span class="sev">${esc(a.severity)}</span>
           <strong>${esc(profileName(a.profile))}</strong>
-          <span class="muted small">${esc(name)} · ${esc(REGION_NAMES[a.body_region] || a.body_region)}</span></div>
+          <span class="muted small">${esc(name)}, ${esc(REGION_NAMES[a.body_region] || a.body_region)}</span></div>
         <div class="verdict">${esc(crewSaw)}</div>
-        <div class="small muted">Raised on board ${esc(time(a.started_at))}${delay != null ? ` · reached ground ${dur(delay)} later` : ""} · act-within window ${dur(a.act_within_s)}</div>
+        <div class="small muted">Raised on board ${esc(time(a.started_at))}${delay != null ? `, reached ground ${dur(delay)} later` : ""}. Act within ${dur(a.act_within_s)}</div>
         <div>On-board action: ${esc(a.onboard_action)}</div>${A.nasaRefs(a)}${ins}</li>`;
     }).join("");
   }
@@ -268,7 +268,7 @@
   function renderMission() {
     if (!mission) {
       $("missionReal").textContent = "Mission: unknown";
-      $("delayText").textContent = "Delay unknown — could not load GET /mission.";
+      $("delayText").textContent = "Delay unknown: the mission settings did not load. Is the backend running?";
       return;
     }
     const env = ENV_NAMES[mission.environment] || mission.environment;
@@ -278,10 +278,10 @@
     const realLabel = realS != null ? dur(realS) : REAL_DELAY[mission.environment]?.label;
     const compressed = realS != null ? realS > mission.one_way_delay_s
       : mission.one_way_delay_s < (REAL_DELAY[mission.environment]?.min_s ?? 0);
-    $("missionReal").innerHTML = `<strong>${esc(env)}</strong> · ${esc(realLabel || dur(mission.one_way_delay_s))} one-way` +
+    $("missionReal").innerHTML = `<strong>${esc(env)}</strong>, ${esc(realLabel || dur(mission.one_way_delay_s))} one way` +
       (compressed ? ` <span class="muted">(demo: ${dur(mission.one_way_delay_s)})</span>` : "");
     $("delayText").textContent = `Everything here left the spacecraft at least ${dur(mission.one_way_delay_s)} ago` +
-      (compressed ? ` — on a real ${env} mission that is ${realLabel}.` : ".");
+      (compressed ? `. On a real ${env} mission that is ${realLabel}.` : ".");
   }
 
   function tick() {

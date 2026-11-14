@@ -99,12 +99,12 @@
 
     const doseItem = ({ sev, d }) => `<li class="warn sev-${sev}">
       <div class="head"><span class="sev">${d.status === "overdue" ? "overdue" : "due now"}</span>
-        <strong>${esc(who(d.aid))}</strong> · ${esc(d.drug)} ${esc(d.dose)}
-        <span class="muted small">${esc(d.time)} · ${esc(d.route)}</span></div>
-      <div class="small muted">${esc(d.purpose)}${d.status === "overdue" ? ` · ${esc(late(d.mins))} late` : ""}</div>
+        <strong>${esc(who(d.aid))}</strong>: ${esc(d.drug)} ${esc(d.dose)}
+        <span class="muted small">${esc(d.time)}, ${esc(d.route)}</span></div>
+      <div class="small muted">${esc(d.purpose)}${d.status === "overdue" ? `, ${esc(late(d.mins))} late` : ""}</div>
       <div class="actions"><button type="button" data-give="${esc(d.key)}">Mark given</button></div></li>`;
     const suggItem = ({ alert: a, med }) => `<li class="warn sev-${esc(a.severity)}">
-      <div class="head"><span class="sev">${esc(a.severity)}</span> <strong>${esc(who(a.astronaut_id))}</strong> ·
+      <div class="head"><span class="sev">${esc(a.severity)}</span> <strong>${esc(who(a.astronaut_id))}</strong>:
         ${esc(profileName(a.profile))} <span class="muted small">${esc(clock(a.started_at))}</span></div>
       <div>Consider: <strong>${esc(med.drug)}</strong> ${esc(med.dose)}</div>
       <div class="small muted">${esc(med.note)} Your decision.</div>
@@ -127,7 +127,7 @@
 
   function statusText(d) {
     if (d.status === "given") return `given ${clock(d.givenAt)}`;
-    if (d.status === "overdue") return `overdue · ${late(d.mins)}`;
+    if (d.status === "overdue") return `overdue by ${late(d.mins)}`;
     if (d.status === "due") return "due now";
     return `in ${late(-d.mins)}`;
   }
