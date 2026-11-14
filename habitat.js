@@ -75,6 +75,25 @@
     }
   }
 
+  // Real cabin air from NASA ISS Live telemetry (GET /environment).
+  async function refreshCabin() {
+    try {
+      const e = await A.getJSON(cfg.base, "/environment", cfg.mock);
+      if (e.status === "unavailable") { $("cabin").innerHTML = '<p class="muted small">Live ISS cabin data unavailable right now.</p>'; return; }
+      const co2 = e.co2_1h_avg_mmhg ?? e.co2_mmhg;
+      const cls = { ok: "nominal", elevated: "watch", above_limit: "alert" }[e.status] || "nominal";
+      const when = e.updated_at ? new Date(e.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "?";
+      $("cabin").innerHTML = `<div class="cc-head"><div><strong>Cabin air · live from the International Space Station</strong>
+          <div class="muted small">${A.esc(e.source)} · updated ${A.esc(when)}</div></div>
+          <span class="st-${cls}"><span class="st-pill">${A.esc(e.status.replace("_", " "))}</span></span></div>
+        <p class="small">CO₂ <strong>${co2} mmHg</strong> <span class="muted">(1-hour avg; NASA limit ${e.co2_limit_mmhg} mmHg)</span> ·
+          Lab ${e.ppco2_lab_mmhg ?? "—"} / Node 3 ${e.ppco2_node3_mmhg ?? "—"} mmHg ·
+          ${e.cabin_temp_c ?? "—"} °C · ${e.cabin_pressure_mmhg ?? "—"} mmHg cabin pressure</p>
+        <p class="muted small">Real NASA telemetry, used as the cabin our simulated crew lives in. Headaches and poorer sleep
+          start around 2.8–4.5 mmHg CO₂ (<a href="${A.esc(e.source_url)}" target="_blank" rel="noopener">NASA OCHMO-TB-004</a>).</p>`;
+    } catch { $("cabin").innerHTML = '<p class="muted small">Live ISS cabin data unavailable (offline or mock mode).</p>'; }
+  }
+
   async function refreshRooms() {
     const ids = Object.keys(crewNames);
     const cards = await Promise.all(ids.map(async aid => {
@@ -92,8 +111,9 @@
       $("habConn").textContent = "offline"; $("habConn").className = "pill pill-off";
       return;
     }
-    refreshLocations(); refreshRooms();
+    refreshLocations(); refreshRooms(); refreshCabin();
     setInterval(refreshLocations, 5000);
+    setInterval(refreshCabin, 30000);
     setInterval(refreshRooms, 60000);
   })();
 })();
