@@ -313,8 +313,6 @@ body.selfcheck[data-tab="health"] #console { flex: 1; }
   border: 1px dashed var(--line); border-radius: 8px; margin-bottom: 10px; }
 .sleep-gate p { margin: 0; }
 .private-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-bottom: 8px; }
-.tile.masked { cursor: default; }
-.tile.masked .t-value { font-size: 20px; color: var(--muted); padding: 4px 0; }
 
 /* ---- login + area menus --------------------------------------------------- */
 .login-page { display: grid; place-items: center; min-height: 100vh; }
