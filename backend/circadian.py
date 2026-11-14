@@ -235,6 +235,11 @@ def last_sleep_h(aid: str) -> float:
     return _crew[aid].nights[-1].sleep_h
 
 
+def recent_sleep_h(aid: str, n: int) -> list[float]:
+    """Sleep of the last n nights, most recent last (feeds the sleep_debt profile)."""
+    return [night.sleep_h for night in _crew[aid].nights[-n:]]
+
+
 def _stats(nights: list[Night]) -> Stats:
     beds = [_after_18(n.bedtime) for n in nights]
     mids = [_after_18(n.bedtime) + n.sleep_h * 30 for n in nights]  # mid-sleep
