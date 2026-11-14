@@ -4,14 +4,35 @@
 **Who:** two judges, acting as mentors
 **Who from our side:** stefanalbu2010-byte (at least), Luca
 
-> ⚠️ **RECONSTRUCTED FROM ARTIFACTS, NOT FROM THE CONVERSATION.**
-> The actual exchange lives only in stefanalbu2010-byte's Claude Code chat,
-> which gets cleared. Everything below is inferred from what he committed.
->
-> **@stefanalbu2010-byte: before you clear or compact that session, paste the
-> judges' own wording here** — what they asked, how they phrased the
-> suggestion, and anything they seemed unconvinced by. Their phrasing is the
-> part that can't be reconstructed, and it's the part that's useful.
+> ⚠️ **Mostly reconstructed from artifacts.** The section below is everything
+> stefanalbu2010-byte's Claude Code session actually holds. **The session never
+> had the judges' exact wording**, only his one-line summary, so the quotes, the
+> time and the gut read can only come from his memory (or Luca's).
+
+## From stefanalbu2010-byte's session (verbatim, 2026-11-14)
+
+His report of the visit, as typed:
+
+> "we had a mentor and judge explain to us how blue light and cicardian rithm
+> affect the immune system and told me to research https://darksky.org/"
+
+- **The judge's concrete pointer was DarkSky International (https://darksky.org)**,
+  the light-pollution organisation. So they framed it from the **light-at-night**
+  side (blue light, melatonin, body clock), not only from sleep.
+- "A mentor and judge" could be **one person in both roles or two people**.
+  **@stefanalbu2010-byte: confirm**, and fix the "Who" line above.
+- **Two follow-up decisions were stefanalbu2010-byte's own, not the judges':**
+  1. "the first one could be avoided by just seeing the light system onboard".
+     We read the ISS lighting log instead of adding a check-in question.
+  2. "make sure it suggests and doesnt violate any ethical concerns". This led to
+     private by default, suggestive wording only, the app never switching the
+     lights, and no crew comparison.
+- DarkSky's site blocks automated reading (403), so the research used DarkSky's PDFs
+  found by search. Someone should **open darksky.org in a browser** in case the
+  judge expects something specific from it.
+
+**Still to fill in from memory (stefanalbu2010-byte / Luca):** the time, their
+exact words, any question they asked, and the gut read below.
 
 ## The topic
 
