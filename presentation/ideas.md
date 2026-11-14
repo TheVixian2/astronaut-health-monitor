@@ -170,3 +170,19 @@ Append freely. Dated bullets. Unsorted is fine.
 - **Be honest about evidence:** most immune findings come from animal studies, and
   DarkSky's own white paper says the health evidence "permits no firm conclusions".
   Saying that out loud makes us look *more* credible to a judge.
+## 2026-11-14 — NASA hazard + risk on every alert (web, NotKaemy)
+
+- **Every alert now names its NASA hazard and official HRP risk, linked to
+  nasa.gov** (Self-check, Ground, stream check). Point at it in the demo: "each
+  alert maps to a risk NASA itself tracks". Titles are verbatim from
+  https://www.nasa.gov/hrp/hazards and https://www.nasa.gov/hrp/risks.
+- **Mapping:** `orthostatic` -> *Risk of Cardiovascular Adaptations*;
+  `sans` -> *Risk of Spaceflight Associated Neuro-ocular Syndrome (SANS)*;
+  `fever` -> *Risk of Altered Immune System Responses*; `sleep_debt` ->
+  *Risk of Inadequate Sleep and Irregular Schedules*; `spe` -> *Risk of
+  Radiation-Induced Cancers* (NASA lists no separate acute-radiation risk).
+- **NASA's list has no CO2 risk.** That supports keeping `co2` only as a SANS
+  input (OCHMO-TB-004 links CO2 + headache to SANS) rather than a standalone
+  alert. Don't claim a "NASA CO2 risk" on a slide.
+- **Behavioural check-in has an exact match:** *Risk of Behavioral Changes and
+  Psychiatric Disorders*. Use that title on the PHQ-2 slide.
