@@ -50,19 +50,31 @@
     $("habUntracked").textContent = away.length ? `Not tracked right now (hygiene module): ${away.join(", ")}.` : "";
   }
 
+  // One tall card per crew member (styles: "Habitat tab" in style.css): the
+  // 7-day average as a big number, a bar out of 24 h with a marker at their
+  // normal, and today so far as a small table.
   function roomCard(aid, t) {
     const name = crewNames[aid] || aid;
     const d = t.shared_normal_h ? ((t.shared_7d_avg_h - t.shared_normal_h) / t.shared_normal_h) * 100 : 0;
     const low = d <= -15;
-    const bar = (v, max, color) => `<div style="height:8px;border-radius:4px;background:#ffffff14"><div style="height:8px;border-radius:4px;width:${Math.min(100, (v / max) * 100)}%;background:${color}"></div></div>`;
-    return `<article class="card cap-panel st-${low ? "watch" : "nominal"}">
+    const pct = h => `${Math.min(100, Math.max(0, (h / 24) * 100)).toFixed(1)}%`;
+    return `<article class="card cap-panel hab-card st-${low ? "watch" : "nominal"}">
       <div class="cc-head"><div><strong>${A.esc(name)}</strong><div class="muted small">Shared rooms (galley, lab, command, exercise)</div></div>
         <span class="st-pill">${low ? "less social" : "usual"}</span></div>
-      <p class="small">Last 7 days: <strong>${t.shared_7d_avg_h} h/day</strong> vs normal ${t.shared_normal_h} h
-        <span class="${low ? "warn" : "muted"}">(${d > 0 ? "+" : ""}${d.toFixed(0)}%)</span></p>
-      ${bar(t.shared_7d_avg_h, 24, COLORS[aid])}
-      <p class="small" style="margin-top:8px">Today so far: ${t.shared_h} h shared · ${t.private_h} h private
-        <span class="muted">(normal by now: ${t.shared_so_far_normal_h} h shared)</span></p>
+      <div>
+        <div class="hab-stat"><span class="hab-big">${t.shared_7d_avg_h}</span> h/day <span class="muted small">shared, last 7 days</span></div>
+        <div class="small">normal ${t.shared_normal_h} h <span class="hab-delta ${low ? "low" : "muted"}">${d > 0 ? "+" : ""}${d.toFixed(0)}%</span></div>
+      </div>
+      <div class="hab-bar" title="Out of 24 h · marker = their normal">
+        <div class="hab-fill" style="width:${pct(t.shared_7d_avg_h)};background:${COLORS[aid] || "var(--accent)"}"></div>
+        <div class="hab-normal" style="left:${pct(t.shared_normal_h)}"></div>
+      </div>
+      <table class="hab-today">
+        <caption class="muted small">Today so far</caption>
+        <tr><th>Shared rooms</th><td class="num">${t.shared_h} h</td></tr>
+        <tr><th>Private</th><td class="num">${t.private_h} h</td></tr>
+        <tr><th>Normal by now (shared)</th><td class="num muted">${t.shared_so_far_normal_h} h</td></tr>
+      </table>
     </article>`;
   }
 
