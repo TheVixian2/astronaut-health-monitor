@@ -82,6 +82,14 @@
       bone_density_g_cm2: u.bone_density_g_cm2 * (1 - 0.0035 * months) + 0.001 * rnd(aid, "bone", scanDay),
       muscle_mass_kg: u.muscle_mass_kg * (1 - 0.004 * months) + 0.08 * rnd(aid, "muscle", scanDay),
     };
+    // An astronaut who switched the cycle-aware usual on gets the matching
+    // monthly rhythm in the pattern too (common.js withCycle, same shifts).
+    const cy = window.AHM && window.AHM.cycleAt ? window.AHM.cycleAt(aid, t) : null;
+    if (cy && cy.luteal) {
+      v.temp_c += 0.35 * cy.luteal;
+      v.heart_rate_bpm *= 1 + 0.04 * cy.luteal;
+      v.hrv_sdnn_ms *= 1 - 0.08 * cy.luteal;
+    }
     for (const k in v) v[k] = round(k, v[k]);
     return { ...v, baseline: { ...u }, timestamp: new Date(t).toISOString().replace(/\.\d+Z$/, "Z"), source: "pattern" };
   }
