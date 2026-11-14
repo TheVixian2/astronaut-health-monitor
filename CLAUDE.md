@@ -27,6 +27,12 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - `self-check.html` / `self-check.js` — the astronaut view: alert banner with
   verdict, clickable body figure, vitals tiles vs baseline, Chart.js trend,
   check-in form (`share_with_ground` off by default), alert history.
+- `ground.html` / `ground.js` — the flight surgeon: one `view=ground` stream
+  per astronaut, crew cards (status from received alerts, vitals vs baseline,
+  HR sparkline, data age), received-alerts feed, real light time always in the
+  header. The **"signals in transit" strip is a demo overlay**: it polls the
+  undelayed `GET /alerts` to show the `incoming — 00:18` countdown. Polled, not
+  streamed, so the page stays at 4 SSE connections (browser limit ~6 per host).
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict

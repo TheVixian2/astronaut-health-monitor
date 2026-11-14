@@ -1,0 +1,252 @@
+// Ground view: the flight surgeon. Whole crew at once, every stream opened with
+// view=ground, so everything arrives one light-time late (the backend delays it).
+//
+// The "signals in transit" strip is a DEMO OVERLAY: it polls the undelayed
+// GET /astronauts/{id}/alerts to show alerts that were raised on board but
+// have not reached ground yet, with a countdown. A real ground station cannot
+// know this. It is polled rather than streamed so the page holds only one SSE
+// connection per astronaut (browsers allow ~6 per host over HTTP/1.1).
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const A = window.AHM;
+  const { SEVERITY_RANK, ENV_NAMES, REGION_NAMES, verdict, deltaPct, dur, fmt, esc, profileName } = A;
+
+  const cfg = A.settings();
+  const TRANSIT_POLL_MS = 2000;
+  const SPARK_POINTS = 40;          // ~2 min of HR per card
+
+  // Real one-way light time per environment, shown permanently in the header
+  // so the stakes stay visible even when the demo runs compressed.
+  const REAL_DELAY = {
+    iss: { label: "~0 s", min_s: 0 },
+    moon: { label: "~1.3 s", min_s: 1 },
+    mars: { label: "3–22 min", min_s: 180 },
+  };
+
+  let mission = null;
+  const crew = new Map();           // aid -> {info, latest, at, hr: [], baseHr, alerts: Map}
+  const received = new Map();       // alert id -> alert, as delivered to ground
+  const transit = new Map();        // alert id -> alert, raised on board, not yet received
+  const sources = [];
+
+  init();
+
+  async function init() {
+    try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
+    renderMission();
+
+    let list;
+    try { list = await A.getJSON(cfg.base, "/crew", cfg.mock); }
+    catch (err) {
+      $("crew").innerHTML = `<p class="err">Could not load crew: ${esc(err.message)}. Is the backend running? (Add ?mock to use fake data.)</p>`;
+      setConn("disconnected", "pill-off");
+      return;
+    }
+
+    for (const info of list) crew.set(info.id, { info, latest: null, at: null, hr: [], baseHr: null, alerts: new Map() });
+    renderCrew();
+
+    let open = 0;
+    for (const aid of crew.keys()) {
+      const { source } = A.openStream({ ...cfg, aid, view: "ground" });
+      sources.push(source);
+      source.onopen = () => { open++; updateConn(); };
+      source.onerror = () => updateConn();
+      source.addEventListener("vitals", e => onVitals(aid, JSON.parse(e.data)));
+      source.addEventListener("alert", e => onAlert(JSON.parse(e.data)));
+    }
+
+    function updateConn() {
+      const live = sources.filter(s => s.readyState === 1).length;
+      if (live === sources.length) setConn(cfg.mock ? "connected (mock)" : "connected", "pill-on");
+      else if (live === 0 && open === 0) setConn("connecting…", "pill-wait");
+      else setConn(`${live}/${sources.length} streams`, "pill-wait");
+    }
+
+    $("showTransit").addEventListener("change", renderTransit);
+    pollTransit();
+    setInterval(pollTransit, TRANSIT_POLL_MS);
+    setInterval(tick, 1000);
+  }
+
+  // ---- delayed data --------------------------------------------------------
+
+  function onVitals(aid, v) {
+    const c = crew.get(aid);
+    if (!c) return;
+    c.latest = v;
+    c.at = new Date(v.timestamp);
+    c.baseHr = v.baseline ? v.baseline.heart_rate_bpm : null;
+    c.hr.push(v.heart_rate_bpm);
+    if (c.hr.length > SPARK_POINTS) c.hr.shift();
+    renderCard(aid);
+  }
+
+  function onAlert(a) {
+    received.set(a.id, a);           // upsert: the insight re-send has the same id
+    transit.delete(a.id);
+    const c = crew.get(a.astronaut_id);
+    if (c) { c.alerts.set(a.id, a); renderCard(a.astronaut_id); }
+    renderAlerts();
+    renderTransit();
+  }
+
+  // ---- demo overlay: in transit --------------------------------------------
+
+  async function pollTransit() {
+    if (!mission) return;
+    const now = Date.now();
+    const delayMs = mission.one_way_delay_s * 1000;
+    await Promise.all([...crew.keys()].map(async aid => {
+      let list;
+      try { list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/alerts`, cfg.mock); }
+      catch { return; }
+      for (const a of list) {
+        const arrives = Date.parse(a.started_at) + delayMs;
+        if (!received.has(a.id) && arrives > now - 2000) transit.set(a.id, a);
+      }
+    }));
+    renderTransit();
+  }
+
+  function renderTransit() {
+    const show = $("showTransit").checked && transit.size > 0;
+    $("transit").hidden = !show;
+    if (!show) return;
+    const delayMs = mission ? mission.one_way_delay_s * 1000 : 0;
+    $("transitList").innerHTML = [...transit.values()].map(a => {
+      const left = Math.max(0, (Date.parse(a.started_at) + delayMs - Date.now()) / 1000);
+      const name = crew.get(a.astronaut_id)?.info.name || a.astronaut_id;
+      return `<li class="sev-${esc(a.severity)}">
+        <span class="count">incoming — ${clock(left)}</span>
+        <span class="sev">${esc(a.severity)}</span>
+        <strong>${esc(profileName(a.profile))}</strong>
+        <span class="muted">${esc(name)} · raised on board ${esc(time(a.started_at))}</span></li>`;
+    }).join("");
+  }
+
+  // ---- rendering -----------------------------------------------------------
+
+  function crewStatus(c) {
+    let best = null;
+    for (const a of c.alerts.values()) if (!best || SEVERITY_RANK[a.severity] > SEVERITY_RANK[best]) best = a.severity;
+    return best || "nominal";
+  }
+
+  function renderCrew() {
+    $("crew").innerHTML = [...crew.keys()].map(aid => `<article class="card crew-card" id="card-${esc(aid)}"></article>`).join("");
+    for (const aid of crew.keys()) renderCard(aid);
+  }
+
+  const CARD_FIELDS = [
+    ["heart_rate_bpm", "HR", "bpm"], ["systolic_mmhg", "SYS", "mmHg"], ["spo2_pct", "SpO₂", "%"],
+    ["temp_c", "Temp", "°C"], ["resp_rate_bpm", "Resp", "/min"],
+  ];
+
+  function renderCard(aid) {
+    const c = crew.get(aid);
+    const el = $(`card-${aid}`);
+    if (!c || !el) return;
+    const status = crewStatus(c);
+    const v = c.latest;
+    const rows = CARD_FIELDS.map(([k, label, unit]) => {
+      const now = v ? v[k] : null, base = v?.baseline?.[k];
+      const pct = deltaPct(now, base);
+      const off = pct != null && Math.abs(pct) >= 10;
+      const d = pct == null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
+      return `<div class="cv"><span class="muted small">${label}</span>
+        <span class="cv-val">${fmt(now)}<span class="t-unit"> ${unit}</span></span>
+        <span class="small ${off ? "cv-off" : "muted"}">${d}</span></div>`;
+    }).join("");
+    const latestAlert = [...c.alerts.values()].pop();
+    el.className = `card crew-card st-${status}`;
+    el.innerHTML = `
+      <div class="cc-head">
+        <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} · ${esc(aid)}</div></div>
+        <span class="st-pill">${esc(status)}</span>
+      </div>
+      <div class="cvs">${rows}</div>
+      ${spark(c.hr, c.baseHr)}
+      <div class="small cc-age" data-aid="${esc(aid)}">${ageText(c)}</div>
+      ${latestAlert ? `<div class="small cc-alert sev-${esc(latestAlert.severity)}"><span class="dot"></span>${esc(profileName(latestAlert.profile))} · ${esc(REGION_NAMES[latestAlert.body_region] || latestAlert.body_region)}</div>` : ""}`;
+  }
+
+  // Tiny inline SVG sparkline of heart rate, baseline dashed.
+  function spark(values, base) {
+    if (values.length < 2) return '<div class="spark muted small">HR trend appears after a few readings…</div>';
+    const W = 220, H = 40, all = base != null ? values.concat(base) : values;
+    const lo = Math.min(...all) - 2, hi = Math.max(...all) + 2;
+    const x = i => (i / (SPARK_POINTS - 1)) * W;
+    const y = val => H - ((val - lo) / (hi - lo)) * H;
+    const off = SPARK_POINTS - values.length;
+    const pts = values.map((val, i) => `${x(i + off).toFixed(1)},${y(val).toFixed(1)}`).join(" ");
+    const baseLine = base != null ? `<line x1="0" x2="${W}" y1="${y(base).toFixed(1)}" y2="${y(base).toFixed(1)}" class="sp-base"/>` : "";
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Heart rate trend">${baseLine}<polyline points="${pts}" class="sp-line"/></svg>`;
+  }
+
+  function ageText(c) {
+    if (!c.at) return '<span class="muted">No data received yet</span>';
+    const s = Math.max(0, Math.round((Date.now() - c.at) / 1000));
+    const limit = (mission ? mission.one_way_delay_s : 0) + 10;
+    return `<span class="${s > limit ? "stale" : "muted"}">As of ${esc(time(c.at))} · <strong>${dur(s)} old</strong></span>`;
+  }
+
+  function renderAlerts() {
+    const ul = $("alerts");
+    if (!received.size) { ul.innerHTML = '<li class="muted">Nothing received yet.</li>'; return; }
+    const delay = mission ? mission.one_way_delay_s : null;
+    ul.innerHTML = [...received.values()].reverse().map(a => {
+      const v = verdict(a, mission);
+      const name = crew.get(a.astronaut_id)?.info.name || a.astronaut_id;
+      const crewSaw = v.onboard === true ? "Crew was told: act on board now"
+        : v.onboard === false ? "Crew was told: ground will advise" : `Act within ${dur(a.act_within_s)}`;
+      const ins = a.insight
+        ? `<details><summary>Insight</summary><dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd>
+           <dt>Trend</dt><dd>${esc(a.insight.trend)}</dd><dt>Suggested</dt><dd>${esc(a.insight.recommended_action)}</dd></dl></details>`
+        : '<p class="muted small">Insight not received yet.</p>';
+      return `<li class="alert sev-${esc(a.severity)}">
+        <div class="head"><span class="sev">${esc(a.severity)}</span>
+          <strong>${esc(profileName(a.profile))}</strong>
+          <span class="muted small">${esc(name)} · ${esc(REGION_NAMES[a.body_region] || a.body_region)}</span></div>
+        <div class="verdict">${esc(crewSaw)}</div>
+        <div class="small muted">Raised on board ${esc(time(a.started_at))}${delay != null ? ` · reached ground ${dur(delay)} later` : ""} · act-within window ${dur(a.act_within_s)}</div>
+        <div>On-board action: ${esc(a.onboard_action)}</div>${ins}</li>`;
+    }).join("");
+  }
+
+  function renderMission() {
+    if (!mission) {
+      $("missionReal").textContent = "Mission: unknown";
+      $("delayText").textContent = "Delay unknown — could not load GET /mission.";
+      return;
+    }
+    const env = ENV_NAMES[mission.environment] || mission.environment;
+    const real = REAL_DELAY[mission.environment];
+    const compressed = real && mission.one_way_delay_s < real.min_s;
+    $("missionReal").innerHTML = `<strong>${esc(env)}</strong> · ${real ? `${esc(real.label)} one-way` : `${dur(mission.one_way_delay_s)} one-way`}` +
+      (compressed ? ` <span class="muted">(demo: ${dur(mission.one_way_delay_s)})</span>` : "");
+    $("delayText").textContent = `Everything here left the spacecraft at least ${dur(mission.one_way_delay_s)} ago` +
+      (compressed ? ` — on a real ${env} mission that is ${real.label}.` : ".");
+  }
+
+  function tick() {
+    for (const [aid, c] of crew) {
+      const el = document.querySelector(`.cc-age[data-aid="${CSS.escape(aid)}"]`);
+      if (el) el.innerHTML = ageText(c);
+    }
+    renderTransit();
+  }
+
+  function setConn(text, cls) { const el = $("conn"); el.textContent = text; el.className = `pill ${cls}`; }
+
+  function clock(s) {
+    s = Math.ceil(s);
+    return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  }
+
+  function time(t) {
+    const d = t instanceof Date ? t : new Date(t);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+})();

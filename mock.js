@@ -26,6 +26,10 @@
   const SHIFTS = { orthostatic: { heart_rate_bpm: 1.32, systolic_mmhg: 0.8 } };
   const SHIFT_S = 45;
 
+  // Every alert any mock stream on this page has raised, recorded at the moment
+  // it is raised (before any ground delay). Backs GET /astronauts/{id}/alerts.
+  const ALERT_LOG = [];
+
   const BASELINES = {
     a1: { heart_rate_bpm: 58, systolic_mmhg: 112, diastolic_mmhg: 72, spo2_pct: 98, temp_c: 36.5, resp_rate_bpm: 12, sleep_h_last_night: 7.2, mood_1to5: 4 },
     a2: { heart_rate_bpm: 74, systolic_mmhg: 124, diastolic_mmhg: 80, spo2_pct: 97, temp_c: 36.8, resp_rate_bpm: 15, sleep_h_last_night: 6.8, mood_1to5: 4 },
@@ -138,8 +142,12 @@
         started_at: nowIso(), onboard_action: p.onboard_action, act_within_s: p.act_within_s,
         ground_eta_s: MISSION.one_way_delay_s, insight: null,
       };
+      ALERT_LOG.push(alert);
       this.emit("alert", alert);
-      this.timers.push(setTimeout(() => this.emit("alert", { ...alert, insight: p.insight }), INSIGHT_DELAY_S * 1000));
+      this.timers.push(setTimeout(() => {
+        alert.insight = p.insight;
+        this.emit("alert", { ...alert });
+      }, INSIGHT_DELAY_S * 1000));
     }
   }
 
@@ -151,7 +159,11 @@
     const p = path.split("?")[0];
     if (p === "/mission") return Promise.resolve({ ...MISSION });
     if (p === "/crew") return Promise.resolve(CREW.map(c => ({ ...c })));
-    if (ALERTS_PATH.test(p)) return Promise.resolve([]);
+    if (ALERTS_PATH.test(p)) {
+      // Like the backend: undelayed, newest first.
+      const aid = p.split("/")[2];
+      return Promise.resolve(ALERT_LOG.filter(a => a.astronaut_id === aid).reverse().map(a => ({ ...a })));
+    }
     return Promise.reject(new Error(`mock: no GET ${p}`));
   }
 
