@@ -255,5 +255,22 @@ Branch: `web`
   score display. Luca, the shapes I need: the PHQ-2 fields on `POST /checkin`,
   where the AI summary comes back from, and how the SANS score arrives (field
   on vitals, its own event, or an alert).
-- **Blocked on:** the post-pivot `docs/api-spec.md` for the two items above.
-  Not blocked on anything else.
+- **Done on `web` (not merged yet) — circadian in both views.** Self-check:
+  lighting chip, `card` text, 7-night bedtime chart, recommendation + sources,
+  share toggle. Ground: one sleep & light line per crew card. Tested in real
+  time against `main`'s backend.
+- **Decision (NotKaemy): sleep & lighting is shared with ground by default,
+  and private on the ship console.** The console is a shared screen on board,
+  so Self-check hides the card and the "Sleep last night" tile behind "Show my
+  sleep data" (re-hides after 2 min). The astronaut can still untick sharing;
+  Ground then shows "not shared by the astronaut". Web and mock are done.
+  - **@stefanalbu2010-byte, one-line backend change please:** in
+    `backend/circadian.py`, `_shared = {aid: True for aid in HABITS}` (default
+    shared). Until then the real backend still answers Ground with 403, so
+    Ground shows "not shared" for everyone.
+  - **Luca, spec:** the circadian section should say "shared with ground by
+    default; the astronaut can opt out". Also `card` is shown as an object in
+    the spec, but `circadian.py` returns a **string or null** — the web
+    accepts both for now; please pick one.
+- **Blocked on:** the post-pivot `docs/api-spec.md` for PHQ-2 and the SANS
+  score display. Not blocked on anything else.

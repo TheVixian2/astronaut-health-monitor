@@ -255,3 +255,16 @@ to tighten, not final claims.**
   judge 2's "longer flights will need our system".
 - **Keep it honest:** "may help", "linked to". Phase-shift light is normally used with
   flight-surgeon guidance, and the plan says so.
+## 2026-11-14 — circadian privacy changed (web, NotKaemy)
+
+- **Update to the ethics line above.** Sleep & lighting data is now **shared with
+  the flight surgeon by default**; the astronaut can opt out at any time. The
+  "private by default" wording no longer matches the app — don't say it on stage.
+- **New privacy point instead: the ship console is a shared screen.** On board,
+  the sleep card and the sleep tile stay hidden until the astronaut taps
+  "Show my sleep data", and hide again after 2 minutes. Crewmates walking past
+  the console don't see each other's sleep. Suggested line: "Your flight surgeon
+  can see it, like a doctor would. Your crewmates can't."
+- **Keep in mind for Q&A:** the earlier under-reporting argument (crew control
+  what goes down, so they report more honestly) is weaker with sharing on by
+  default. The opt-out is still there; lean on that if a judge asks.
