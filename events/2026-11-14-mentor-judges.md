@@ -34,6 +34,40 @@ His report of the visit, as typed:
 **Still to fill in from memory (stefanalbu2010-byte / Luca):** the time, their
 exact words, any question they asked, and the gut read below.
 
+## What the judge actually said (via Luca, 2026-11-14)
+
+We were discussing **SANS**. One judge's point:
+
+> The thing that *also* gravely affects circadian rhythm is the **light
+> simulation** — on long missions such as Mars it needs to be **closer to
+> Earth**.
+
+(Paraphrase from Luca. @stefanalbu2010-byte still to paste the verbatim
+exchange from his session.)
+
+### Why this reframes the whole thing
+
+He is not describing a **monitoring** problem. He is describing a
+**countermeasure** problem. The lighting system is not a signal to watch — it is
+the intervention. That makes circadian a **close-the-loop** feature:
+
+> detect circadian drift -> recommend a lighting mode -> verify sleep improved
+
+which is the strongest demo beat available to us, now effectively requested by a
+judge.
+
+### The Mars framing is sharper than the ISS one
+
+- **ISS:** 16 sunrises a day. A bad cue, but a cue.
+- **Mars transit:** no external day/night cue at all, for ~9 months. **The
+  lighting system is the only zeitgeber the crew has.**
+- **Mars surface:** a sol is **24 h 39 m**. The crew must entrain to a 24.65-hour
+  day — a known hard problem that wrecked Earth-based rover ops teams who tried it.
+
+So the lighting system is the **last remaining link to Earth's rhythm on a
+mission that is otherwise Earth-independent.** That is our thesis, in language a
+judge has already shown he cares about.
+
 ## The topic
 
 **Circadian rhythm, light exposure, and immunity.** The judges raised it; the
@@ -72,8 +106,9 @@ not yet in `docs/api-spec.md`:
 
 | Their point | Decision | Owner | Status |
 |---|---|---|---|
-| Circadian rhythm / light / immunity worth modelling | Research done, provisional implementation built | stefanalbu2010-byte | **OPEN — Luca to decide scope, see below** |
-| Does circadian become a 6th alerting condition? | — | Luca | **OPEN** |
+| Circadian rhythm / light / immunity worth modelling | Research done, provisional implementation built | stefanalbu2010-byte | actioned |
+| Light simulation must be closer to Earth on long missions | **Reframes circadian as a COUNTERMEASURE, not a condition** — detect drift, recommend a lighting mode, verify sleep improved | Luca | **OPEN — recommended: take it** |
+| Does circadian become a 6th alerting condition? | **No** — it is a countermeasure loop, which is better than either a condition or a passive context layer | Luca | **OPEN** |
 | Does it go into `docs/api-spec.md`? | — | Luca | **OPEN** — currently PROVISIONAL and outside the contract |
 
 ## The open question
