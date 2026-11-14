@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import random
+import re
 import statistics
 import uuid
 from collections import deque
@@ -169,6 +170,9 @@ class CheckinRequest(BaseModel):
     phq2: Optional[behavioral.Phq2] = None
     phq9: Optional[behavioral.Phq9] = None          # asked when PHQ-2 >= 2 (two-step screening)
     reaction_test: Optional[behavioral.ReactionTest] = None
+    # PROVISIONAL, optional: a known reason why some body signals may change for a few days
+    # (behavioral.CONTEXT_TAGS). Never shown to anyone else; only used to leave those days out.
+    context: Optional[list[behavioral.ContextTag]] = Field(default=None, max_length=3)
 
 
 class ScenarioRequest(BaseModel):
@@ -1380,9 +1384,15 @@ def _view_for(target: AstronautState, viewer: str) -> str:
 
 @app.get("/checkin/questions")
 async def checkin_questions() -> dict:
-    """Exact wording: PHQ-2, the PHQ-9 follow-up, and the reaction test."""
+    """Exact wording: PHQ-2, the PHQ-9 follow-up, the reaction test, and the optional context tags."""
     return {"phq2": behavioral.PHQ2_QUESTIONS, "phq9": behavioral.PHQ9_QUESTIONS,
-            "reaction_test": behavioral.REACTION_TEST}
+            "reaction_test": behavioral.REACTION_TEST,
+            "context": {
+                "question": "Anything that might affect your body this week? (optional)",
+                "options": [{"id": k, "label": v["label"]} for k, v in behavioral.CONTEXT_TAGS.items()],
+                "note": "It leaves those days out of your heart-rate, HRV, sleep and activity readings, so they "
+                        "aren't read as a change in how you're doing. Your mood and questionnaire answers always "
+                        "count. Nobody else sees which one you chose."}}
 
 
 @app.get("/wellbeing/method")
@@ -1473,6 +1483,30 @@ class AskAnswer(BaseModel):
 
 PHYSICAL = ("heart_rate_bpm", "hrv_sdnn_ms", "active_min", "sleep_h_last_night", "spo2_pct", "temp_c", "resp_rate_bpm")
 
+# Questions about feelings never leave the spacecraft and never get a psychological answer on the
+# watch (team decision: the wellbeing side stays off the wrist). They get a short on-board pointer
+# to a person instead, and crisis words a firmer one. The question is not logged. "Stress" stays
+# with HRV (a physical reading). PLACEHOLDER word lists: keyword matching misses things.
+CRISIS_WORDS = re.compile(
+    r"suicid|kill (myself|me)\b|end (it all|my life)|hurt(ing)? myself|self[- ]?harm|want to die|"
+    r"don'?t want to (live|be here)|no reason to live|better off without me", re.I)
+FEELING_WORDS = re.compile(
+    r"\b(mood|sad\w*|depress\w*|anxi\w*|lonel\w*|hopeless|worthless|mental|psych\w*|well-?being|"
+    r"emotion\w*|cr(y|ied|ying)|panic\w*|unhappy|miserable|homesick|upset|burn(ed|t)? ?out|can'?t cope|"
+    r"feel(ing)? (so )?(down|low|bad|empty|lost|numb|awful|terrible|alone))\b", re.I)
+FEELING_NOTE = ("Questions about how you feel are answered on board and never sent to Claude. "
+                "The wellbeing side of the app is not shown on the watch.")
+
+
+def _feelings_answer(question: str) -> Optional[str]:
+    if CRISIS_WORDS.search(question):
+        return ("Please don't stay alone with this. Tell the Crew Medical Officer or your commander now, in "
+                "person. A private conference with Mission Control is always an option.")
+    if FEELING_WORDS.search(question):
+        return ("That's worth talking about with a person rather than the watch: the Crew Medical Officer, "
+                "a crewmate you trust, or a private conference with Mission Control.")
+    return None
+
 
 def _on_board_answer(question: str, v: dict, b: dict, env: dict, reason: str) -> str:
     """Plain answer from the numbers when Claude can't be used. Picks lines by keyword."""
@@ -1503,8 +1537,12 @@ async def ask(aid: str, body: AskRequest) -> AskAnswer:
     """The watch's Claude wrapper: a short answer about the wearer's own physical data and the cabin.
 
     Only physical readings, cabin air and mission state go to Claude, never mood or check-in answers.
-    No key, a blackout or any failure gives an on-board answer from the same numbers."""
+    Questions about feelings are answered on board with a pointer to a person (never sent, never a
+    level or score). No key, a blackout or any failure gives an on-board answer from the same numbers."""
     s = get_state(aid)
+    feelings = _feelings_answer(body.question)
+    if feelings is not None:
+        return AskAnswer(answer=feelings, source="on_board", note=FEELING_NOTE)
     snap = s.snapshot()
     v = {f: getattr(snap, f, None) for f in PHYSICAL}
     b = {f: getattr(snap.baseline, f, None) for f in PHYSICAL}
@@ -1781,7 +1819,8 @@ async def get_location(aid: str, viewer: str) -> LocationView:
                         week=week, seen_by=list(s.location_seen),
                         note=(social.detail if social else "") + " Rooms only, never coordinates. The commander "
                              "and Mission Control can see which room you're in now (for safety: fire or "
-                             "depressurisation), and seen_by lists who looked. Hygiene is never tracked.")
+                             "depressurisation), and seen_by lists who looked. In hygiene, only Mission Control sees that it's you; the "
+                             "commander sees daily hours only.")
 
 
 @app.get("/mission/light-time")

@@ -93,7 +93,7 @@ class Room(BaseModel):
     name: str
     kind: Kind
     owner: Optional[str]
-    beacon_id: Optional[str]   # null: no beacon (hygiene)
+    beacon_id: Optional[str]   # every room has one; in hygiene only Mission Control sees who is there
     ibeacon: Optional[dict]
 
 

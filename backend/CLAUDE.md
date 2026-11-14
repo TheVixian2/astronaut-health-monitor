@@ -59,6 +59,10 @@ this long; default 12 h).
   `python ../tools/check_profile.py --seeds 30` and keep false "concern" at 0%. Baseline spread
   is the sample SD with a floor (`REL_FLOOR`, relative to the person's own level), so eight
   baseline days can't make an ordinary week look like a big change.
+- Check-in context tags (`behavioral.CONTEXT_TAGS`: ill, new_medication, period) only leave
+  body-signal days out of the inputs they distort. Never mood, the PHQ or the safety rules, and
+  no other viewer is told which tag was chosen. A PHQ-9 with question 9 above 0 holds the
+  level at urgent for the 14-day PHQ window, even if a later PHQ-2 is low.
 - The seed is repeatable: each astronaut has their own random stream and rooms follow the
   mission day, so a2 ends at "watch" on day 42 whatever time the seed runs.
 
@@ -74,7 +78,8 @@ this long; default 12 h).
   PHQ safety rules on top, a confidence, and a daily trend. `method()` lists every weight.
   Crew-wide trends never name anyone and need >= 3 people.
 - `location.py` — the habitat's rooms (ids shared with `web/habitat.js`: `q_a1`..`q_a4`,
-  `command`, `lab`, `galley`, `exercise`; `hygiene` has no beacon and is never tracked), room from
+  `command`, `lab`, `galley`, `exercise`, `hygiene`: who is in hygiene is shown only to Mission
+  Control, the commander sees daily hours there; Luca, NASA-STD-3001), room from
   Bluetooth beacons (two scans must agree), simulated schedule, stored stays, daily time with
   crewmates / alone in quarters. Rooms only. `GET /crew/locations` (commander, Mission Control:
   safety) and `GET /astronauts/{id}/rooms` (astronaut, commander) read the same live room and

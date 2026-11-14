@@ -73,6 +73,29 @@ INPUTS = {
 # users), and daily activity varies even more. PLACEHOLDERS, tuned with tools/check_profile.py.
 REL_FLOOR = {"hrv": 0.10, "activity": 0.20, "social_time": 0.10, "reaction_time": 0.05}
 
+# Optional check-in tags: a known reason why some inputs may change for a few days. Those days
+# are left out of those inputs (baseline, last 7 days and trend), so the score doesn't read them
+# as a change in wellbeing. Mood and the PHQ are never left out and the safety rules always
+# apply, so a tag can't hide a warning. Which tag was chosen is never shown to anyone else:
+# others only see "left out, marked in a check-in". Day windows are relative to the check-in
+# day. PLACEHOLDERS (windows and inputs), except where a source is named.
+ContextTag = Literal["ill", "new_medication", "period"]
+CONTEXT_TAGS: dict[str, dict] = {
+    "ill": dict(
+        label="I'm feeling ill or injured", days=(-1, 2),
+        inputs=("sleep", "hrv", "resting_heart_rate", "activity", "social_time", "reaction_time"),
+        why="Being ill changes heart rate, HRV, sleep and activity, and keeps people in their quarters."),
+    "new_medication": dict(
+        label="I started a new medication", days=(0, 6),
+        inputs=("sleep", "hrv", "resting_heart_rate", "reaction_time"),
+        why="Sleep medication is common in spaceflight (71-78% of crew members in low-Earth orbit; "
+            "Albornoz-Miranda et al., Sleep Med X 2023), and some medicines lower HRV (Kemp et al. 2010)."),
+    "period": dict(
+        label="My period started", days=(-5, 2),
+        inputs=("hrv", "resting_heart_rate"),   # resting HR: placeholder, it tends to move with HRV
+        why="HRV is lower late in the menstrual cycle, by about 3-9% (de Jager et al., Sports Med 2026)."),
+}
+
 AREA = {"sleep": "sleep", "hrv": "body", "social_time": "time with crew", "activity": "activity",
         "body_clock": "sleep", "resting_heart_rate": "body", "phq": "questionnaire", "mood": "mood",
         "reaction_time": "alertness"}
@@ -166,6 +189,7 @@ class Signal(BaseModel):
     detail: str
     evidence: str
     crew_wide: bool = False
+    left_out_days: int = 0        # of the last 7 days, left out because of a check-in tag
 
 
 class PhqResult(BaseModel):
@@ -175,6 +199,7 @@ class PhqResult(BaseModel):
     screen_positive: bool
     taken_at: str
     item9_positive: bool = False
+    item9_at: Optional[str] = None   # set when an earlier PHQ-9 in the window had it
 
 
 class DayScore(BaseModel):
@@ -247,15 +272,40 @@ def _z(recent: Optional[float], base: Optional[tuple[float, float]], direction: 
     return round(z if direction == "up" else -z, 2)
 
 
-def _day_values(h: History, attr: str, start: date, end: date) -> list[float]:
+def _day_values(h: History, attr: str, start: date, end: date, skip: frozenset = frozenset()) -> list[float]:
     out = []
     d = start
     while d <= end:
         v = getattr(h.days.get(d, DayData()), attr)
-        if v is not None:
+        if v is not None and d not in skip:
             out.append(v)
         d += timedelta(days=1)
     return out
+
+
+def left_out(h: History) -> dict[str, frozenset]:
+    """Input name -> the days its check-in tags leave out."""
+    out: dict[str, set] = {}
+    for ts, p in h.checkins:
+        for tag in p.get("context") or []:
+            spec = CONTEXT_TAGS.get(tag)
+            if spec is None:
+                continue
+            d0 = date.fromisoformat(ts[:10])
+            lo, hi = spec["days"]
+            days = {d0 + timedelta(days=i) for i in range(lo, hi + 1)}
+            for name in spec["inputs"]:
+                out.setdefault(name, set()).update(days)
+    return {k: frozenset(v) for k, v in out.items()}
+
+
+def _left_note(n: int) -> str:
+    return f" {n} of the last 7 days left out (marked in a check-in)." if n else ""
+
+
+def _ck_day(p: dict) -> Optional[date]:
+    ts = p.get("timestamp")
+    return date.fromisoformat(ts[:10]) if ts else None
 
 
 def _checkins_in(h: History, start: date, end: date) -> list[dict]:
@@ -268,6 +318,20 @@ def _baseline_window(h: History) -> tuple[date, date]:
 
 
 def _latest_phq(h: History, end: date) -> Optional[PhqResult]:
+    """The newest PHQ in the 14-day window. A PHQ-9 with question 9 above 0 anywhere in the window
+    keeps item9_positive: a later short PHQ-2 must not quietly clear a self-harm answer."""
+    r = _newest_phq(h, end)
+    if r is not None and not r.item9_positive:
+        start = end - timedelta(days=PHQ_WINDOW_DAYS - 1)
+        lo, hi = start.isoformat(), (end + timedelta(days=1)).isoformat()
+        flagged = next((ts for ts, p in reversed(h.checkins)
+                        if lo <= ts[:10] < hi and p.get("phq9") and p["phq9"]["answers"][8] > 0), None)
+        if flagged:
+            r = r.model_copy(update={"item9_positive": True, "item9_at": flagged})
+    return r
+
+
+def _newest_phq(h: History, end: date) -> Optional[PhqResult]:
     start = end - timedelta(days=PHQ_WINDOW_DAYS - 1)
     lo, hi = start.isoformat(), (end + timedelta(days=1)).isoformat()
     for ts, p in reversed(h.checkins):
@@ -294,11 +358,12 @@ def _phq_severity(r: Optional[PhqResult]) -> float:
     return {0: 0.0, 1: 0.2, 2: 0.4, 3: 0.75, 4: 0.75}.get(r.score, 1.0)
 
 
-def _trend_of(h: History, attr: str, end: date, base: Optional[tuple[float, float]], direction: str) -> str:
+def _trend_of(h: History, attr: str, end: date, base: Optional[tuple[float, float]], direction: str,
+              skip: frozenset = frozenset()) -> str:
     if base is None:
         return "unknown"
-    now_vals = _day_values(h, attr, end - timedelta(days=6), end)
-    prev_vals = _day_values(h, attr, end - timedelta(days=13), end - timedelta(days=7))
+    now_vals = _day_values(h, attr, end - timedelta(days=6), end, skip)
+    prev_vals = _day_values(h, attr, end - timedelta(days=13), end - timedelta(days=7), skip)
     if len(now_vals) < MIN_DAYS or len(prev_vals) < MIN_DAYS:
         return "unknown"
     change = (fmean(now_vals) - fmean(prev_vals)) / base[1]
@@ -316,16 +381,21 @@ def compute(h: History, end: date, live: bool = False) -> Result:
     w0 = end - timedelta(days=6)
     ck_end = end + timedelta(days=1) if live else end   # live: today's check-ins count straight away
     raw: list[dict] = []
+    skips = left_out(h)
+    in_week = lambda sk: sum(1 for i in range(7) if w0 + timedelta(days=i) in sk)
 
     def daily(name: str, attr: str, nd: int = 1, extra: str = "") -> None:
         group, weight, direction, floor, unit, label, ev = INPUTS[name]
-        base = _mean_sd(_day_values(h, attr, b0, b1), floor, rel=REL_FLOOR.get(name, 0.0))
-        vals = _day_values(h, attr, w0, end)
+        sk = skips.get(name, frozenset())
+        n_out = in_week(sk)
+        extra += _left_note(n_out)
+        base = _mean_sd(_day_values(h, attr, b0, b1, sk), floor, rel=REL_FLOOR.get(name, 0.0))
+        vals = _day_values(h, attr, w0, end, sk)
         recent = fmean(vals) if len(vals) >= MIN_DAYS else None
         z = _z(recent, base, direction)
-        trend = _trend_of(h, attr, end, base, direction)
+        trend = _trend_of(h, attr, end, base, direction, sk)
         if recent is None or base is None:
-            detail = f"Not enough {label.lower()} data yet ({len(vals)} of 7 days)."
+            detail = f"Not enough {label.lower()} data yet ({len(vals)} of 7 days).{_left_note(n_out)}"
         else:
             word = ("higher" if recent > base[0] else "lower") if abs(z) >= 0.5 else "about the same as"
             detail = (f"{label}: {_fmt(recent, unit, nd)} over the last 7 days, {word} than your usual "
@@ -335,7 +405,7 @@ def compute(h: History, end: date, live: bool = False) -> Result:
                           f"{_fmt(base[0], unit, nd)}.{extra}")
         raw.append(dict(name=name, value=_fmt(recent, unit, nd), baseline=_fmt(base[0], unit, nd) if base else None,
                         z=z, severity=severity_from_z(z), trend=trend,
-                        enough=recent is not None and base is not None, detail=detail))
+                        enough=recent is not None and base is not None, detail=detail, left_out=n_out))
 
     daily("sleep", "sleep")
     daily("hrv", "hrv", 0)
@@ -344,9 +414,11 @@ def compute(h: History, end: date, live: bool = False) -> Result:
 
     # Time with crewmates: crew time down OR time alone in own quarters up, whichever is worse.
     g, w, _, floor, unit, label, ev = INPUTS["social_time"]
-    base_c = _mean_sd(_day_values(h, "crew_h", b0, b1), floor, rel=REL_FLOOR["social_time"])
-    base_q = _mean_sd(_day_values(h, "quarters_h", b0, b1), floor, rel=REL_FLOOR["social_time"])
-    vc, vq = _day_values(h, "crew_h", w0, end), _day_values(h, "quarters_h", w0, end)
+    sk = skips.get("social_time", frozenset())
+    n_out_s = in_week(sk)
+    base_c = _mean_sd(_day_values(h, "crew_h", b0, b1, sk), floor, rel=REL_FLOOR["social_time"])
+    base_q = _mean_sd(_day_values(h, "quarters_h", b0, b1, sk), floor, rel=REL_FLOOR["social_time"])
+    vc, vq = _day_values(h, "crew_h", w0, end, sk), _day_values(h, "quarters_h", w0, end, sk)
     rc = fmean(vc) if len(vc) >= MIN_DAYS else None
     rq = fmean(vq) if len(vq) >= MIN_DAYS else None
     zc, zq = _z(rc, base_c, "down"), _z(rq, base_q, "up")
@@ -356,9 +428,11 @@ def compute(h: History, end: date, live: bool = False) -> Result:
     else:
         social_detail = (f"While awake: {rc:.1f} h a day with crewmates (usual {base_c[0]:.1f} h) and "
                          f"{rq:.1f} h alone in your quarters (usual {base_q[0]:.1f} h), last 7 days.")
-    trend_s = _trend_of(h, "crew_h", end, base_c, "down")
+    social_detail += _left_note(n_out_s)
+    trend_s = _trend_of(h, "crew_h", end, base_c, "down", sk)
     raw.append(dict(name="social_time", value=_fmt(rc, unit), baseline=_fmt(base_c[0], unit) if base_c else None,
-                    z=zs, severity=severity_from_z(zs), trend=trend_s, enough=zs is not None, detail=social_detail))
+                    z=zs, severity=severity_from_z(zs), trend=trend_s, enough=zs is not None, detail=social_detail,
+                    left_out=n_out_s))
 
     # Body clock: today's lighting-log assessment (circadian.py), live only.
     if live and h.body_clock_status is not None:
@@ -383,25 +457,31 @@ def compute(h: History, end: date, live: bool = False) -> Result:
                     detail=(f"Mood averaged {recent_mood:.1f}/5 over the last 7 days, vs your usual "
                             f"{mood_base[0]:.1f}." if zm is not None else "Not enough mood check-ins yet.")))
 
-    rts = [p["reaction_test"] for p in base_ck if p.get("reaction_test")]
+    sk_rt = skips.get("reaction_time", frozenset())
+    n_out_rt = in_week(sk_rt)
+    rts = [p["reaction_test"] for p in base_ck if p.get("reaction_test") and _ck_day(p) not in sk_rt]
     rt_base = _mean_sd([t["mean_rt_ms"] for t in rts], INPUTS["reaction_time"][3], MIN_CHECKINS,
                        REL_FLOOR["reaction_time"])
     lapse_base = _mean_sd([t["lapses"] for t in rts], 1.0, MIN_CHECKINS)
-    latest_rt = next((p["reaction_test"] for p in reversed(_checkins_in(h, w0, ck_end)) if p.get("reaction_test")), None)
+    latest_rt = next((p["reaction_test"] for p in reversed(_checkins_in(h, w0, ck_end))
+                      if p.get("reaction_test") and _ck_day(p) not in sk_rt), None)
     if latest_rt and rt_base:
         z_rt = max(_z(latest_rt["mean_rt_ms"], rt_base, "up"), _z(latest_rt["lapses"], lapse_base, "up"))
         rt_detail = (f"Latest reaction test {latest_rt['mean_rt_ms']:.0f} ms with {latest_rt['lapses']} lapses, "
                      f"vs your usual {rt_base[0]:.0f} ms and {lapse_base[0]:.1f} lapses.")
     else:
         z_rt, rt_detail = None, "No reaction test in the last 7 days."
+    rt_detail += _left_note(n_out_rt)
     raw.append(dict(name="reaction_time", value=f"{latest_rt['mean_rt_ms']:.0f} ms" if latest_rt else None,
                     baseline=f"{rt_base[0]:.0f} ms" if rt_base else None, z=z_rt, severity=severity_from_z(z_rt),
-                    trend="unknown", enough=z_rt is not None, detail=rt_detail))
+                    trend="unknown", enough=z_rt is not None, detail=rt_detail, left_out=n_out_rt))
 
     phq = _latest_phq(h, ck_end)
     phq_detail = ("No PHQ questionnaire in the last 14 days." if phq is None else
                   f"{phq.instrument} score {phq.score}/{phq.max_score} on {phq.taken_at[:10]}"
-                  + (" (at or above the screening cut-off)." if phq.screen_positive else "."))
+                  + (" (at or above the screening cut-off)." if phq.screen_positive else ".")
+                  + (f" The PHQ-9 on {phq.item9_at[:10]} had question 9 above 0, so this stays urgent for "
+                     f"{PHQ_WINDOW_DAYS} days." if phq and phq.item9_at else ""))
     raw.append(dict(name="phq", value=f"{phq.score}/{phq.max_score}" if phq else None, baseline=None, z=None,
                     severity=_phq_severity(phq), trend="unknown", enough=phq is not None, detail=phq_detail))
 
@@ -420,7 +500,8 @@ def compute(h: History, end: date, live: bool = False) -> Result:
             signals.append(Signal(name=r["name"], label=label, group=grp, area=AREA[r["name"]], weight=round(wgt, 1),
                                   value=r["value"], baseline=r["baseline"], z=r["z"],
                                   severity=round(r["severity"], 2), points=pts, trend=r["trend"],
-                                  enough_data=r["enough"], detail=r["detail"], evidence=ev))
+                                  enough_data=r["enough"], detail=r["detail"], evidence=ev,
+                                  left_out_days=r.get("left_out", 0)))
     if not any(INPUTS[r["name"]][0] == "watch" and r["enough"] for r in raw):
         group_points["checkin"] *= 100 / GROUP_WEIGHT["checkin"]   # only check-ins have data
     elif not any(INPUTS[r["name"]][0] == "checkin" and r["enough"] for r in raw):
@@ -532,6 +613,10 @@ def method() -> dict:
             f"PHQ-2 >= {PHQ2_ASK_PHQ9}: ask for the PHQ-9 next (two-step screening)",
         ],
         "missing_data": f"an input needs {MIN_DAYS} of 7 days; otherwise its weight is shared within its group",
+        "context_tags": [{"id": k, "label": v["label"], "days": list(v["days"]), "leaves_out": list(v["inputs"]),
+                          "why": v["why"]} for k, v in CONTEXT_TAGS.items()],
+        "context_note": "Optional check-in tags leave those days out of the inputs listed. Mood and the PHQ "
+                        "always count and the safety rules always apply. Others never see which tag was chosen.",
         "note": "The 70/30 split is a team design choice and the weights within groups are our reading of the "
                 "evidence, not published values. Calibrated on simulated crews (tools/check_profile.py).",
         "sources": SOURCES,
