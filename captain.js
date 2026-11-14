@@ -26,7 +26,7 @@
     physical: "Check in with {n} and the Crew Medical Officer about this alert.",
     sleep_debt: "Protect {n}'s next sleep period: no late tasks, quarters in pre-sleep lighting an hour before bed. If you raise it, do it in private and ask how the workload feels.",
     circadian: "Help {n} keep a regular schedule: a similar bedtime each night, pre-sleep lighting in the evening, nothing scheduled late. Raise it privately, as a routine thing.",
-    mood: "Find a private, unhurried moment with {n}. Ask open questions and listen rather than fix. Consider a lighter or more meaningful task, extra time for a private call home, and offer a private conference with the flight surgeon.",
+    mood: "Find a private, unhurried moment with {n}. Ask open questions and listen rather than fix. Consider a lighter or more meaningful task, extra time for a private call home, and offer a private conference with Mission Control.",
     sleep: "Ask {n} how they slept and whether anything is keeping them up. Avoid scheduling them for demanding or late tasks today.",
   };
   const advise = (kind, name) => (ADVICE[kind] || ADVICE.physical).replaceAll("{n}", name);
@@ -36,7 +36,7 @@
   // yourself" makes no sense, so their own panel says who to go to instead.
   const SELF_ADVICE = {
     physical: "This one is about you. Ask the Crew Medical Officer to check on you, and hand over anything that can't wait.",
-    psych: "This one is about you. Protect your own next sleep period, and consider a private talk with the Crew Medical Officer or the flight surgeon.",
+    psych: "This one is about you. Protect your own next sleep period, and consider a private talk with the Crew Medical Officer or Mission Control.",
   };
   const OWN_ROLE = "Commander";
   let ownAid = null;
@@ -75,6 +75,12 @@
       try { crew.get(aid).circ = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/circadian?view=crew`, cfg.mock); }
       catch { crew.get(aid).circ = null; }
     }));
+    // Wellbeing level + affected areas for every crew member (commander first:
+    // the Commander always sees these, never the questionnaire answers).
+    try {
+      const wb = await A.getJSON(cfg.base, `/crew/wellbeing?viewer=${encodeURIComponent(ownAid || "a1")}`, cfg.mock);
+      for (const m of wb.members) { const c = crew.get(m.astronaut_id); if (c) c.wb = m; }
+    } catch { /* mock mode or backend down: panels show without the level */ }
     render();
   }
 
@@ -138,6 +144,14 @@
     $("crewCount").hidden = !total;
   }
 
+  const WB_CLASS = { steady: "nominal", watch: "watch", concern: "alert", urgent: "critical" };
+  function wellbeingLine(wb) {
+    if (!wb || !wb.level) return "";
+    const areas = wb.areas && wb.areas.length ? ` · ${esc(wb.areas.join(", "))}` : "";
+    return `<p class="small">Wellbeing check: <span class="st-${WB_CLASS[wb.level] || "nominal"}"><span class="st-pill">${esc(wb.level)}</span></span>${areas}
+      <span class="muted">· level and areas only, never their answers${wb.visible_because === "commander_first" ? "; they haven't been told you can see it" : ""}</span></p>`;
+  }
+
   function panel(aid, c, { name, self, physical, psych }) {
     const all = physical.concat(psych);
     const worst = all.reduce((w, x) => (!w || SEVERITY_RANK[x.severity] > SEVERITY_RANK[w] ? x.severity : w), null);
@@ -151,6 +165,7 @@
       <h3>Physical</h3>
       ${physical.length ? `<ul class="warns">${physical.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
       <h3>Psychological <span class="muted small">· confidential</span></h3>
+      ${wellbeingLine(c.wb)}
       ${psych.length ? `<ul class="warns">${psych.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
     </article>`;
   }

@@ -133,7 +133,7 @@
 
   function renderRegionInfo() {
     const fields = FIELDS.filter(f => region === "whole_body" || f.region === region).map(f => f.label);
-    const note = region === "head" ? " Sleep, mood and the vision check (in Check-in) belong here."
+    const note = region === "head" ? " Sleep and mood (in Check-in) belong here."
       : region === "skin" ? " Temperature is measured here." : "";
     $("regionInfo").innerHTML = `<h3>${esc(REGION_NAMES[region])}</h3>
       <p class="muted small">${fields.length ? `${esc(fields.join(", "))}.` : "No measurements for this region yet."}${esc(note)}</p>`;
@@ -243,8 +243,8 @@
 
     $("circShare").checked = !!circ.share_with_ground;
     $("circShareNote").textContent = circ.share_with_ground
-      ? "Shared with the flight surgeon (the default). Untick to keep it on board."
-      : "Not shared: the flight surgeon can't see your sleep and lighting summary. Tick to share again.";
+      ? "Shared with Mission Control (the default). Untick to keep it on board."
+      : "Not shared: Mission Control can't see your sleep and lighting summary. Tick to share again.";
   }
 
   // Last night's hours next to the astronaut's usual, as plain numbers.
@@ -345,10 +345,6 @@
     if (f.sleep.value !== "") body.sleep_h = Number(f.sleep.value);
     const symptoms = [...f.querySelectorAll('input[name="symptom"]:checked')].map(i => i.value);
     if (symptoms.length) body.symptoms = symptoms;
-    if (f.amsler.checked || f.acuity.value !== "") {
-      body.vision = { amsler_distortion: f.amsler.checked };
-      if (f.acuity.value !== "") body.vision.acuity_line = Number(f.acuity.value);
-    }
 
     const out = $("checkinResult");
     out.className = "small muted";
@@ -509,14 +505,7 @@
           </div>
         </fieldset>
 
-        <fieldset>
-          <legend>Vision check</legend>
-          <label class="row"><input type="checkbox" name="amsler"> Amsler grid lines look wavy or missing</label>
-          <label class="row">Acuity chart: last line read <input type="number" name="acuity" min="1" max="14" step="1"></label>
-        </fieldset>
-
         <label class="row share"><input type="checkbox" name="share"> Share this check-in with ground</label>
-        <p class="muted small">Off by default. You decide what leaves the spacecraft.</p>
 
         <button type="submit">Submit check-in</button>
         <span id="checkinResult" class="small" aria-live="polite"></span>
@@ -549,7 +538,7 @@
         <label class="row share">
           <input type="checkbox" id="circShare"> Share sleep &amp; lighting with ground
         </label>
-        <p id="circShareNote" class="muted small">The flight surgeon sees this by default. Untick to keep it on board.</p>
+        <p id="circShareNote" class="muted small">Mission Control sees this by default. Untick to keep it on board.</p>
       </div>
       </div>
 
