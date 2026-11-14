@@ -83,6 +83,7 @@
   --ic-mood: #e6e9f0;
   --ic-hrv: #e0705b;                   /* Mars red, lifted */
   --ic-stress: var(--silver);
+  --ic-bone: #e6e9f0;                  /* lighter silver */
   --ic-detail: rgba(11, 11, 11, .55);
   --ic-mercury: var(--mars);
 
@@ -130,6 +131,7 @@ html[data-light="pre_sleep"], html[data-light="off"] {
   --ic-mood: #EDE1DC;
   --ic-hrv: #E0705B;
   --ic-stress: #CDBDB7;
+  --ic-bone: #EDE1DC;
   --ic-detail: rgba(11, 11, 11, .55);
 
   color-scheme: dark;
@@ -319,7 +321,7 @@ a.home:hover { text-decoration: underline; }
    (each cell draws its left and top rule; the strip clips the outer ones, so
    it also works when the cells wrap onto two rows). The charted reading is
    marked by a Mars-red bar along its top edge. */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(max(150px, 25%), 1fr)); gap: 0;   /* at most 4 a row: 8 readings = 4 + 4 */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(max(150px, 20%), 1fr)); gap: 0;   /* at most 5 a row: 9 readings = 5 + 4 */
   border: 1px solid var(--line); border-radius: var(--r-plate); overflow: hidden; background: var(--wash); }
 .tile {
   display: flex; flex-direction: column; justify-content: space-between; gap: 6px; text-align: left;
@@ -356,6 +358,7 @@ a.home:hover { text-decoration: underline; }
 .vi-mood  { color: var(--ic-mood); }
 .vi-hrv   { color: var(--ic-hrv); }
 .vi-stress { color: var(--ic-stress); }
+.vi-bone  { color: var(--ic-bone); }
 
 /* The vitals card stretches to the body card's height (same grid row); the
    chart takes all the height left under the strip. The canvas is absolutely
