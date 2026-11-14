@@ -179,6 +179,18 @@ version; the older notes (SANS, fever, orthostatic, astronaut-first sharing) are
   `GET /checkin/questions` gains `context` (question, options, note).
 - **Safety fix:** a PHQ-9 with question 9 above 0 now keeps the level at urgent for the
   14-day PHQ window. Before, a routine PHQ-2 the next day could clear it.
+- **Decided (Stefan, 2026-11-14):**
+  - **The psychological side never shows on the watch.** Backend: `POST /ask` answers
+    questions about feelings on board with a pointer to a person (crisis words: "tell someone
+    in person now"). They're never sent to Claude and never get a level or score.
+  - **Hygiene in an emergency:** the commander, CMO and Mission Control may see the current
+    room through `GET /astronauts/{id}/location` during an emergency (active critical alert or
+    urgent level), hygiene included. That's the one exception to the hygiene rule, and the
+    astronaut's `seen_by` lists who looked.
+- **@Luca, watch:** please **remove the "Mood" row** from the vitals page (`ContentView.swift`,
+  the `VitalRow(label: "Mood", ...)` line). Mood is a check-in answer, and the watch now shows
+  no psychological data at all. Keep decoding `mood_1to5` (the vitals shape still has it).
+  Your filter on psychological alerts in `MonitorModel.swift` stays as it is.
 - **Team decisions needed:**
   1. **Time with crewmates in the score.** Stefan asked for every input to feed the profile,
      so it carries 12 of 100 points now. Luca's habitat note said display-only (weak evidence).
