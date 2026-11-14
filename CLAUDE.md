@@ -42,13 +42,14 @@ every endpoint and payload shape.
   condition newly matches. `client.messages.parse()` with a Pydantic model
   `Insight(why, trend, recommended_action)`. Reads `ANTHROPIC_API_KEY` from the
   environment. **If the key is missing or the call fails, return a canned fallback
-  Insight so the demo never breaks.** (Model id to be confirmed against live
-  Anthropic docs before implementation.)
+  Insight so the demo never breaks.** Model `claude-sonnet-5-5` (verified real,
+  $2/$10 per MTok; `claude-haiku-5-5` for speed at $0.10/$0.50). Override with
+  the `INSIGHT_MODEL` env var.
 - Watch "Simulate exertion" button (debug builds only) ramps heart rate so the
   presenter can trigger an alert live.
 - Demo runs on ONE Mac: backend + watchOS Simulator + web app. The Simulator
-  reaches the backend at `http://localhost:8000` (needs `NSAllowsLocalNetworking`
-  in the watch app's Info.plist).
+  reaches the backend at `http://localhost:8000` — **no `NSAllowsLocalNetworking`
+  or ATS exception needed**, verified end to end on 2026-11-14.
 
 ## Condition profiles (thresholds are PLACEHOLDERS — tuned later)
 
