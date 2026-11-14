@@ -170,6 +170,15 @@ version; the older notes (SANS, fever, orthostatic, astronaut-first sharing) are
   with PHQ-2 = 3 → **concern** → the commander's console gets the notice; a2's own page says
   it's with the commander. (3) The commander releases it → a2 sees the assessment and
   suggestions. (4) `POST /debug/scenario {a3, "strain"}` → **urgent**. `clear` resets.
+- **Done: optional check-in tags (`c7773a8`).** `POST /checkin` takes
+  `context: ["ill" | "new_medication" | "period"]`. Those days are left out of the body
+  signals they distort (a cold, a new sleep pill, the late menstrual cycle lowering HRV), so
+  they aren't read as a change in wellbeing. Mood and the PHQ always count and the safety
+  rules always apply, so a tag can't hide a warning. Others only see "N of the last 7 days
+  left out (marked in a check-in)", never which tag. Signals gain `left_out_days`;
+  `GET /checkin/questions` gains `context` (question, options, note).
+- **Safety fix:** a PHQ-9 with question 9 above 0 now keeps the level at urgent for the
+  14-day PHQ window. Before, a routine PHQ-2 the next day could clear it.
 - **Team decisions needed:**
   1. **Time with crewmates in the score.** Stefan asked for every input to feed the profile,
      so it carries 12 of 100 points now. Luca's habitat note said display-only (weak evidence).
@@ -191,7 +200,9 @@ version; the older notes (SANS, fever, orthostatic, astronaut-first sharing) are
   shared among the other check-in inputs. (3) Commander page: a **Release** button on
   unreleased psychological alerts, and the psych report text. (4) Self-check: when the
   wellbeing answer has `withheld: true`, show "your commander has this first" instead of
-  a level. Your one-question check-in already matches the backend (mood, sleep,
+  a level. (5) An optional "Anything that might affect your body this week?" step with
+  the three `context` options from `GET /checkin/questions`, and its note under it.
+  Your one-question check-in already matches the backend (mood, sleep,
   symptoms, PHQ-2).
 - **Blocked on:** nothing.
 
