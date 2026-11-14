@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stream check · AHM</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!--
+    Phase 2 placeholder: connects to /astronauts/{id}/stream over SSE and
+    prints every event. The real Self-check and Ground views come later.
+    Open with ?mock to run without a backend (fake events generated in-page).
+  -->
+  <header class="bar">
+    <h1><a href="index.html" class="home">Astronaut Health Monitor</a> <span class="muted">· stream check</span></h1>
+    <form id="controls" class="controls">
+      <label>Backend <input id="base" value="http://localhost:8000" size="22"></label>
+      <label>Astronaut
+        <select id="aid">
+          <option>a1</option><option>a2</option><option>a3</option><option>a4</option>
+        </select>
+      </label>
+      <label>View
+        <select id="view">
+          <option value="crew">crew (Self-check, live)</option>
+          <option value="ground">ground (delayed)</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="mock"> Mock data</label>
+      <button type="submit">Connect</button>
+    </form>
+  </header>
+
+  <section class="status" aria-live="polite">
+    <span id="conn" class="pill pill-off">disconnected</span>
+    <span id="viewLabel"></span>
+    <span id="mission"></span>
+    <span>Data age: <strong id="age">—</strong></span>
+  </section>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Latest vitals <span class="muted">vs. personal baseline</span></h2>
+      <table id="vitals">
+        <thead><tr><th>Signal</th><th>Now</th><th>Baseline</th><th>Δ</th></tr></thead>
+        <tbody><tr><td colspan="4" class="muted">Waiting for a <code>vitals</code> event…</td></tr></tbody>
+      </table>
+      <p class="muted small" id="vitalsMeta"></p>
+    </section>
+
+    <section class="card">
+      <h2>Alerts</h2>
+      <ul id="alerts" class="alerts"><li class="muted">No alerts yet.</li></ul>
+    </section>
+
+    <section class="card wide">
+      <h2>Raw events <button type="button" id="clearLog" class="link">clear</button></h2>
+      <pre id="log" class="log"></pre>
+    </section>
+  </main>
+
+  <script src="mock.js"></script>
+  <script src="common.js"></script>
+  <script src="stream-check.js"></script>
+</body>
+</html>
