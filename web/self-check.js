@@ -76,6 +76,117 @@
     renderTiles();
     pushChart();
     renderAge();
+    renderSleep(v);
+  }
+
+  // ---- circadian (GET /astronauts/{id}/circadian, PROVISIONAL) --------------
+  // The lighting log comes from the backend. If the endpoint is missing, the
+  // card falls back to the vitals-based note plus the static guidance.
+
+  const CIRC_REFRESH_MS = 60000;
+  const CHART_START_H = 20, CHART_SPAN_MIN = 14 * 60;   // 20:00 -> 10:00 station time (UTC)
+  let circ = null;
+
+  async function loadCircadian() {
+    try {
+      circ = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/circadian?view=crew`, cfg.mock);
+    } catch {
+      circ = null;
+    }
+    renderCircadian();
+  }
+
+  function renderCircadian() {
+    const live = !!circ;
+    $("circLive").hidden = !live;
+    $("lightChip").hidden = !live;
+    $("staticEvidence").hidden = live;   // the live card carries its own evidence line
+    if (!live) { $("tipsBox").open = true; return; }
+
+    const L = circ.lighting || {};
+    const since = L.since ? ` · since ${utcTime(L.since)}` : "";
+    $("lightChip").textContent = L.mode === "off" ? `Lights off${since}`
+      : `${A.LIGHTING_NAMES[L.mode] || L.mode} · ${L.cct_k} K${since}`;
+    $("lightChip").className = `light-chip lc-${L.mode}`;
+
+    const cardText = A.circadianCardText(circ.card);
+    const el = $("circCard");
+    el.textContent = cardText || `Nothing stands out over the last ${circ.summary?.nights ?? 7} nights.`;
+    el.className = `circ-card ${cardText ? "watch" : "muted"}`;
+
+    $("nightsChart").innerHTML = (circ.nights || []).map(nightRow).join("") + axisRow();
+
+    const rec = circ.recommendation;
+    $("circRec").innerHTML = rec ? `${esc(rec.text)} <a href="${esc(rec.source_url)}" target="_blank" rel="noopener" class="small">${esc(rec.source)}</a>` : "";
+    const ev = circ.evidence;
+    $("circEvidence").innerHTML = ev ? `${esc(ev.text)} <a href="${esc(ev.source_url)}" target="_blank" rel="noopener">${esc(ev.source)}</a>` : "";
+
+    $("circShare").checked = !!circ.share_with_ground;
+    $("circShareNote").textContent = circ.share_with_ground
+      ? "Shared: the flight surgeon can see your sleep and lighting summary. You can turn this off any time."
+      : "Off by default. Your sleeping-quarters data stays on board unless you choose otherwise.";
+  }
+
+  // Minutes from 20:00 UTC, so bedtimes either side of midnight line up.
+  function chartMin(t) {
+    const d = new Date(t);
+    return ((d.getUTCHours() - CHART_START_H + 24) % 24) * 60 + d.getUTCMinutes();
+  }
+  const pct = m => `${Math.max(0, Math.min(100, (m / CHART_SPAN_MIN) * 100)).toFixed(2)}%`;
+
+  function nightRow(n) {
+    const start = chartMin(n.bedtime);
+    const len = n.sleep_h * 60;
+    const day = new Date(n.night_of + "T00:00:00Z").toLocaleDateString([], { weekday: "short", timeZone: "UTC" });
+    const bright = n.bright_light_last_hour
+      ? `<span class="n-bright" style="left:${pct(start - 60)};width:${pct(60)}" title="Bright light in the last hour before sleep"></span>` : "";
+    return `<div class="n-row">
+      <span class="n-day small muted">${esc(day)}</span>
+      <span class="n-track">${bright}<span class="n-bar" style="left:${pct(start)};width:${pct(len)}"
+        title="${esc(utcTime(n.bedtime))} → ${esc(utcTime(n.wake_time))}, ${n.sleep_h} h"></span></span>
+      <span class="n-h small">${n.sleep_h} h</span></div>`;
+  }
+
+  function axisRow() {
+    const ticks = [20, 0, 4, 8].map(h => {
+      const m = ((h - CHART_START_H + 24) % 24) * 60;
+      return `<span style="left:${pct(m)}">${String(h).padStart(2, "0")}:00</span>`;
+    }).join("");
+    return `<div class="n-row n-axis"><span class="n-day"></span><span class="n-track small muted">${ticks}</span><span class="n-h small muted">UTC</span></div>`;
+  }
+
+  $("circShare").addEventListener("change", async e => {
+    const want = e.target.checked;
+    e.target.disabled = true;
+    try {
+      await A.putJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/circadian/sharing`, { share_with_ground: want }, cfg.mock);
+      if (circ) circ.share_with_ground = want;
+    } catch (err) {
+      e.target.checked = !want;
+      $("circShareNote").textContent = `Could not change sharing: ${err.message}`;
+      e.target.disabled = false;
+      return;
+    }
+    e.target.disabled = false;
+    renderCircadian();
+  });
+
+  const utcTime = t => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC", hour12: false });
+
+  loadCircadian();
+  setInterval(loadCircadian, CIRC_REFRESH_MS);
+
+  // Light & sleep card: compare last night against this astronaut's own usual.
+  function renderSleep(v) {
+    const h = v.sleep_h_last_night, base = v.baseline?.sleep_h_last_night;
+    const el = $("sleepNote");
+    if (typeof h !== "number") { el.textContent = "No sleep data yet."; el.className = "sleep-note muted"; return; }
+    const usual = typeof base === "number" ? ` (your usual: ${base} h)` : "";
+    const short = h < 6 || (typeof base === "number" && h < base * 0.85);
+    el.className = `sleep-note ${short ? "short" : "muted"}`;
+    el.textContent = short
+      ? `Last night: ${h} h${usual}, shorter than usual. Tonight, protect the hour before sleep.`
+      : `Last night: ${h} h${usual}, close to your usual. Keep the routine.`;
   }
 
   function onAlert(a) {
