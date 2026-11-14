@@ -192,3 +192,43 @@ Append freely. Dated bullets. Unsorted is fine.
   mode. **Ethics line for the pitch:** "It's private by default: the flight surgeon
   sees it only if the astronaut chooses. It suggests, never orders, and never changes
   the lights by itself." It ties straight back to the under-reporting point.
+## 2026-11-14 — judge on business: draft answers (see `events/2026-11-14-judge-business.md`)
+
+A judge asked for UVP / what for / who for / why this product / funding. **Drafts
+to tighten, not final claims.**
+
+- **Unique value proposition (one line):** *"An onboard health companion that judges
+  each astronaut against their own normal and tells them, in seconds, whether this can
+  wait for Houston or needs action now, while the astronaut stays in control of what
+  is shared."*
+- **What is it for:** spotting health changes early, on board, when the doctor is
+  minutes to hours away. The questions it answers are "is this normal *for me*?" and
+  "can this wait for Houston?"
+- **Who is it for:**
+  - *User:* the astronaut, as first responder. The flight surgeon gets a delayed,
+    consented view.
+  - *Customers:* space agencies running long missions (Artemis, Mars), commercial
+    space stations and private astronaut missions.
+  - *Earth spin-offs:* Antarctic and polar stations, submarines, offshore rigs,
+    remote clinics, which are the same "doctor is far away" problem.
+- **Why this product (vs others):** personal baseline instead of population
+  thresholds; the act-now vs wait verdict from real light-time; SANS early warning
+  between OCT scans; privacy by design (which also fixes under-reporting); built on
+  NASA's own hazards, risks and lighting hardware. **Many teams build dashboards, but
+  few make a judgement.**
+- **"Why use data, not only where":** on the data slide, every source gets a *why*:
+  JPL/NASA delay data decides act-now vs wait; NASA HRP risks decide which conditions
+  matter; NASA's lighting modes are the countermeasure we recommend; and so on.
+- **Funding path (say "possible routes", don't claim any):** prizes from startup
+  competitions (Space Apps itself, then space-startup competitions), grants (EU
+  Horizon Europe / EIC, ESA business-incubation programmes, check which ones cover
+  Romania), space-health research funding (e.g. TRISH, NASA-funded), and later
+  investors. Revenue idea: a licence or subscription per crew or per mission for
+  commercial stations, plus a B2B version for remote Earth workforces. *Check
+  eligibility before naming a specific programme on a slide.*
+- **Ahead of the market (closing line):** *"Today the ISS can call Houston. On the
+  way to Mars, help is 20 minutes away each way. Longer flights won't just benefit
+  from onboard self-assessment, they'll require it."*
+- **Eyes, say it precisely:** fluid shift deforms the eye (**SANS**, what we track);
+  radiation clouds the lens (**cataracts**, NASA astronaut studies). Both are threats
+  to sight that grow with mission length. Don't say "radiation deforms the eyeball".

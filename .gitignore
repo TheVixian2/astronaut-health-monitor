@@ -18,3 +18,8 @@ DerivedData/
 build/
 *.xcuserstate
 *.xcscmblueprint
+
+# Local database (never commit)
+backend/data/
+*.db
+*.sqlite3

@@ -116,9 +116,67 @@ Branch: `backend`
     with its source link, a lighting chip ("Pre-sleep · 2700K"), a "share with
     ground" toggle (off by default), and optionally a 7-night bedtime chart from
     `nights`. In the Ground view, a 403 should read "Kept private by the astronaut".
-- **Next:** `tools/simulate_crew.py`. Not building the condition engine until the
-  post-pivot spec lands. **Note for the spec:** `sans` builds up over days, so
-  `orthostatic` is the only condition that can be triggered live in the demo.
+- **Next:** `tools/simulate_crew.py`. **The post-pivot spec has LANDED** —
+  `docs/api-spec.md` is reconciled with the running backend as of 2026-11-14, so
+  the condition engine is unblocked.
+- **@stefanalbu2010-byte's point about `sans` is important and needs solving:**
+  it builds up over days, so it can't be triggered live — but the two-condition
+  contrast (`orthostatic` = act on board now vs `sans` = ground will advise) is
+  the entire pitch. We cannot show only one. Fix: **seed `sans` into a
+  near-trigger state** via `--seed-baseline`, so a single check-in during the
+  demo tips it over. The slow build-up is the point; we just start the clock
+  six weeks in.
+
+- **NEW TASK (Luca, 2026-11-14) — persistence. Nothing is stored today.**
+  `ingest()` overwrites `state.real_hr` each tick, so there is no history
+  anywhere. Consequences: trends cannot be computed, charts have nothing to
+  draw, the SANS vision trend and sleep debt are faked by seeded RNG, and
+  Claude's insight only ever sees one instant.
+
+  **Use SQLite** — `sqlite3` is in the Python stdlib, so no new dependency, it
+  survives restarts, and one file is easy to reset between demo runs. Not
+  Postgres (needs a server), not JSON files (corrupt on concurrent writes).
+
+  Minimum useful schema:
+
+  ```sql
+  CREATE TABLE samples (            -- one row per tick, per astronaut
+    astronaut_id TEXT NOT NULL,
+    ts           TEXT NOT NULL,     -- ISO 8601 UTC
+    heart_rate_bpm REAL, systolic_mmhg REAL, diastolic_mmhg REAL,
+    spo2_pct REAL, temp_c REAL, resp_rate_bpm REAL,
+    sleep_h_last_night REAL, mood_1to5 INTEGER,
+    source       TEXT NOT NULL,     -- 'real' | 'simulated'
+    PRIMARY KEY (astronaut_id, ts)
+  );
+  CREATE INDEX idx_samples_recent ON samples (astronaut_id, ts DESC);
+
+  CREATE TABLE alerts (             -- so an alert survives a restart
+    id TEXT PRIMARY KEY, astronaut_id TEXT NOT NULL, profile TEXT NOT NULL,
+    severity TEXT NOT NULL, started_at TEXT NOT NULL, cleared_at TEXT,
+    insight_json TEXT               -- cache it; never call Claude twice per alert
+  );
+
+  CREATE TABLE checkins (           -- vision + mood history = the SANS trend
+    astronaut_id TEXT NOT NULL, ts TEXT NOT NULL, payload_json TEXT NOT NULL,
+    PRIMARY KEY (astronaut_id, ts)
+  );
+  ```
+
+  **What it unlocks, in priority order:**
+  1. **Baseline computed from stored samples** instead of invented — days 7-14
+     becomes a real `SELECT`, which is the project's whole thesis made true.
+  2. **SANS vision trend** — a real slope across stored check-ins. Also how the
+     seed-to-near-trigger fix above gets implemented honestly.
+  3. **Charts** — the web app's Chart.js finally has series to draw.
+  4. **Insight caching** — `insight_json` means one Claude call per alert even
+     across restarts. Matters more than usual since we have no API credits.
+  5. **Sleep debt across nights** — real rows, not seeded RNG.
+
+  **Keep it demo-safe:** write to `backend/data/ahm.db` (already gitignored) and
+  add `--reset-db` alongside `--seed-baseline` so a bad run can be wiped in one
+  command before presenting. Writes must never block the request path — the demo
+  degrading because of a disk write would be a self-inflicted wound.
 - **Blocked on:** nothing.
 
 ## Presentation — dbm711
