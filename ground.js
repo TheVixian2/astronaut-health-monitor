@@ -1,4 +1,4 @@
-// Ground view: the flight surgeon. Whole crew at once, every stream opened with
+// Ground view: Mission Control. Whole crew at once, every stream opened with
 // view=ground, so everything arrives one light-time late (the backend delays it).
 //
 // The "signals in transit" strip is a DEMO OVERLAY: it polls the undelayed
@@ -189,7 +189,7 @@
   }
 
   const CARD_FIELDS = [
-    ["heart_rate_bpm", "HR", "bpm"], ["systolic_mmhg", "SYS", "mmHg"], ["spo2_pct", "SpO₂", "%"],
+    ["heart_rate_bpm", "HR", "bpm"], ["spo2_pct", "SpO₂", "%"],
     ["temp_c", "Temp", "°C"], ["resp_rate_bpm", "Resp", "/min"],
   ];
 

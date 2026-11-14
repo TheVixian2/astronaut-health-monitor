@@ -12,7 +12,7 @@
     crew:    { password: "mars2026", role: "crew",    home: "self-check.html", label: "Astronaut" },
     captain: { password: "mars2026", role: "captain", home: "captain.html",    label: "Commander" },
     doctor:  { password: "mars2026", role: "doctor",  home: "doctor.html",     label: "Crew Medical Officer" },
-    ground:  { password: "mars2026", role: "ground",  home: "ground.html",     label: "Flight surgeon" },
+    ground:  { password: "mars2026", role: "ground",  home: "ground.html",     label: "Mission Control" },
     demo:    { password: "mars2026", role: "demo",    home: "index.html",      label: "Presenter (all views)" },
   };
 

@@ -37,7 +37,7 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   | `crew` | Astronaut | `self-check.html` | that only |
   | `captain` | Commander | `captain.html` | that only |
   | `doctor` | Crew Medical Officer | `doctor.html` | that only |
-  | `ground` | Flight surgeon | `ground.html` | + `stream-check.html` |
+  | `ground` | Mission Control | `ground.html` | + `stream-check.html` |
   | `demo` | Presenter | `index.html` | everything, incl. `demo.html` |
 
   `PAGE_ROLES` in `auth.js` decides who may open what; a wrong role is sent to
@@ -115,7 +115,7 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   nothing. Without the endpoint the card falls back to
   the static guidance. `card` is accepted as a string (backend) or an object
   (spec) via `AHM.circadianCardText()`.
-- `ground.html` / `ground.js` — the flight surgeon: one `view=ground` stream
+- `ground.html` / `ground.js` — Mission Control: one `view=ground` stream
   per astronaut, crew cards (status from received alerts, vitals vs baseline,
   HR sparkline, data age), received-alerts feed, real light time always in the
   header. The **"signals in transit" strip is a demo overlay**: it polls the
@@ -137,7 +137,7 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - **Self-check** — the astronaut, on a station tablet. Their own vitals, a
   clickable body figure (regions: heart, head, lungs, skin, whole_body), the
   check-in form. **Not delayed.**
-- **Ground** — the flight surgeon. The whole crew at once, **delayed by the
+- **Ground** — Mission Control. The whole crew at once, **delayed by the
   mission's one-way light time** (use `stream?view=ground`).
 
 ## Conventions
@@ -158,6 +158,6 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - The long Claude explanation (`insight.why` / `trend` / `recommended_action`)
   is shown **here only** — the watch gets just the one-line `onboard_action`.
 - `insight` can be `null`; render the alert without it rather than waiting.
-- Always show which view is active and how stale it is. A flight surgeon looking
+- Always show which view is active and how stale it is. Mission Control looking
   at 11-minute-old data must be able to tell.
 - Decision support, never a diagnosis. Keep the wording suggestive, not clinical.
