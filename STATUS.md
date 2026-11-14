@@ -61,8 +61,16 @@ Branch: `backend`
   - `/checkin` returns `202 {"accepted": true}`. The spec gives no response shape.
 - **Luca, please confirm in the spec:** (1) insight delivered by re-sending the
   alert event with the same id, (2) the `/checkin` and `/debug/scenario` responses.
-- **Next:** `insight_service.py` (with the canned fallback), then `tools/simulate_crew.py`.
-  Not building the condition engine until the post-pivot spec lands.
+- **Done — `backend/insight_service.py`:** `generate_insight(profile, vitals, baseline, ...)`
+  calls `claude-sonnet-5-5` via `messages.parse()` and returns `Insight(why, trend,
+  recommended_action)`. It never raises: no key, timeout, API error or refusal all
+  return the fallback. Tested the no-key and bad-key paths; **not yet tested with a
+  real key** (none on this machine). Profile-agnostic, so it works for any post-pivot
+  condition. Not wired into `main.py` yet — the mock's fake alerts keep canned text
+  until the condition engine exists.
+- **Next:** `tools/simulate_crew.py`. Not building the condition engine until the
+  post-pivot spec lands. **Note for the spec:** `sans` builds up over days, so
+  `orthostatic` is the only condition that can be triggered live in the demo.
 - **Blocked on:** nothing.
 
 ## Presentation — dbm711
