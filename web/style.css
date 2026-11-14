@@ -277,3 +277,43 @@ a.choice:hover { border-color: var(--accent); }
 .private-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-bottom: 8px; }
 .tile.masked { cursor: default; }
 .tile.masked .t-value { font-size: 15px; color: var(--muted); padding: 4px 0; }
+
+/* ---- login + area menus --------------------------------------------------- */
+.login-page { display: grid; place-items: center; min-height: 100vh; }
+.login-box { width: min(360px, 100%); }
+.login-box h1 { margin-bottom: 4px; }
+.login-form { display: grid; gap: 12px; margin: 16px 0; }
+.login-form label { display: grid; gap: 4px; color: var(--muted); }
+.login-form input { padding: 8px 10px; }
+.login-form button { padding: 8px 14px; }
+
+.user { color: var(--muted); }
+.pick { margin: 20px 0 10px; }
+.areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.area-choice { display: block; color: inherit; text-decoration: none; padding: 20px; border-top: 4px solid var(--line); }
+.area-choice:hover { border-color: var(--accent); }
+.area-choice p { margin: 0; }
+.area-choice.onboard { border-top-color: var(--ok); }
+.area-choice.ground { border-top-color: var(--accent); }
+.area-tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  padding: 2px 8px; border-radius: 999px; }
+.onboard .area-tag, .area-onboard .area-tag { background: rgba(60, 207, 142, .15); color: var(--ok); }
+.ground .area-tag, .area-ground .area-tag { background: rgba(106, 168, 255, .15); color: var(--accent); }
+
+/* the menu bar at the top of each area */
+.appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 0;
+  border-bottom: 1px solid var(--line); }
+.appnav .brand { font-weight: 800; color: var(--text); text-decoration: none; letter-spacing: .04em; }
+.appnav .menu { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.appnav .menu a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; }
+.appnav .menu a:hover { color: var(--text); background: rgba(255,255,255,.05); }
+.appnav .menu a[aria-current="page"] { color: var(--text); background: var(--panel); box-shadow: inset 0 -2px 0 var(--accent); }
+.area-onboard .menu a[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--ok); }
+.appnav .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px;
+  font-weight: 700; text-align: center; background: var(--sev-alert); color: #1a1205; }
+.embedded .appnav { display: none; }   /* inside demo.html the panes show content only */
+
+/* on-board tabs: a tab with a single card uses the full width */
+.sc-grid > .solo { grid-column: 1 / -1; }
+.checkin-card .checkin { max-width: 640px; }
+.area-choice h2 { font-size: 18px; text-transform: none; letter-spacing: 0; margin: 10px 0 6px; }

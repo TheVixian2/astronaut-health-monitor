@@ -4,36 +4,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Astronaut Health Monitor</title>
+  <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="bar"><h1>Astronaut Health Monitor</h1></header>
-  <main class="landing">
-    <a class="card choice" data-href="self-check.html" href="self-check.html">
-      <h2>Self-check</h2>
-      <p>The astronaut's tablet. Your vitals against your own baseline, live.</p>
+  <header class="bar">
+    <h1>Astronaut Health Monitor</h1>
+    <div class="user small"><span data-user></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+  </header>
+
+  <p class="muted pick">Where are you working from?</p>
+  <main class="areas">
+    <a class="card area-choice onboard" data-href="self-check.html" href="self-check.html">
+      <span class="area-tag">On board</span>
+      <h2>Astronaut console</h2>
+      <p>On the spacecraft. Your own vitals against your baseline, live: alerts,
+        check-in, sleep &amp; light.</p>
     </a>
-    <a class="card choice" data-href="ground.html" href="ground.html">
-      <h2>Ground</h2>
-      <p>The flight surgeon. Whole crew, delayed by light time.</p>
-    </a>
-    <a class="card choice" data-href="demo.html" href="demo.html">
-      <h2>Live demo</h2>
-      <p>Self-check and Ground side by side, for the pitch.</p>
-    </a>
-    <a class="card choice" data-href="stream-check.html" href="stream-check.html">
-      <h2>Stream check</h2>
-      <p class="muted">Debug: raw SSE events for one astronaut.</p>
+    <a class="card area-choice ground" data-href="ground.html" href="ground.html">
+      <span class="area-tag">Ground</span>
+      <h2>Flight surgeon</h2>
+      <p>Mission control. The whole crew at once, arriving one light-time late.</p>
     </a>
   </main>
+
   <p class="muted small landing-note">
-    No backend running? Add <code>?mock</code> to the address, or
-    <a href="index.html?mock">use mock data</a>.
+    For the pitch: <a data-href="demo.html" href="demo.html">live demo, both side by side</a>.
+    No backend running? <a href="index.html?mock">Use mock data</a>.
   </p>
   <script src="common.js"></script>
-  <script>
-    // Keep ?mock / ?base / ?aid when moving between pages.
-    document.querySelectorAll("a[data-href]").forEach(a => { a.href = AHM.linkWithSettings(a.dataset.href); });
-  </script>
 </body>
 </html>

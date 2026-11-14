@@ -26,7 +26,7 @@
 
   $("aid").value = cfg.aid;
   $("aid").addEventListener("change", () => {
-    location.href = A.linkWithSettings("self-check.html", { aid: $("aid").value });
+    location.href = A.linkWithSettings("self-check.html", { aid: $("aid").value }) + location.hash;
   });
 
   document.querySelectorAll("#body .region").forEach(g => {
@@ -376,6 +376,8 @@
 
   function renderHistory() {
     const ul = $("history");
+    $("alertCount").textContent = alerts.size;   // badge on the "Alerts" menu item
+    $("alertCount").hidden = !alerts.size;
     if (!alerts.size) { ul.innerHTML = '<li class="muted">No alerts this session.</li>'; return; }
     ul.innerHTML = [...alerts.values()].reverse().map(a => `
       <li class="alert sev-${esc(a.severity)}">
@@ -444,4 +446,24 @@
     const d = t instanceof Date ? t : new Date(t);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
+
+  // ---- on-board menu: one tab visible at a time ----------------------------
+  // The URL hash is the tab (#health, #checkin, #sleep, #alerts), so a tab can
+  // be linked to and the browser's back button works. Kept at the end of the
+  // file: it touches `chart`, which must already be declared.
+  const TABS = ["health", "checkin", "sleep", "alerts"];
+
+  function showTab() {
+    const want = location.hash.slice(1);
+    const tab = TABS.includes(want) ? want : "health";
+    document.querySelectorAll("[data-tab]").forEach(s => { s.hidden = s.dataset.tab !== tab; });
+    document.querySelectorAll("[data-tab-link]").forEach(a => {
+      if (a.dataset.tabLink === tab) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    if (tab === "health" && chart) chart.resize();   // canvas was hidden; refit it
+  }
+
+  window.addEventListener("hashchange", showTab);
+  showTab();
 })();

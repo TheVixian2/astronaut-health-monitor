@@ -3,15 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Self-check · AHM</title>
+  <title>On board · AHM</title>
+  <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="selfcheck">
+  <!-- On-board menu. Each item shows one tab of this page; the alert banner
+       below stays visible whichever tab is open. Hidden inside demo.html. -->
+  <nav class="appnav area-onboard" aria-label="On board">
+    <a class="brand" data-href="index.html" href="index.html" title="Choose area">AHM</a>
+    <span class="area-tag">On board</span>
+    <div class="menu">
+      <a href="#health" data-tab-link="health">My health</a>
+      <a href="#checkin" data-tab-link="checkin">Check-in</a>
+      <a href="#sleep" data-tab-link="sleep">Sleep &amp; light</a>
+      <a href="#alerts" data-tab-link="alerts">Alerts <span id="alertCount" class="count" hidden></span></a>
+    </div>
+    <div class="user small"><span data-user></span> · <a data-href="index.html" href="index.html">Switch area</a> · <button type="button" class="link" data-signout>Sign out</button></div>
+  </nav>
+
   <header class="bar">
     <div>
-      <h1><a href="index.html" class="home">Astronaut Health Monitor</a> <span class="muted">· Self-check</span></h1>
+      <h1>Astronaut console</h1>
       <div class="who"><strong id="name">…</strong> <span class="muted" id="role"></span></div>
     </div>
     <div class="status" aria-live="polite">
@@ -29,7 +44,7 @@
   <section id="banner" class="banner" hidden aria-live="assertive"></section>
 
   <main class="sc-grid">
-    <section class="card body-card">
+    <section class="card body-card" data-tab="health">
       <h2>Body <span class="muted">tap a region</span></h2>
       <svg id="body" viewBox="0 0 200 400" role="group" aria-label="Body regions">
         <g class="region" data-region="skin" tabindex="0" role="button" aria-label="Skin">
@@ -56,7 +71,7 @@
       <div id="regionInfo" class="region-info"></div>
     </section>
 
-    <section class="card">
+    <section class="card" data-tab="health">
       <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
       <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
       <div class="chart-wrap">
@@ -66,7 +81,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card checkin-card solo" data-tab="checkin">
       <h2>Check-in</h2>
       <form id="checkin" class="checkin">
         <fieldset>
@@ -112,7 +127,7 @@
     <!-- Light & sleep: suggestion from our mentor/judge (events/2026-11-14-mentor-judges.md).
          Live data from GET /astronauts/{id}/circadian (PROVISIONAL in the spec);
          if that endpoint is missing, only the static guidance below is shown. -->
-    <section class="card sleep-light">
+    <section class="card sleep-light solo" data-tab="sleep">
       <h2>Light &amp; sleep <span id="lightChip" class="light-chip" hidden></span></h2>
 
       <!-- The console is a shared screen on board, so personal sleep data
@@ -165,7 +180,7 @@
       </div>
     </section>
 
-    <section class="card wide">
+    <section class="card wide" data-tab="alerts">
       <h2>Alert history</h2>
       <ul id="history" class="alerts"><li class="muted">No alerts this session.</li></ul>
     </section>

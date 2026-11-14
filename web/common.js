@@ -170,4 +170,11 @@
     verdict, deltaPct, dur, fmt, esc, profileName,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
+
+  // ---- page chrome shared by every page (menus, user, sign-out) -------------
+  // Links marked data-href keep ?mock / ?base / ?aid when moving between pages.
+  document.querySelectorAll("a[data-href]").forEach(a => { a.href = linkWithSettings(a.dataset.href); });
+  const who = window.AHMAuth && window.AHMAuth.session();
+  document.querySelectorAll("[data-user]").forEach(el => { el.textContent = who ? `Signed in as ${who.user}` : ""; });
+  document.querySelectorAll("[data-signout]").forEach(b => b.addEventListener("click", () => window.AHMAuth.logout()));
 })();

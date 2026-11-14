@@ -28,8 +28,24 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 
 ## Files
 
-- `index.html` — landing page linking the views. Keeps `?mock`/`?base`/`?aid`.
-- `self-check.html` / `self-check.js` — the astronaut view: alert banner with
+- `login.html` + `auth.js` — **login gate, placeholder only.** One universal
+  account, checked in the browser: user `crew`, password `mars2026` (change
+  them at the top of `auth.js`). Every page loads `auth.js` first in `<head>`
+  and is redirected to the login page when signed out, then sent back to
+  where it was going (`?next=`). Session lasts 12 h in `localStorage`. **Not
+  security:** the password is readable in the code and the backend has no
+  auth. The repo goes public at submission — don't reuse a real password.
+- `index.html` — after login: choose **On board** or **Ground**, plus a small
+  link to the live demo. Keeps `?mock`/`?base`/`?aid`.
+- **Two areas, two menus** (the `.appnav` bar at the top of each page):
+  - **On board** (`self-check.html`): *My health · Check-in · Sleep & light ·
+    Alerts*. Tabs inside one page, chosen by the URL hash (`#health`,
+    `#checkin`, `#sleep`, `#alerts`); sections carry `data-tab`. The alert
+    banner stays visible on every tab. "Alerts" shows a count badge.
+  - **Ground** (`ground.html`, `stream-check.html`): *Crew overview · Raw
+    stream (debug)*.
+  - Inside `demo.html` the menus are hidden (`html.embedded`).
+- `self-check.html` / `self-check.js` — the astronaut console: alert banner with
   verdict, clickable body figure, vitals tiles vs baseline, Chart.js trend,
   check-in form (`share_with_ground` off by default), alert history.
 - **Circadian (PROVISIONAL in the spec):** Self-check's Light & sleep card
