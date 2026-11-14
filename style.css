@@ -494,7 +494,6 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .th-legend { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; color: var(--muted); font-size: var(--t-sm); }
 .th-legend-bar { width: 56px; height: 8px; border-radius: 4px; flex: none;
   background: linear-gradient(90deg, var(--ok), var(--sev-watch), var(--sev-alert), var(--sev-critical)); }
-.cc-test { color: var(--text-strong); }
 .cvs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .cv { display: flex; flex-direction: column; min-width: 0; }
 .cv-val { font-size: var(--t-md); font-stretch: var(--narrow); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-strong); }
