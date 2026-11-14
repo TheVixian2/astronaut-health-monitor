@@ -171,7 +171,8 @@
     const list = ws => `<ul class="warns">${ws.map(w => item(w, name)).join("")}</ul>`;
     return `<article class="card cap-panel st-${worst || "nominal"}">
       <div class="cc-head">
-        <div><strong>${esc(c.info.name)}</strong>${self ? ' <span class="you-tag">you</span>' : ""}<div class="muted small">${esc(c.info.role)} (${esc(aid)})</div></div>
+        <div class="cc-who">${A.avatar(c.info)}
+          <div><strong>${esc(c.info.name)}</strong>${self ? ' <span class="you-tag">you</span>' : ""}<div class="muted small">${esc(c.info.role)} (${esc(aid)})</div></div></div>
         <span class="st-pill">${esc(worst || "nominal")}</span>
       </div>
       <div class="cp-stats">${stats}</div>

@@ -215,10 +215,16 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   `derived: true` are skipped where raw backend fields are listed
   (`stream-check.js`). If the backend ever sends a stress score, show that.
 - **Body shape** (owner, 2026-11-14): a Male | Female slider on the body card
-  swaps the silhouette (`setSex`, shapes in `bodyShapes()` in `self-check.js`,
-  generated so both share their points and morph). Sex is not in the crew data,
-  so it is a per-viewer choice in localStorage per astronaut (`ahm-body-sex`);
-  a `sex` field on `GET /crew` would be used if added.
+  swaps the silhouette (`setSex` in `self-check.js`; shapes in `common.js`
+  `AHM.BODY_SHAPES`, generated so both share their points and morph). Sex is
+  not in the crew data, so `AHM.sexOf(member)` takes: the slider choice
+  (localStorage per astronaut, `ahm-body-sex`), else a `sex` field on
+  `GET /crew` if the backend adds one, else the demo default `DEFAULT_SEX`
+  (a1 Elena, a3 Sara female; a2 Mihai, a4 Jonas male).
+- **Crew avatars** (owner, 2026-11-14): every crew member on the Commander's
+  Crew wellbeing cards and on the Medical Officer's Medications tab (both lists)
+  gets `AHM.avatar(member)`: the same silhouette, head and shoulders in a
+  circle, male or female by `sexOf`, so it always matches their My health card.
 - **Bone density and muscle mass** (owner, 2026-11-14: the crew has a
   portable X-ray machine; replaced "skeletal mass" the same day). From a
   weekly DXA scan: `bone_density_g_cm2` (whole-body bone mineral density,
