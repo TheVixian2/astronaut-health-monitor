@@ -201,6 +201,9 @@ US Lab + Node 3 ppCO2, Lab ppO2, cabin pressure, cabin air temperature.
   headache risk < 1 % needs a 7-day average below 2.5). Elevated CO2 adds a
   crew-wide suggestion to `GET /crew/wellbeing`.
 - `AHM_ISS_LIVE=0` turns the feed off; without network `status` is `unavailable`.
+- **Demo only:** `POST /debug/cabin {ppco2_mmhg, minutes}` replaces the live CO2 for a
+  few minutes (`{}` ends it) so the on-board alarm can be shown; while active,
+  `demo_override: true` and `source` says "DEMO OVERRIDE, not real ISS data".
 
 ## Habitat — **PROVISIONAL** (live in `backend/habitat.py`)
 

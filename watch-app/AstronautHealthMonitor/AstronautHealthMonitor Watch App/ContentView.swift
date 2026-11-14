@@ -19,12 +19,16 @@ struct ContentView: View {
                 } else {
                     Text("Waiting for the station…").font(.footnote).foregroundStyle(.secondary)
                 }
+                if let c = model.cabin {
+                    CabinCard(cabin: c).padding(.top, 6)
+                }
             }
             .navigationTitle("Vitals")
             .tag(3)
         }
         .tabViewStyle(.verticalPage)
         }
+        .sheet(item: $model.urgent) { UrgentView(notice: $0) }
         .onAppear { model.start() }
         .onDisappear { model.stop() }
     }
@@ -188,18 +192,18 @@ struct TodayPage: View {
             ZStack {
                 Ring(fraction: ratio(sleep?.0, sleep?.1), color: .indigo, width: 9)
                     .frame(width: 92, height: 92)
-                Ring(fraction: ratio(model.sample?.hrvSdnnMs, model.hrvBaselineMs), color: .teal, width: 9)
+                Ring(fraction: ratio(model.snapshot?.hrvSdnnMs, model.snapshot?.baseline.hrvSdnnMs), color: .teal, width: 9)
                     .frame(width: 70, height: 70)
-                Ring(fraction: ratio(model.sample?.activeMin, model.activeMinBaseline), color: .orange, width: 9)
+                Ring(fraction: ratio(model.snapshot?.activeMin, model.snapshot?.baseline.activeMin), color: .orange, width: 9)
                     .frame(width: 48, height: 48)
             }
             .padding(.top, 2)
             VStack(spacing: 1) {
                 legend("Sleep", sleep.map { String(format: "%.1fh", $0.0) }, ratio(sleep?.0, sleep?.1), .indigo)
-                legend("HRV", model.sample.map { "\(Int($0.hrvSdnnMs)) ms" },
-                       ratio(model.sample?.hrvSdnnMs, model.hrvBaselineMs), .teal)
-                legend("Move", model.sample.map { "\(Int($0.activeMin)) min" },
-                       ratio(model.sample?.activeMin, model.activeMinBaseline), .orange)
+                legend("HRV", model.snapshot?.hrvSdnnMs.map { "\(Int($0)) ms" },
+                       ratio(model.snapshot?.hrvSdnnMs, model.snapshot?.baseline.hrvSdnnMs), .teal)
+                legend("Move", model.snapshot?.activeMin.map { "\(Int($0)) min" },
+                       ratio(model.snapshot?.activeMin, model.snapshot?.baseline.activeMin), .orange)
             }
             .font(.caption2)
         }
@@ -258,14 +262,14 @@ struct HeartPage: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Image(systemName: "heart.fill").foregroundStyle(.pink).font(.caption)
-                    Text(model.sample.map { "\(Int($0.heartRateBpm))" } ?? "--")
+                    Text(model.heartRate > 0 ? "\(Int(model.heartRate))" : "--")
                         .font(.system(size: 34, weight: .semibold, design: .rounded))
                         .contentTransition(.numericText())
-                        .animation(.default, value: model.sample?.heartRateBpm)
+                        .animation(.default, value: model.heartRate)
                     Text("bpm").font(.caption2).foregroundStyle(.secondary)
                     Spacer()
-                    if let s = model.sample, let base = model.snapshot?.baseline.heartRateBpm {
-                        Deviation(value: s.heartRateBpm, baseline: base, mode: .percent).font(.caption2)
+                    if model.heartRate > 0, let base = model.snapshot?.baseline.heartRateBpm {
+                        Deviation(value: model.heartRate, baseline: base, mode: .percent).font(.caption2)
                     }
                 }
 
@@ -294,9 +298,9 @@ struct HeartPage: View {
                 HStack {
                     Text("HRV").foregroundStyle(.secondary)
                     Spacer()
-                    Text(model.sample.map { "\(Int($0.hrvSdnnMs)) ms" } ?? "--").monospacedDigit()
-                    if let s = model.sample {
-                        Deviation(value: s.hrvSdnnMs, baseline: model.hrvBaselineMs, mode: .percent)
+                    Text(model.snapshot?.hrvSdnnMs.map { "\(Int($0)) ms" } ?? "--").monospacedDigit()
+                    if let v = model.snapshot?.hrvSdnnMs, let base = model.snapshot?.baseline.hrvSdnnMs {
+                        Deviation(value: v, baseline: base, mode: .percent)
                             .frame(width: 34, alignment: .trailing)
                     }
                 }
@@ -351,5 +355,53 @@ struct SleepPage: View {
         }
         .padding(.horizontal, 4)
         .navigationTitle("Sleep")
+    }
+}
+
+// MARK: - Cabin air (real ISS data)
+
+struct CabinCard: View {
+    let cabin: CabinAir
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(cabin.demoOverride == true ? "CABIN · DEMO OVERRIDE" : "CABIN · LIVE FROM ISS")
+                .font(.system(size: 9)).foregroundStyle(cabin.demoOverride == true ? .orange : .secondary)
+            HStack {
+                Text("CO₂").font(.caption2).foregroundStyle(.secondary)
+                Spacer()
+                Text(cabin.co2Mmhg.map { String(format: "%.2f mmHg", $0) } ?? "--")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(cabin.status == "above_limit" ? .red : cabin.status == "elevated" ? .orange : .primary)
+            }
+            HStack {
+                Text("Temp").font(.caption2).foregroundStyle(.secondary)
+                Spacer()
+                Text(cabin.cabinTempC.map { String(format: "%.1f°C", $0) } ?? "--").font(.caption.monospacedDigit())
+            }
+            Text(String(format: "NASA limit %g mmHg", cabin.co2LimitMmhg)).font(.system(size: 9)).foregroundStyle(.secondary)
+        }
+        .padding(6)
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 9))
+    }
+}
+
+// MARK: - Urgent: can't wait for Mission Control
+
+struct UrgentView: View {
+    let notice: UrgentNotice
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("ACT NOW ON BOARD", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.bold()).foregroundStyle(.red)
+                Text(notice.title).font(.headline)
+                Text(notice.action).font(.footnote)
+                Text("Mission Control is \(notice.roundTripMin) min away (round trip): don't wait for them.")
+                    .font(.caption2).foregroundStyle(.orange)
+                Text(notice.detail).font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+        }
     }
 }

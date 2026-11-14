@@ -33,6 +33,14 @@ latest: dict[str, float] = {}
 updated: dict[str, datetime] = {}
 _co2: deque[tuple[float, float]] = deque()  # (monotonic time, max cabin ppCO2)
 _client = None
+# Demo only (POST /debug/cabin): a CO2 value that replaces the live reading until it expires,
+# so the "can't wait for Earth" alarm can be shown. Always labelled, never mixed with real data.
+_override: Optional[tuple[float, float]] = None  # (ppCO2 mmHg, monotonic expiry)
+
+
+def set_override(ppco2_mmhg: Optional[float], minutes: float = 5) -> None:
+    global _override
+    _override = None if ppco2_mmhg is None else (ppco2_mmhg, time.monotonic() + minutes * 60)
 
 
 def _iss_time(hours_of_year: str) -> datetime:
@@ -90,11 +98,16 @@ def stop() -> None:
 def snapshot() -> dict:
     co2_now = max([latest[k] for k in ("ppco2_lab_mmhg", "ppco2_node3_mmhg") if k in latest], default=None)
     avg = round(sum(v for _, v in _co2) / len(_co2), 2) if _co2 else None
+    demo = _override is not None and time.monotonic() < _override[1]
+    if demo:
+        co2_now = avg = _override[0]
     status = ("unavailable" if co2_now is None else
               "above_limit" if (avg or co2_now) > CO2_LIMIT_MMHG else
               "elevated" if (avg or co2_now) > CO2_HEADACHE_7D_MMHG else "ok")
     return {
-        "source": "NASA ISS Live telemetry (US Lab and Node 3 cabin sensors)",
+        "source": ("DEMO OVERRIDE, not real ISS data (POST /debug/cabin)" if demo
+                   else "NASA ISS Live telemetry (US Lab and Node 3 cabin sensors)"),
+        "demo_override": demo,
         "updated_at": max(updated.values()) if updated else None,
         **{k: (round(v, 2) if k in latest else None) for k, v in ((n, latest.get(n)) for n in ITEMS.values())},
         "co2_mmhg": round(co2_now, 2) if co2_now is not None else None,

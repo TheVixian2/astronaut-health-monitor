@@ -1449,6 +1449,7 @@ class CabinEnvironment(BaseModel):
     co2_1h_avg_mmhg: Optional[float]   # what NASA-STD-3001's 3 mmHg limit applies to
     co2_limit_mmhg: float
     status: Literal["ok", "elevated", "above_limit", "unavailable"]
+    demo_override: bool = False         # true while POST /debug/cabin replaces the live CO2 (demo only)
     note: str
     source_url: str
 
@@ -1456,6 +1457,18 @@ class CabinEnvironment(BaseModel):
 @app.get("/environment")
 async def get_environment() -> CabinEnvironment:
     return CabinEnvironment(**iss_live.snapshot())
+
+
+class CabinOverride(BaseModel):
+    ppco2_mmhg: Optional[float] = Field(default=None, ge=0, le=20)  # null ends the override
+    minutes: float = Field(default=5, gt=0, le=60)
+
+
+@app.post("/debug/cabin", status_code=202)
+async def debug_cabin(body: CabinOverride) -> Accepted:
+    """Dev only: replace the live ISS CO2 for a few minutes to demo the on-board alarm. Labelled as demo."""
+    iss_live.set_override(body.ppco2_mmhg, body.minutes)
+    return Accepted()
 
 
 # --- PROVISIONAL: habitat rooms (location.py: same rooms and stays as the beacons and the profile) ---
