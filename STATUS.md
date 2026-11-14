@@ -19,6 +19,10 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-14 — AI disclosure (required by Space Apps).** `alert.insight` gains
+  `source: "claude"|"on_board"`. Anything that shows Claude's text must label it
+  **"AI-generated (Claude)"**. New source files get the one-line header
+  `Written with AI assistance (Claude Code, Anthropic) ... See README "Use of AI".`
 - **2026-11-14 — REAL NASA DATA in the stream + new dependency. Run
   `pip install -r backend/requirements.txt` (adds `lightstreamer-client-lib`).**
   `backend/iss_live.py` subscribes to NASA's public ISS Live telemetry: the cabin our
