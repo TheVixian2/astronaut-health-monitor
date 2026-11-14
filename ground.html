@@ -29,7 +29,7 @@
   <header class="bar">
     <div>
       <h1>Mission Control</h1>
-      <div class="muted">The whole crew, delayed by light time</div>
+      <div class="muted" id="pageSub">The whole crew, delayed by light time</div>
     </div>
     <div class="status" aria-live="polite">
       <span id="conn" class="pill pill-wait">connecting…</span>
@@ -41,6 +41,8 @@
   <section class="delay-banner" id="delayBanner">
     <strong>Delayed view.</strong>
     <span id="delayText">Everything here is at least one light-time old.</span>
+    <span class="th-legend"><span class="th-legend-bar" aria-hidden="true"></span>Each vital's bar runs green
+      (near that astronaut's own usual) to red (far from it). Placeholder thresholds.</span>
   </section>
 
   <!-- Demo overlay: alerts raised on board that have not reached ground yet.
@@ -76,6 +78,7 @@
   <script src="mock-snapshot.js"></script>
   <script src="mock.js"></script>
   <script src="common.js"></script>
+  <script src="test-feed.js"></script>
   <script src="ground.js"></script>
   <script src="habitat.js"></script>
 </body>

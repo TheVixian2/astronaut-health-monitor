@@ -145,6 +145,18 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - `demo.html` — Commander and Ground side by side (two iframes) for the
   pitch. The Commander pane polls (no SSE) and Ground holds 4 SSE streams,
   under the browser's ~6 per host. Tested against the real backend.
+- **Every visit starts at the login page** (owner, 2026-11-14): the session is
+  in sessionStorage, so it lasts for one tab (and demo.html's panes and pages
+  opened from it). On GitHub Pages the login page offers **"Continue as
+  presenter"** with no password, which keeps the Space Apps "no login" rule.
+- **Threshold scales on Mission Control** (owner, 2026-11-14): every crew card
+  lists all vitals with a green-to-red bar and a marker. `AHM.thresholdLevel`
+  (`common.js`, `THRESHOLDS`) measures distance from the astronaut's OWN usual
+  (never a population range); watch / alert / critical steps are placeholders.
+- **Test feed** (owner, 2026-11-14): the `test` account (or `ground.html?test`)
+  shows one scripted test subject (`test-feed.js`), new data every 10 s: one
+  vital wrong (past critical), then good, through every vital in turn. Browser
+  only, no backend; the step comes from the clock so all tabs agree.
 - **The 6-connection limit is shared by every tab** (bug found 2026-11-14:
   a Mission Control tab + a demo tab left open starved every new page, stuck
   on "connecting…" until the backend was restarted). `AHM.openStream` returns

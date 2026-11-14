@@ -466,6 +466,31 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .st-watch .st-pill { background: var(--watch-bg); color: var(--watch-ink); }
 .st-alert .st-pill { background: var(--alert-bg); color: var(--alert-ink); }
 .st-critical .st-pill { background: var(--crit-bg); color: var(--crit-ink); }
+/* Threshold rows on Mission Control: label, reading, green-to-red scale with a
+   marker, change from usual. Boundaries --b1..--b3 come from AHM.thresholdLevel. */
+.th-list { display: grid; gap: 3px; }
+.th-row { display: grid; grid-template-columns: minmax(0, 7.5em) 5.2em minmax(50px, 1fr) 4.4em; align-items: center;
+  gap: 8px; font-size: var(--t-sm); }
+.th-label { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.th-val { font-stretch: var(--narrow); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text-strong); white-space: nowrap; }
+.th-val .t-unit { font-size: var(--t-xs); }
+.th-scale { position: relative; height: 8px; border-radius: 4px; opacity: .9;
+  background: linear-gradient(90deg, var(--ok) 0, var(--ok) calc(var(--b1) - 3%),
+    var(--sev-watch) calc(var(--b1) + 3%), var(--sev-watch) calc(var(--b2) - 3%),
+    var(--sev-alert) calc(var(--b2) + 3%), var(--sev-alert) calc(var(--b3) - 3%),
+    var(--sev-critical) calc(var(--b3) + 3%)); }
+.th-scale.th-empty { background: var(--wash-2); }
+.th-mark { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px;
+  background: var(--text-strong); box-shadow: 0 0 0 2px var(--panel); transition: left .4s ease; }
+.th-dev { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+.th-watch .th-dev { color: var(--watch-ink); font-weight: 650; }
+.th-alert .th-dev { color: var(--alert-ink); font-weight: 650; }
+.th-critical .th-dev { color: var(--crit-ink); font-weight: 700; }
+.th-critical .th-label, .th-alert .th-label { color: var(--text-strong); }
+.th-legend { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; color: var(--muted); font-size: var(--t-sm); }
+.th-legend-bar { width: 56px; height: 8px; border-radius: 4px; flex: none;
+  background: linear-gradient(90deg, var(--ok), var(--sev-watch), var(--sev-alert), var(--sev-critical)); }
+.cc-test { color: var(--text-strong); }
 .cvs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .cv { display: flex; flex-direction: column; min-width: 0; }
 .cv-val { font-size: var(--t-md); font-stretch: var(--narrow); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-strong); }
@@ -531,6 +556,9 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .login-form label { display: grid; gap: 4px; color: var(--muted); font-weight: 500; }
 .login-form input { padding: 9px 11px; }
 .login-form button { padding: 10px 14px; }
+.login-guest { display: grid; gap: 6px; margin: -4px 0 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.login-guest button { padding: 10px 14px; background: transparent; color: var(--text-strong); border: 1px solid var(--line-strong); }
+.login-guest button:hover { background: var(--wash-2); }
 
 .user { color: var(--muted); }
 .pick { margin: 20px 0 12px; }

@@ -36,6 +36,44 @@
     bone_density_g_cm2: { a1: [1.184, 1.18], a2: [1.236, 1.232], a3: [1.152, 1.148], a4: [1.21, 1.206] },
     muscle_mass_kg:     { a1: [25.4, 25.3], a2: [27.6, 27.5], a3: [23.8, 23.7], a4: [26.3, 26.2] },
   };
+  // ---- thresholds: how far a reading is from the astronaut's OWN usual -------
+  // For the green-to-red scales on Mission Control (owner, 2026-11-14). Never a
+  // population range: every vital is judged against that astronaut's usual.
+  // `steps` = where watch (yellow), alert (orange) and critical (red) start.
+  // PLACEHOLDER values, to be tuned like the condition profiles.
+  //   by "pct": % away from usual   "abs": units away   "score": the value itself
+  //   dir: which way is bad ("down", "up" or "both")
+  const THRESHOLDS = {
+    heart_rate_bpm:     { by: "pct",   dir: "both", steps: [10, 20, 30] },
+    spo2_pct:           { by: "abs",   dir: "down", steps: [2, 4, 6] },
+    resp_rate_bpm:      { by: "pct",   dir: "both", steps: [15, 25, 40] },
+    temp_c:             { by: "abs",   dir: "both", steps: [0.4, 0.8, 1.2] },
+    sleep_h_last_night: { by: "pct",   dir: "down", steps: [15, 25, 35] },
+    mood_1to5:          { by: "abs",   dir: "down", steps: [1, 2, 3] },
+    hrv_sdnn_ms:        { by: "pct",   dir: "down", steps: [10, 20, 30] },
+    stress_0to100:      { by: "score", dir: "up",   steps: [51, 76, 90] },
+    bone_density_g_cm2: { by: "pct",   dir: "down", steps: [1, 2, 3] },
+    muscle_mass_kg:     { by: "pct",   dir: "down", steps: [1.5, 3, 5] },
+  };
+  const LEVELS = ["ok", "watch", "alert", "critical"];
+  // -> { level, pos (0-1 along the scale), steps (0-1 positions of the three
+  //    boundaries), signed (signed change from usual, in the field's terms), by }
+  //    or null when there is no reading / no usual to compare with.
+  function thresholdLevel(key, now, base) {
+    const t = THRESHOLDS[key];
+    if (!t || typeof now !== "number") return null;
+    let dev, signed;
+    if (t.by === "score") { dev = signed = now; }
+    else {
+      if (typeof base !== "number" || (t.by === "pct" && base === 0)) return null;
+      signed = t.by === "pct" ? ((now - base) / base) * 100 : now - base;
+      dev = t.dir === "down" ? Math.max(0, -signed) : t.dir === "up" ? Math.max(0, signed) : Math.abs(signed);
+    }
+    const level = LEVELS[t.steps.filter(s => dev >= s - 1e-9).length];
+    const end = t.steps[2] * 1.25;              // the scale runs a bit past "critical"
+    return { level, pos: Math.min(1, dev / end), steps: t.steps.map(s => s / end), signed, by: t.by };
+  }
+
   function withScan(v, aid) {
     if (!v) return v;
     let out = v;
@@ -328,7 +366,7 @@
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
-    withStress, stressBand, withScan,
+    withStress, stressBand, withScan, thresholdLevel,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 
