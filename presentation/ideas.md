@@ -268,3 +268,16 @@ to tighten, not final claims.**
 - **Keep in mind for Q&A:** the earlier under-reporting argument (crew control
   what goes down, so they report more honestly) is weaker with sharing on by
   default. The opt-out is still there; lean on that if a judge asks.
+
+## 2026-11-14 — real NASA data is now live in the backend
+
+- **NASA JPL Horizons, queried live:** Earth-Mars one-way light time **today is 11.0
+  min** (661 s). It ranges from about 3 to 22 min over the orbit. Slide line:
+  *"Mars today: 11 min one way (NASA JPL Horizons), up to 22 min. Either way, a
+  reply takes longer than an orthostatic episode can wait."* `GET /mission/light-time`.
+- **The personal baseline is now real:** the median of six weeks of stored data,
+  mission days 7-14 (days 1-6 skipped because of space adaptation). Say: *"Every
+  number is compared to this astronaut's own days 7-14, never to an average human."*
+- **SANS is explainable:** the score shows its parts (mission day, acuity vs your
+  own baseline, Amsler grid, headaches, cabin CO2), so a judge can see *why* it
+  rose. One check-in takes a1 from 40 to ~73 on stage.

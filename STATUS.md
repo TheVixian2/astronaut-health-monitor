@@ -141,67 +141,62 @@ Branch: `backend`
     bedtime varied by 0.2 h, was 1.7 h". The close-the-loop moment.
   - **Persistence note:** the lighting log lives in memory for now. It moves to
     SQLite with the persistence task below.
-- **Next:** `tools/simulate_crew.py`. **The post-pivot spec has LANDED** —
-  `docs/api-spec.md` is reconciled with the running backend as of 2026-11-14, so
-  the condition engine is unblocked.
-- **@stefanalbu2010-byte's point about `sans` is important and needs solving:**
-  it builds up over days, so it can't be triggered live — but the two-condition
-  contrast (`orthostatic` = act on board now vs `sans` = ground will advise) is
-  the entire pitch. We cannot show only one. Fix: **seed `sans` into a
-  near-trigger state** via `--seed-baseline`, so a single check-in during the
-  demo tips it over. The slow build-up is the point; we just start the clock
-  six weeks in.
-
-- **NEW TASK (Luca, 2026-11-14) — persistence. Nothing is stored today.**
-  `ingest()` overwrites `state.real_hr` each tick, so there is no history
-  anywhere. Consequences: trends cannot be computed, charts have nothing to
-  draw, the SANS vision trend and sleep debt are faked by seeded RNG, and
-  Claude's insight only ever sees one instant.
-
-  **Use SQLite** — `sqlite3` is in the Python stdlib, so no new dependency, it
-  survives restarts, and one file is easy to reset between demo runs. Not
-  Postgres (needs a server), not JSON files (corrupt on concurrent writes).
-
-  Minimum useful schema:
-
-  ```sql
-  CREATE TABLE samples (            -- one row per tick, per astronaut
-    astronaut_id TEXT NOT NULL,
-    ts           TEXT NOT NULL,     -- ISO 8601 UTC
-    heart_rate_bpm REAL, systolic_mmhg REAL, diastolic_mmhg REAL,
-    spo2_pct REAL, temp_c REAL, resp_rate_bpm REAL,
-    sleep_h_last_night REAL, mood_1to5 INTEGER,
-    source       TEXT NOT NULL,     -- 'real' | 'simulated'
-    PRIMARY KEY (astronaut_id, ts)
-  );
-  CREATE INDEX idx_samples_recent ON samples (astronaut_id, ts DESC);
-
-  CREATE TABLE alerts (             -- so an alert survives a restart
-    id TEXT PRIMARY KEY, astronaut_id TEXT NOT NULL, profile TEXT NOT NULL,
-    severity TEXT NOT NULL, started_at TEXT NOT NULL, cleared_at TEXT,
-    insight_json TEXT               -- cache it; never call Claude twice per alert
-  );
-
-  CREATE TABLE checkins (           -- vision + mood history = the SANS trend
-    astronaut_id TEXT NOT NULL, ts TEXT NOT NULL, payload_json TEXT NOT NULL,
-    PRIMARY KEY (astronaut_id, ts)
-  );
-  ```
-
-  **What it unlocks, in priority order:**
-  1. **Baseline computed from stored samples** instead of invented — days 7-14
-     becomes a real `SELECT`, which is the project's whole thesis made true.
-  2. **SANS vision trend** — a real slope across stored check-ins. Also how the
-     seed-to-near-trigger fix above gets implemented honestly.
-  3. **Charts** — the web app's Chart.js finally has series to draw.
-  4. **Insight caching** — `insight_json` means one Claude call per alert even
-     across restarts. Matters more than usual since we have no API credits.
-  5. **Sleep debt across nights** — real rows, not seeded RNG.
-
-  **Keep it demo-safe:** write to `backend/data/ahm.db` (already gitignored) and
-  add `--reset-db` alongside `--seed-baseline` so a bad run can be wiped in one
-  command before presenting. Writes must never block the request path — the demo
-  degrading because of a disk write would be a self-inflicted wound.
+- **Done: persistence + the real condition engine + SANS (branch `backend`, ready to merge).**
+  Luca's persistence task and the `sans` demo problem are both solved.
+  - **SQLite** at `backend/data/ahm.db` (gitignored), written by a background thread
+    so a disk write never blocks a request or the tick loop. Stores every tick,
+    alerts (with the insight cached), check-ins, and the mission start.
+  - **Baseline = median of stored mission days 7-14.** It's a real `SELECT` now; it
+    falls back to the configured values only if nothing has been seeded.
+  - **Condition engine for all five spec profiles** (`orthostatic`, `co2`, `fever`,
+    `sleep_debt`, `sans`). It fires only on a NEW match, clears after 5 calm ticks
+    (~15 s), and the gate survives a restart (tested: no duplicate alerts).
+  - **SANS risk score 0-100** from mission day, acuity vs the day 7-14 baseline,
+    Amsler distortion, headaches (7 d) and cabin CO2 (7 d). Trigger 50, clear 40.
+  - **`/debug/scenario` is wired** (enum from the spec; `spe` gets 422). Vitals
+    shift together and alerts fire in ~20-40 s. `sans` injects a check-in through
+    the same path as a real one. `clear` resets the astronaut and drops live
+    check-ins so the SANS demo can run again.
+  - **Explanations without an API key:** the fallback is built from the real
+    numbers plus the verdict, e.g. *"Heart rate 93 bpm vs your baseline 73 (+27%);
+    systolic 103 vs 124 (-17%) … a reply takes about 44 min … so the on-board step
+    comes first."* `fever`/`sans` say *"This can wait for the flight surgeon"*.
+  - **Removed the fake auto-alert every 60 s.** To test alerts, use
+    `/debug/scenario` or `tools/simulate_crew.py --run --scenario a2:orthostatic:5`.
+- **Demo prep (run before every rehearsal):** from the repo root,
+  `backend/.venv/bin/python tools/simulate_crew.py --reset-db --seed-baseline`
+  (Windows: `backend\.venv\Scripts\python ...`), then start uvicorn. That gives six
+  weeks of history; **a1's SANS score sits at 40/50**, and one check-in with a
+  headache plus Amsler distortion takes it to ~73 and fires `sans`.
+- **@Luca, three things to know:**
+  1. **Watch bug: `MonitorModel.swift` line 52 takes `api.alerts().last` as the
+     newest alert, but `/alerts` returns newest FIRST** (backend and `web/mock.js`
+     both). With 2+ alerts the watch shows the oldest one and the haptic stops
+     firing. One-word fix: `.first`.
+  2. **`orthostatic` on a1 with the real watch:** watch HR overrides the simulated
+     HR, so the alert needs the watch's HR up (Simulate exertion) **and** the
+     systolic drop, which comes from `/debug/scenario orthostatic`. Either press
+     both, or stop the watch and the scenario alone fires it.
+  3. **`ground_eta_s` now = `real_one_way_delay_s`** (1320), matching the spec's
+     example. Before, it was the compressed 20 s.
+- **@Luca, for the spec (PROVISIONAL, live now):**
+  - `GET /astronauts/{id}/sans?view=crew|ground` →
+    `{astronaut_id, mission_day, score, trigger_at, status, baseline_acuity,
+    components[{name, points, detail}], vision_checks[{ts, acuity_line,
+    amsler_distortion, headache}], note, source_url}`. The ground view only lists
+    shared check-ins, and the details of private ones are redacted.
+  - `GET /astronauts/{id}/history?hours=24` → up to ~300 averaged points of every
+    vital plus `cabin_co2_mmhg`, oldest first, for charts (works up to 42 days).
+  - `GET /mission/light-time` → **live Earth-Mars light time from NASA JPL
+    Horizons: 661 s (11.0 min) today.** The verdict still uses the spec's 1320 by
+    default; `AHM_LIVE_LIGHT_TIME=1` switches it to the live value. Verdicts don't
+    change either way.
+  - Hazard question: the spec has `sans` → `distance`, but NASA HRP files SANS
+    under **altered gravity**. Backend follows the spec for now.
+- **@NotKaemy:** charts can now load weeks of real history from `/history`, and the
+  SANS view can draw `vision_checks` as a trend line with the `components` as
+  the "why". Circadian sharing default: **waiting on stefanalbu2010-byte**
+  (see the decision above).
 - **Blocked on:** nothing.
 
 ## Presentation — dbm711
