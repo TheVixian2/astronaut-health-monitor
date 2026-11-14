@@ -146,6 +146,19 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   pitch. The Commander pane polls (no SSE) and Ground holds 4 SSE streams,
   under the browser's ~6 per host. Tested against the real backend.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
+- **Check-in is one question at a time** (Back / Next, "Skip" when
+  unanswered, Submit on the last): mood → sleep hours (± half-hour buttons) →
+  symptoms → the two PHQ-2 items (wording from `GET /checkin/questions`;
+  skipped if that fails, and sent only when both are answered). **No
+  "share with ground" box: check-ins are always sent with
+  `share_with_ground: true`** (NotKaemy, 2026-11-14 — note the spec calls this
+  the astronaut's control; flagged to Luca in STATUS). Form is `novalidate`:
+  a field on a hidden step would otherwise block Submit silently.
+- **Bigger interface on big windows:** `auth.js` zooms every page (except
+  `index.html` / `demo.html`) by `min(width/1280, height/720)`, between 1 and
+  1.75, and sets `--z`. CSS zoom also scales `vh`, so write window heights as
+  `calc(100dvh / var(--z, 1))`. Chart.js gets a matching pixel ratio. My
+  health, Check-in and Sleep & light stretch to the window's height.
 - **Vital icons:** every vital has a flat icon (`AHM.vitalIcon(key)` in
   `common.js`, `VITAL_ICONS`): heart + pulse, blood drop, lungs, thermometer,
   moon, smiley. Colours are the `--ic-*` tokens in `style.css` (`.vi-*`).

@@ -328,28 +328,95 @@
 
   // ---- check-in ------------------------------------------------------------
 
+  // One question at a time. Steps are the form's .ci-step blocks (the PHQ-2
+  // ones are added once GET /checkin/questions answers). Every answer is
+  // optional: Next reads "Skip" until the step is answered.
+  let ciAt = 0;
+  const ciSteps = () => [...$("checkin").querySelectorAll(".ci-step")];
+  const ciAnswered = step => [...step.querySelectorAll("input")]
+    .some(i => (i.type === "radio" || i.type === "checkbox") ? i.checked : i.value !== "");
+
+  function ciShow(i) {
+    const steps = ciSteps();
+    ciAt = Math.max(0, Math.min(i, steps.length - 1));
+    steps.forEach((s, k) => { s.hidden = k !== ciAt; });
+    const last = ciAt === steps.length - 1, step = steps[ciAt];
+    $("ciBack").hidden = ciAt === 0;
+    $("ciNext").hidden = last;
+    $("ciSubmit").hidden = !last;
+    $("ciNext").textContent = ciAnswered(step) ? "Next" : step.dataset.step === "symptoms" ? "None of these" : "Skip";
+    $("ciProgress").textContent = `Question ${ciAt + 1} of ${steps.length}`;
+    $("ciBarFill").style.width = `${((ciAt + 1) / steps.length) * 100}%`;
+  }
+
+  $("ciBack").addEventListener("click", () => ciShow(ciAt - 1));
+  $("ciNext").addEventListener("click", () => ciShow(ciAt + 1));
+  $("checkin").addEventListener("change", () => ciShow(ciAt));
+  $("checkin").addEventListener("input", () => ciShow(ciAt));
+  // Enter in the hours box moves on instead of submitting early.
+  $("checkin").addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT" && ciAt < ciSteps().length - 1) { e.preventDefault(); ciShow(ciAt + 1); }
+  });
+  // Sleep +/-: half-hour steps, starting from the astronaut's usual.
+  document.querySelectorAll("[data-sleep]").forEach(b => b.addEventListener("click", () => {
+    const inp = $("checkin").sleep;
+    const usual = Math.round((latest?.baseline?.sleep_h_last_night ?? 7) * 2) / 2;   // nearest half hour
+    const start = inp.value !== "" ? Math.round(Number(inp.value) * 2) / 2 : usual - Number(b.dataset.sleep);
+    inp.value = Math.max(0, Math.min(16, start + Number(b.dataset.sleep)));
+    ciShow(ciAt);
+  }));
+  $("ciAgain").addEventListener("click", () => {
+    $("checkin").reset(); $("checkinResult").textContent = "";
+    $("ciDone").hidden = true; $("checkin").hidden = false; ciShow(0);
+  });
+
+  // PHQ-2: two more questions, wording from the backend (validated text).
+  (async () => {
+    let q;
+    try { q = await A.getJSON(cfg.base, "/checkin/questions", cfg.mock); } catch { return; }
+    if (!q?.phq2?.items) return;
+    const nav = $("checkin").querySelector(".ci-nav");
+    for (const item of q.phq2.items) {
+      const step = document.createElement("div");
+      step.className = "ci-step"; step.dataset.step = `phq2_${item.key}`; step.hidden = true;
+      step.innerHTML = `<p class="ci-hint muted">${esc(q.phq2.stem)}</p>
+        <p class="ci-q">${esc(item.text)}</p>
+        <div class="ci-options ci-four" role="radiogroup" aria-label="${esc(item.text)}">
+          ${q.phq2.options.map(o => `<label><input type="radio" name="phq2_${esc(item.key)}" value="${o.value}"><span>${esc(o.label)}</span></label>`).join("")}
+        </div>
+        <p class="ci-source muted small">${esc(q.phq2.source)}</p>`;
+      $("checkin").insertBefore(step, nav);
+    }
+    ciShow(ciAt);
+  })();
+  ciShow(0);
+
   async function onCheckin(e) {
     e.preventDefault();
     const f = e.target;
-    const body = { timestamp: new Date().toISOString().replace(/\.\d+Z$/, "Z"), share_with_ground: f.share.checked };
+    // Always shared with Mission Control: no box for it (owner's call, 2026-11-14).
+    const body = { timestamp: new Date().toISOString().replace(/\.\d+Z$/, "Z"), share_with_ground: true };
     const mood = f.querySelector('input[name="mood"]:checked');
     if (mood) body.mood_1to5 = Number(mood.value);
-    if (f.sleep.value !== "") body.sleep_h = Number(f.sleep.value);
+    if (f.sleep.value !== "" && Number.isFinite(Number(f.sleep.value))) body.sleep_h = Math.max(0, Math.min(16, Number(f.sleep.value)));
     const symptoms = [...f.querySelectorAll('input[name="symptom"]:checked')].map(i => i.value);
     if (symptoms.length) body.symptoms = symptoms;
+    // PHQ-2 only when both items are answered (the API needs both).
+    const li = f.querySelector('input[name="phq2_little_interest"]:checked');
+    const fd = f.querySelector('input[name="phq2_feeling_down"]:checked');
+    if (li && fd) body.phq2 = { little_interest: Number(li.value), feeling_down: Number(fd.value) };
 
     const out = $("checkinResult");
-    out.className = "small muted";
+    out.className = "ci-result muted";
     out.textContent = "Sending…";
     try {
       await A.postJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/checkin`, body, cfg.mock);
-      out.className = "small ok";
-      out.textContent = body.share_with_ground
-        ? `Saved. Shared with ground — they'll receive it in about ${mission ? dur(mission.one_way_delay_s) : "?"}.`
-        : "Saved on board. Not shared with ground.";
-      f.reset();
+      out.textContent = "";
+      f.hidden = true;
+      $("ciDone").hidden = false;
+      $("ciProgress").textContent = "Done";
     } catch (err) {
-      out.className = "small err";
+      out.className = "ci-result err";
       out.textContent = `Could not save: ${err.message}`;
     }
   }
@@ -470,40 +537,62 @@
       </div>
     </section>
 
+    <!-- Check-in: one question at a time with Back / Next (owner's call,
+         2026-11-14). Every answer is optional. No "share with ground" box:
+         check-ins are always shared with Mission Control (owner's call). The
+         PHQ-2 steps are added from GET /checkin/questions (exact wording). -->
     <section class="card checkin-card solo" data-tab="checkin">
-      <h2>Check-in</h2>
-      <form id="checkin" class="checkin">
-        <fieldset>
-          <legend>Mood</legend>
-          <div class="scale" id="moodScale">
-            <label><input type="radio" name="mood" value="1"> 1</label>
-            <label><input type="radio" name="mood" value="2"> 2</label>
-            <label><input type="radio" name="mood" value="3"> 3</label>
-            <label><input type="radio" name="mood" value="4"> 4</label>
-            <label><input type="radio" name="mood" value="5"> 5</label>
+      <div class="ci-head"><h2>Check-in</h2><span id="ciProgress" class="muted"></span></div>
+      <div class="ci-bar" aria-hidden="true"><div id="ciBarFill"></div></div>
+      <!-- novalidate: a field on a hidden step can't show the browser's bubble,
+           so it would block Submit silently; values are clamped in onCheckin. -->
+      <form id="checkin" class="checkin ci-wizard" autocomplete="off" novalidate>
+        <div class="ci-step" data-step="mood">
+          <p class="ci-q">How is your mood today?</p>
+          <div class="ci-options ci-five" role="radiogroup" aria-label="Mood, 1 to 5">
+            <label><input type="radio" name="mood" value="1"><span class="ci-num">1</span><span class="ci-cap">Very low</span></label>
+            <label><input type="radio" name="mood" value="2"><span class="ci-num">2</span><span class="ci-cap">Low</span></label>
+            <label><input type="radio" name="mood" value="3"><span class="ci-num">3</span><span class="ci-cap">OK</span></label>
+            <label><input type="radio" name="mood" value="4"><span class="ci-num">4</span><span class="ci-cap">Good</span></label>
+            <label><input type="radio" name="mood" value="5"><span class="ci-num">5</span><span class="ci-cap">Very good</span></label>
           </div>
-          <span class="muted small">1 = very low · 5 = very good</span>
-        </fieldset>
+        </div>
 
-        <label class="row">Sleep last night <input type="number" name="sleep" min="0" max="16" step="0.5" placeholder="h"> h</label>
-
-        <fieldset>
-          <legend>Symptoms</legend>
-          <div class="chips">
-            <label><input type="checkbox" name="symptom" value="headache"> Headache</label>
-            <label><input type="checkbox" name="symptom" value="blurred_vision"> Blurred vision</label>
-            <label><input type="checkbox" name="symptom" value="dizziness"> Dizziness</label>
-            <label><input type="checkbox" name="symptom" value="nausea"> Nausea</label>
-            <label><input type="checkbox" name="symptom" value="congestion"> Congestion</label>
-            <label><input type="checkbox" name="symptom" value="fatigue"> Fatigue</label>
+        <div class="ci-step" data-step="sleep" hidden>
+          <p class="ci-q">How many hours did you sleep last night?</p>
+          <div class="ci-number">
+            <button type="button" class="ci-step-btn" data-sleep="-0.5" aria-label="Half an hour less">−</button>
+            <input type="number" name="sleep" min="0" max="16" step="0.5" inputmode="decimal" placeholder="—" aria-label="Hours of sleep">
+            <span class="ci-unit">h</span>
+            <button type="button" class="ci-step-btn" data-sleep="0.5" aria-label="Half an hour more">+</button>
           </div>
-        </fieldset>
+        </div>
 
-        <label class="row share"><input type="checkbox" name="share"> Share this check-in with ground</label>
+        <div class="ci-step" data-step="symptoms" hidden>
+          <p class="ci-q">Any of these today?</p>
+          <p class="ci-hint muted">Tick all that apply.</p>
+          <div class="ci-options ci-chips">
+            <label><input type="checkbox" name="symptom" value="headache"><span>Headache</span></label>
+            <label><input type="checkbox" name="symptom" value="blurred_vision"><span>Blurred vision</span></label>
+            <label><input type="checkbox" name="symptom" value="dizziness"><span>Dizziness</span></label>
+            <label><input type="checkbox" name="symptom" value="nausea"><span>Nausea</span></label>
+            <label><input type="checkbox" name="symptom" value="congestion"><span>Congestion</span></label>
+            <label><input type="checkbox" name="symptom" value="fatigue"><span>Fatigue</span></label>
+          </div>
+        </div>
 
-        <button type="submit">Submit check-in</button>
-        <span id="checkinResult" class="small" aria-live="polite"></span>
+        <div class="ci-nav">
+          <button type="button" id="ciBack" class="ci-secondary">Back</button>
+          <button type="button" id="ciNext">Next</button>
+          <button type="submit" id="ciSubmit" hidden>Submit check-in</button>
+        </div>
+        <p id="checkinResult" class="ci-result" aria-live="polite"></p>
       </form>
+
+      <div id="ciDone" class="ci-done" hidden>
+        <p class="ci-q">Check-in saved. Thank you.</p>
+        <button type="button" id="ciAgain">New check-in</button>
+      </div>
     </section>
 
     <!-- Light & sleep: suggestion from our mentor/judge (events/2026-11-14-mentor-judges.md).
