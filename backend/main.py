@@ -672,13 +672,13 @@ async def get_light_time() -> LightTime:
 
 
 # --- Circadian / lighting (PROVISIONAL) -----------------------------------------
-# Private by default: the ground view gets 403 unless the astronaut shares it.
+# Shared with ground by default; the ground view gets 403 once the astronaut opts out.
 
 @app.get("/astronauts/{aid}/circadian")
 async def get_circadian(aid: str, view: Literal["crew", "ground"] = "crew") -> circadian.Circadian:
     get_state(aid)
     if view == "ground" and not circadian.is_shared(aid):
-        raise HTTPException(403, "Not shared: the astronaut keeps sleep and lighting data private.")
+        raise HTTPException(403, "Not shared: the astronaut has opted out of sharing sleep and lighting data.")
     return circadian.assess(aid, now(), mission.environment)
 
 

@@ -19,8 +19,10 @@ there is no day or night at all, so the lighting is the only cue left. Linked, n
 proven, so all wording stays suggestive.
 
 Ethics rules for this module (sleeping-quarters data is personal):
-- Private by default: only the astronaut sees it. The ground view gets it only
-  if the astronaut turns sharing on, and can turn it off again.
+- Shared with the flight surgeon by default, like a doctor would see it (team
+  decision, NotKaemy 2026-11-14). The astronaut can opt out at any time, and the
+  ground view then gets 403. On the shared ship console the web app keeps it
+  hidden until the astronaut taps to show it.
 - Suggest, never instruct: no orders, no diagnosis, no alarming claims, and
   every claim links to its source. The astronaut chooses whether to follow a plan.
 - The app never changes the lighting itself; the crew does.
@@ -151,7 +153,7 @@ class Recommendation(BaseModel):
 
 class Circadian(BaseModel):
     astronaut_id: str
-    share_with_ground: bool  # astronaut's choice; False by default
+    share_with_ground: bool  # astronaut's choice; True by default, opt-out any time
     environment_note: str
     lighting: Lighting
     nights: list[Night]      # the last 7 nights
@@ -220,7 +222,7 @@ class _Astronaut:
 
 _today = dt.datetime.now(dt.timezone.utc).date()
 _crew: dict[str, _Astronaut] = {aid: _Astronaut(aid, _today) for aid in HABITS}
-_shared: dict[str, bool] = {aid: False for aid in HABITS}  # private by default
+_shared: dict[str, bool] = {aid: True for aid in HABITS}  # shared by default; astronaut can opt out
 
 
 def is_shared(aid: str) -> bool:
