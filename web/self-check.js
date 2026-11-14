@@ -228,7 +228,7 @@
       data: {
         labels: history.map(p => time(p.t)),
         datasets: [
-          { label: field.label, data: history.map(p => p.v[chartField]), borderColor: tok("--accent"),
+          { label: field.label, data: history.map(p => p.v[chartField]), borderColor: A.vitalColor(chartField),
             pointRadius: 0, borderWidth: 2, tension: 0.3 },
           { label: "Your baseline", data: history.map(p => p.v.baseline?.[chartField]), borderColor: tok("--muted"),
             borderDash: [5, 5], pointRadius: 0, borderWidth: 1.5 },

@@ -63,9 +63,9 @@
     const data = {
       labels,
       datasets: [
-        { label: "High", data: hi, borderWidth: 0, pointRadius: 0, backgroundColor: alpha(tok("--accent"), 0.18), fill: "+1" },
+        { label: "High", data: hi, borderWidth: 0, pointRadius: 0, backgroundColor: alpha(A.vitalColor(f.key), 0.18), fill: "+1" },
         { label: "Low", data: lo, borderWidth: 0, pointRadius: 0, fill: false },
-        { label: "Average", data: avg, borderColor: tok("--accent"), borderWidth: 2, pointRadius: rows.length > 60 ? 0 : 2, tension: 0.3, fill: false },
+        { label: "Average", data: avg, borderColor: A.vitalColor(f.key), borderWidth: 2, pointRadius: rows.length > 60 ? 0 : 2, tension: 0.3, fill: false },
         { label: "Your normal", data: rows.map(() => base), borderColor: tok("--muted"), borderDash: [5, 5], borderWidth: 1, pointRadius: 0, fill: false },
       ],
     };
