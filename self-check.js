@@ -114,6 +114,7 @@
 
   function onVitals(v) {
     v = A.withStress(v);             // adds stress_0to100, derived from HRV
+    v = A.withSkeletal(v, cfg.aid);  // simulated X-ray scan until the backend sends one
     latest = v;
     lastVitalsAt = new Date(v.timestamp);
     history.push({ t: lastVitalsAt, v });
@@ -176,7 +177,7 @@
   function renderRegionInfo() {
     const fields = FIELDS.filter(f => region === "whole_body" || f.region === region).map(f => f.label);
     const note = region === "head" ? " Sleep and mood (in Check-in) belong here."
-      : region === "skin" ? " Temperature is measured here." : "";
+      : region === "skin" ? " Temperature is measured on the skin; skeletal mass comes from the X-ray scan." : "";
     $("regionInfo").innerHTML = `<h3>${esc(REGION_NAMES[region])}</h3>
       <p class="muted small">${fields.length ? `${esc(fields.join(", "))}.` : "No measurements for this region yet."}${esc(note)}</p>`;
   }
@@ -192,7 +193,7 @@
       // 2026-11-14); only the 7-night log and lighting stay behind the gate.
       // Plain numbers: the difference from baseline is shown, never coloured as a warning.
       const p = deltaPct(now, base);
-      const delta = p == null ? "" : ` (${p >= 0 ? "+" : "−"}${Math.abs(p).toFixed(0)}%)`;
+      const delta = p == null ? "" : ` (${p >= 0 ? "+" : "−"}${Math.abs(p).toFixed(f.deltaDp || 0)}%)`;
       // Stress is a 0-100 level, so its band reads better than a percentage.
       const reading = f.key === "stress_0to100"
         ? (now == null ? "needs HRV" : `${A.stressBand(now)}, usual ${fmt(base)}`)
@@ -212,6 +213,8 @@
     $("chartTitle").textContent = `${field.label} (${field.unit})`;
     $("chartNote").textContent = field.key === "stress_0to100"
       ? "From your HRV vs your usual: lower HRV, higher level. Our scale (Apple Watch has none): 0-25 resting, 26-50 low, 51-75 medium, 76-100 high."
+      : field.key === "skeletal_mass_kg"
+        ? `Bone mineral content from the weekly portable X-ray (DXA) scan, so the line only moves between scans.${latest && latest.skeletal_simulated ? " Simulated scans for now." : ""}`
       : field.key === "hrv_sdnn_ms"
         ? "Heart-rate variability (SDNN), as Apple Watch records it. Dashed line: your usual."
         : "Last few minutes. Dashed line: your usual. Tap a reading to chart it.";
