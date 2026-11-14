@@ -27,6 +27,9 @@
   const ownRole = root.dataset.crewRole || null;   // set on captain.html / doctor.html
   if (ownRole) cfg.aid = root.dataset.aid || cfg.aid;
   const POLL = root.hasAttribute("data-poll") && !cfg.mock;
+  // Presenter: a pattern for the whole mission and a period selector instead of
+  // live data (pattern.js, owner 2026-11-14).
+  const PATTERN = !!(window.AHMPattern && window.AHMPattern.enabled);
   const POLL_MS = 3000;
 
   const MAX_POINTS = 120;            // ~6 min at one vitals event per 3 s
@@ -85,7 +88,8 @@
     renderMission();
 
     // No "alert" listener or alert polling on purpose: data only.
-    if (POLL) startPolling();
+    if (PATTERN) startPattern();
+    else if (POLL) startPolling();
     else {
       const { source } = A.openStream(cfg);
       source.onopen = () => setConn(cfg.mock ? "connected (mock)" : "connected", "pill-on");
@@ -98,6 +102,21 @@
     setInterval(renderAge, 1000);
     loadCircadian();                 // needs cfg.aid, known only now
     setInterval(loadCircadian, CIRC_REFRESH_MS);
+  }
+
+  function startPattern() {
+    document.body.classList.add("pattern");
+    setConn("pattern", "pill-on");
+    window.AHMPattern.control(document.querySelector("header.bar .status"), ({ from, to }) => {
+      history.length = 0;
+      for (const p of window.AHMPattern.series(cfg.aid, from, to, MAX_POINTS)) history.push({ t: p.t, v: A.withStress(p.v) });
+      latest = history[history.length - 1].v;
+      lastVitalsAt = history[history.length - 1].t;
+      renderTiles();
+      rebuildChart();
+      renderSleep(latest);
+      renderAge();
+    });
   }
 
   function startPolling() {
@@ -219,6 +238,7 @@
         ? `${field.key === "bone_density_g_cm2" ? "Whole-body bone mineral density" : "Lean tissue of your arms and legs"} from the weekly portable X-ray (DXA) scan, so the line only moves between scans.${latest && latest.simulated_scan ? " Simulated scans for now." : ""}`
       : field.key === "hrv_sdnn_ms"
         ? "Heart-rate variability (SDNN), as Apple Watch records it. Dashed line: your usual."
+        : PATTERN ? "The period picked above. Dashed line: your usual. Tap a reading to chart it."
         : "Last few minutes. Dashed line: your usual. Tap a reading to chart it.";
     if (!window.Chart) { $("chartFallback").hidden = false; $("chart").hidden = true; return; }
     if (chart) chart.destroy();
@@ -227,7 +247,7 @@
     chart = new window.Chart($("chart"), {
       type: "line",
       data: {
-        labels: history.map(p => time(p.t)),
+        labels: history.map(p => tlabel(p.t)),
         datasets: [
           { label: field.label, data: history.map(p => p.v[chartField]), borderColor: tok("--accent"),
             pointRadius: 0, borderWidth: 2, tension: 0.3 },
@@ -249,7 +269,7 @@
   function pushChart() {
     if (!chart) { rebuildChart(); return; }
     const p = history[history.length - 1];
-    chart.data.labels.push(time(p.t));
+    chart.data.labels.push(tlabel(p.t));
     chart.data.datasets[0].data.push(p.v[chartField]);
     chart.data.datasets[1].data.push(p.v.baseline?.[chartField]);
     while (chart.data.labels.length > MAX_POINTS) {
@@ -491,6 +511,7 @@
   function renderAge() {
     const el = $("age");
     if (!lastVitalsAt) { el.textContent = "waiting"; el.className = ""; return; }
+    if (PATTERN) { el.textContent = window.AHMPattern.label(lastVitalsAt); el.className = ""; return; }
     const s = Math.max(0, Math.round((Date.now() - lastVitalsAt) / 1000));
     el.textContent = `${dur(s)} ago`;
     el.className = s > STALE_S ? "stale" : "";
@@ -513,6 +534,8 @@
   setLight(document.documentElement.dataset.light);   // note for a mode restored by auth.js
 
   function setConn(text, cls) { const el = $("conn"); el.textContent = text; el.className = `pill ${cls}`; }
+
+  const tlabel = t => (PATTERN ? window.AHMPattern.shortLabel(t) : time(t));
 
   function time(t) {
     const d = t instanceof Date ? t : new Date(t);

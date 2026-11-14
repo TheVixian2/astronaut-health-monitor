@@ -153,6 +153,15 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   lists all vitals with a green-to-red bar and a marker. `AHM.thresholdLevel`
   (`common.js`, `THRESHOLDS`) measures distance from the astronaut's OWN usual
   (never a population range); watch / alert / critical steps are placeholders.
+- **Presenter sees a pattern, not live data** (owner, 2026-11-14): signed in as
+  `demo`, the console, Commander, doctor and Mission Control pages load a
+  deterministic pattern for the whole mission (`pattern.js`: station day,
+  nightly sleep and daily mood, weekly X-ray scans, a2's strain in the second
+  half, a4's hard days around day 31) and show a **period selector** (span +
+  "ends at" slider) in the header instead of the live status. Readings are the
+  moment the period ends; charts show the period (bucket averages on long
+  spans). Not inside `demo.html` (the live light-delay demo stays live), not
+  with `?live`. Crew wellbeing, meds, habitat and alerts are unchanged.
 - **Test feed** (owner, 2026-11-14): the `test` account (or `ground.html?test`)
   shows one scripted test subject (`test-feed.js`), new data every 10 s: one
   vital wrong (past critical), then good, through every vital in turn. Browser

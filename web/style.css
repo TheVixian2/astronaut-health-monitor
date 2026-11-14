@@ -559,6 +559,15 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .login-form label { display: grid; gap: 4px; color: var(--muted); font-weight: 500; }
 .login-form input { padding: 9px 11px; }
 .login-form button { padding: 10px 14px; }
+/* Period selector (pattern.js): presenter only, in the header's status line,
+   in place of the live status (Live / updated / Earth is ... away). */
+.period { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.period select { padding: 4px 8px; }
+.period input[type=range] { width: 180px; accent-color: var(--accent); }
+.period input[type=range]:disabled { opacity: .4; }
+.period-label { font-size: var(--t-sm); font-variant-numeric: tabular-nums; color: var(--text-strong); white-space: nowrap; }
+body.pattern .status > span:not(#conn):not(#lightNote) { display: none; }
+body.selfcheck.pattern:not([data-tab="health"]) .period { display: none; }
 .login-guest { display: grid; gap: 6px; margin: -4px 0 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .login-guest button { padding: 10px 14px; background: transparent; color: var(--text-strong); border: 1px solid var(--line-strong); }
 .login-guest button:hover { background: var(--wash-2); }
