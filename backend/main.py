@@ -36,6 +36,7 @@ import circadian
 import engine
 import habitat
 import horizons
+import iss_live
 import insight_service
 import quality
 import store
@@ -725,6 +726,10 @@ async def tick_loop() -> None:
                 store.add_sample(aid, store.iso(t), v, snap.source, s.quality)
                 publish(aid, "vitals", snap)
             ticks += 1
+            if ticks % 10 == 0:  # real ISS cabin data into every stream, ~30 s
+                env = CabinEnvironment(**iss_live.snapshot())
+                for aid in crew:
+                    publish(aid, "environment", env)
             if ticks % REFRESH_EVERY_TICKS == 0:
                 await refresh_from_store()
                 evaluate_wellbeing(t)
@@ -770,6 +775,7 @@ async def lifespan(app: FastAPI):
     global mission_start, seeded_until
     await asyncio.to_thread(store.init)
     store.start_writer()
+    iss_live.start()  # real cabin data from NASA ISS Live; never blocks
     stored_start = await asyncio.to_thread(store.meta_get, "mission_start")
     if stored_start:
         mission_start = datetime.fromisoformat(stored_start)
@@ -800,6 +806,7 @@ async def lifespan(app: FastAPI):
     yield
     for task in list(background):
         task.cancel()
+    iss_live.stop()
     store.stop_writer()
 
 
@@ -1219,6 +1226,11 @@ async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
     suggestions = []
     if any(n >= behavioral.CREW_WIDE_MIN for name, n in counts.items() if name in ("sleep", "body_clock")):
         suggestions.append("Consider reviewing the crew schedule and the lighting plan; a crew rest period may help.")
+    env = iss_live.snapshot()
+    if env["status"] in ("elevated", "above_limit"):
+        suggestions.append(f"Cabin CO2 is {env['co2_1h_avg_mmhg'] or env['co2_mmhg']} mmHg (live ISS reading; "
+                           f"NASA limit {env['co2_limit_mmhg']:g} mmHg). Headaches and poorer sleep start around this "
+                           "level: consider checking the CO2 scrubber and ventilation.")
     if counts.get("mood", 0) >= behavioral.CREW_WIDE_MIN:
         suggestions.append("Consider shared crew time or a lighter day; check the environment (CO2, noise, temperature).")
     if counts.get("reaction_time", 0) >= behavioral.CREW_WIDE_MIN:
@@ -1229,6 +1241,29 @@ async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
         view=view, crew_wide=crew_wide, members=members, suggestions=suggestions,
         note=f"Crew-wide trends never name anyone and need at least {behavioral.CREW_WIDE_MIN} people. "
              "Questionnaire answers are never aggregated or shown here.")
+
+
+# --- PROVISIONAL: live cabin environment from NASA ISS Live (iss_live.py) -----------
+
+class CabinEnvironment(BaseModel):
+    source: str
+    updated_at: Optional[datetime]
+    ppco2_lab_mmhg: Optional[float]
+    ppco2_node3_mmhg: Optional[float]
+    ppo2_lab_mmhg: Optional[float]
+    cabin_pressure_mmhg: Optional[float]
+    cabin_temp_c: Optional[float]
+    co2_mmhg: Optional[float]          # the higher of Lab and Node 3 right now
+    co2_1h_avg_mmhg: Optional[float]   # what NASA-STD-3001's 3 mmHg limit applies to
+    co2_limit_mmhg: float
+    status: Literal["ok", "elevated", "above_limit", "unavailable"]
+    note: str
+    source_url: str
+
+
+@app.get("/environment")
+async def get_environment() -> CabinEnvironment:
+    return CabinEnvironment(**iss_live.snapshot())
 
 
 # --- PROVISIONAL: habitat rooms (habitat.py) -----------------------------------------

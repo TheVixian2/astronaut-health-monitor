@@ -19,6 +19,15 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-14 — REAL NASA DATA in the stream + new dependency. Run
+  `pip install -r backend/requirements.txt` (adds `lightstreamer-client-lib`).**
+  `backend/iss_live.py` subscribes to NASA's public ISS Live telemetry: the cabin our
+  simulated crew lives in is the real ISS cabin (CO2, O2, pressure, temperature).
+  `GET /environment` + SSE event `environment`; the Commander's Habitat tab shows it.
+  Also new since the last entry: History page (`web/history.html`), Commander sees
+  every crew member's wellbeing level + areas, Habitat map (`GET /habitat`,
+  `/crew/locations`, `/astronauts/{id}/rooms`). Shapes in `docs/api-spec.md`.
+
 - **2026-11-14 (evening) — PIVOT DONE: mental health. Read this before your next commit.**
   Plan: Luca has it (6 workstreams). Deadline **Sun 15 Nov 23:59 Bucharest**.
   - **Removed on `main`:** profiles `orthostatic`, `fever`, `co2`, `sans` (+ `GET /sans`),
