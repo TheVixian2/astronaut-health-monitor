@@ -19,6 +19,36 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-14 (evening) — PIVOT DONE: mental health. Read this before your next commit.**
+  Plan: Luca has it (6 workstreams). Deadline **Sun 15 Nov 23:59 Bucharest**.
+  - **Removed on `main`:** profiles `orthostatic`, `fever`, `co2`, `sans` (+ `GET /sans`),
+    cabin CO2, **blood pressure** (`systolic_mmhg`/`diastolic_mmhg` no longer in vitals),
+    check-in `vision`. Scenarios now `sleep_debt | strain | clear` (others → 422). Old
+    code is in tag `pre-mental-health-pivot`. **Pull `main` into your lane first.**
+  - **Decisions (Luca):** (1) **Commander first, then released** — psych flags go to the
+    commander, who releases them to the astronaut; if the commander is flagged → the
+    deputy (pilot); ground always, after light delay. This replaces "astronaut sees
+    nothing": the official challenge says astronauts must be able to *evaluate and act on
+    their own health*, so nothing stays hidden for good. (2) **Stress score driven by
+    the watch**: HRV, resting HR, sleep, activity = 60-80 % of the score; PHQ-2, mood,
+    reaction test the rest. (3) **Flight surgeon stays** — the challenge text names them.
+    (4) Ship's doctor page stays. Shapes in `docs/api-spec.md` → "Decided, NOT built yet".
+  - **@stefanalbu2010-byte:** release endpoint + deputy routing; `/ingest` accepts
+    `hrv_sdnn_ms`, `active_min`; simulator + seed add HRV/activity (a2 drifts down after
+    the midpoint); `behavioral.py` adds `hrv` and `activity` signals with the 60-80 % weight.
+  - **@NotKaemy:** remove BP from `common.js` (VITALS), `mock.js`, `ground.js` (SYS
+    column) and the removed profiles from `HAZARDS`/`HRP_RISKS`/`meds.js`; bring back
+    "Tell them now" on the Commander page and show **released** warnings + guidance on
+    Self-check; add per-indicator "what / why it matters in space" lines and a
+    "check-in due" prompt (the challenge suggests both). For GitHub Pages: `?mock` must
+    skip the login and `mock.js` must serve the wellbeing/notice shapes.
+  - **@dbm711 — submission rules (official guide):** demo = **max 7 slides** incl. title
+    (or a 30 s video) — over the limit = not eligible for global judging; the 90 s
+    `demo-script.md` is for local judging only. Links must be public, no login. Must list
+    ≥1 NASA resource and every reference. AI use must be disclosed. No photos of anyone
+    under 18. Suggested 7 slides: title/team/challenge · problem · solution + user flow ·
+    how it works · NASA data & research · demo screenshots · future + ethics.
+
 - **2026-11-14 — `GET /mission` adds `real_one_way_delay_s`. Verdict decided.**
   Resolves NotKaemy's "demo verdict contradicts the rule" question (option a).
   The verdict now uses the **real** light time: `2 × real_one_way_delay_s >
