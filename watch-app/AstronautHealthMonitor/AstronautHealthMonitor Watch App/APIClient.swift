@@ -15,6 +15,37 @@ struct VitalsAlert: Decodable, Identifiable, Equatable {
     let groundEtaS: Int?
 }
 
+/// A full vitals snapshot with the astronaut's own baseline alongside it.
+/// Only `heartRateBpm` is real; everything else is simulated server-side.
+struct VitalsSnapshot: Decodable, Equatable {
+    let heartRateBpm: Double
+    let systolicMmhg: Double
+    let diastolicMmhg: Double
+    let spo2Pct: Double
+    let tempC: Double
+    let respRateBpm: Double
+    let sleepHLastNight: Double
+    /// NOTE the capital T. The JSON key is `mood_1to5`, and
+    /// `.convertFromSnakeCase` capitalises the first *letter* of each
+    /// underscore-separated component — so `1to5` becomes `1To5`, not `1to5`.
+    /// Renaming this to `mood1to5` makes every vitals decode fail silently,
+    /// which the UI then reports as "offline".
+    let mood1To5: Int
+    let source: String
+    let baseline: Baseline
+
+    struct Baseline: Decodable, Equatable {
+        let heartRateBpm: Double
+        let systolicMmhg: Double
+        let diastolicMmhg: Double
+        let spo2Pct: Double
+        let tempC: Double
+        let respRateBpm: Double
+        let sleepHLastNight: Double
+        let mood1To5: Int   // capital T — see the note above
+    }
+}
+
 /// Talks to the backend at localhost. The watchOS Simulator reaches the Mac's
 /// own localhost directly, which is why the whole demo runs on one machine.
 actor APIClient {
@@ -69,6 +100,20 @@ actor APIClient {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.badServerResponse)
         }
+    }
+
+    /// GET /astronauts/{id}/vitals
+    func vitals() async throws -> VitalsSnapshot {
+        let url = Self.baseURL
+            .appendingPathComponent("astronauts")
+            .appendingPathComponent(astronautID)
+            .appendingPathComponent("vitals")
+
+        let (data, response) = try await session.data(from: url)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try decoder.decode(VitalsSnapshot.self, from: data)
     }
 
     /// GET /astronauts/{id}/alerts

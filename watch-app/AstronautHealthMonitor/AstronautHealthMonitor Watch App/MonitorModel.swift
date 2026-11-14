@@ -9,6 +9,9 @@ final class MonitorModel {
     private(set) var heartRate: Double = 0
     private(set) var alert: VitalsAlert?
     private(set) var isConnected = false
+    /// Full vitals + the astronaut's own baseline, refreshed each tick.
+    /// nil until the backend answers; the HR readout works without it.
+    private(set) var snapshot: VitalsSnapshot?
 
     private let source: VitalsSource
     private let api: APIClient
@@ -49,6 +52,8 @@ final class MonitorModel {
             try await api.ingest(heartRate: bpm)
             isConnected = true
 
+            snapshot = try await api.vitals()
+
             let newest = try await api.alerts().last
             if newest?.id != lastAlertID {
                 lastAlertID = newest?.id
@@ -61,7 +66,8 @@ final class MonitorModel {
             }
         } catch {
             // Backend not up yet, or it fell over. Keep sampling and showing
-            // heart rate — the watch must never go blank mid-demo.
+            // heart rate — the watch must never go blank mid-demo. The last
+            // snapshot stays on screen rather than blanking the vitals list.
             isConnected = false
         }
     }
