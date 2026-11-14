@@ -19,7 +19,11 @@
   let region = "whole_body";         // selected body region
   let chartField = "heart_rate_bpm";
   const history = [];                // [{t, v}] vitals snapshots for the chart
-  const alerts = new Map();          // id -> alert, first-seen order
+  const alerts = new Map();          // id -> alert, first-seen order (every alert received)
+  // What this astronaut may see: physical alerts at once; psychological ones
+  // only after the Commander has released them (captain.html), so a hard
+  // message reaches the crew member through a person, not a screen.
+  const shown = () => [...alerts.values()].filter(a => !A.isPsychological(a) || A.isReleased(A.alertKey(a)));
   const acknowledged = new Set();    // alert ids hidden from the banner
 
   // ---- setup ---------------------------------------------------------------
@@ -110,7 +114,10 @@
     $("lightChip").className = `light-chip lc-${L.mode}`;
 
     const cardText = A.circadianCardText(circ.card);
+    // The irregular-sleep warning is psychological: held until the Commander releases it.
+    const held = cardText && !A.isReleased(A.circadianKey(cfg.aid, circ));
     const el = $("circCard");
+    el.hidden = !!held;
     el.textContent = cardText || `Nothing stands out over the last ${circ.summary?.nights ?? 7} nights.`;
     el.className = `circ-card ${cardText ? "watch" : "muted"}`;
 
@@ -246,7 +253,7 @@
   // Highest severity among this session's alerts, per body region.
   function regionSeverity() {
     const out = {};
-    for (const a of alerts.values()) {
+    for (const a of shown()) {
       if (!out[a.body_region] || SEVERITY_RANK[a.severity] > SEVERITY_RANK[out[a.body_region]]) out[a.body_region] = a.severity;
     }
     return out;
@@ -264,7 +271,7 @@
   }
 
   function renderRegionInfo() {
-    const list = [...alerts.values()].filter(a => region === "whole_body" || a.body_region === region);
+    const list = shown().filter(a => region === "whole_body" || a.body_region === region);
     const hint = region === "head"
       ? '<p class="muted small">Eyes and sleep live here. Use the vision check in the check-in form.</p>' : "";
     $("regionInfo").innerHTML = `<h3>${esc(REGION_NAMES[region])}</h3>${hint}` + (list.length
@@ -346,7 +353,7 @@
   // ---- alerts --------------------------------------------------------------
 
   function renderBanner() {
-    const open = [...alerts.values()].filter(a => !acknowledged.has(a.id));
+    const open = shown().filter(a => !acknowledged.has(a.id));
     const el = $("banner");
     if (!open.length) { el.hidden = true; return; }
     const a = open[open.length - 1];
@@ -377,10 +384,10 @@
 
   function renderHistory() {
     const ul = $("history");
-    $("alertCount").textContent = alerts.size;   // badge on the "Alerts" menu item
-    $("alertCount").hidden = !alerts.size;
-    if (!alerts.size) { ul.innerHTML = '<li class="muted">No alerts this session.</li>'; return; }
-    ul.innerHTML = [...alerts.values()].reverse().map(a => `
+    $("alertCount").textContent = shown().length;   // badge on the "Alerts" menu item
+    $("alertCount").hidden = !shown().length;
+    if (!shown().length) { ul.innerHTML = '<li class="muted">No alerts this session.</li>'; return; }
+    ul.innerHTML = shown().reverse().map(a => `
       <li class="alert sev-${esc(a.severity)}">
         <div class="head"><span class="sev">${esc(a.severity)}</span>
           <strong>${esc(profileName(a.profile))}</strong>
@@ -466,5 +473,9 @@
   }
 
   window.addEventListener("hashchange", showTab);
+
+  // The Commander released a psychological warning (another tab or pane on
+  // this machine): show it now.
+  A.onReleaseChange(() => { renderBanner(); renderHistory(); renderBody(); renderRegionInfo(); renderCircadian(); });
   showTab();
 })();

@@ -28,23 +28,58 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 
 ## Files
 
-- `login.html` + `auth.js` — **login gate, placeholder only.** One universal
-  account, checked in the browser: user `crew`, password `mars2026` (change
-  them at the top of `auth.js`). Every page loads `auth.js` first in `<head>`
-  and is redirected to the login page when signed out, then sent back to
-  where it was going (`?next=`). Session lasts 12 h in `localStorage`. **Not
-  security:** the password is readable in the code and the backend has no
-  auth. The repo goes public at submission — don't reuse a real password.
-- `index.html` — after login: choose **On board** or **Ground**, plus a small
-  link to the live demo. Keeps `?mock`/`?base`/`?aid`.
-- **Two areas, two menus** (the `.appnav` bar at the top of each page):
-  - **On board** (`self-check.html`): *My health · Check-in · Sleep & light ·
-    Alerts*. Tabs inside one page, chosen by the URL hash (`#health`,
+- `login.html` + `auth.js` — **login gate with one account per role,
+  placeholder only.** Checked in the browser; all passwords `mars2026`
+  (change them in `ACCOUNTS` at the top of `auth.js`):
+
+  | Login | Role | Lands on | May open |
+  |---|---|---|---|
+  | `crew` | Astronaut | `self-check.html` | that only |
+  | `captain` | Commander | `captain.html` | that only |
+  | `doctor` | Crew Medical Officer | `doctor.html` | that only |
+  | `ground` | Flight surgeon | `ground.html` | + `stream-check.html` |
+  | `demo` | Presenter | `index.html` | everything, incl. `demo.html` |
+
+  `PAGE_ROLES` in `auth.js` decides who may open what; a wrong role is sent to
+  its own interface. Every page loads `auth.js` first in `<head>`. Session
+  lasts 12 h in `localStorage`. **Not security:** passwords are readable in
+  the code and the backend has no auth. The repo goes public at submission —
+  don't reuse a real password.
+- `index.html` — presenter-only list of every interface, plus the live demo.
+  Keeps `?mock`/`?base`/`?aid`.
+- **Menus** (the `.appnav` bar at the top of each page; "All views" link only
+  for the presenter, `[data-demo-only]`):
+  - **Astronaut console** (`self-check.html`): *My health · Check-in · Sleep &
+    light · Alerts*. Tabs inside one page, chosen by the URL hash (`#health`,
     `#checkin`, `#sleep`, `#alerts`); sections carry `data-tab`. The alert
     banner stays visible on every tab. "Alerts" shows a count badge.
+  - **Commander** (`captain.html` / `captain.js`): *Crew wellbeing*.
+  - **Ship's doctor** (`doctor.html` / `doctor.js`): *Medications*.
   - **Ground** (`ground.html`, `stream-check.html`): *Crew overview · Raw
     stream (debug)*.
   - Inside `demo.html` the menus are hidden (`html.embedded`).
+- **Commander** — one panel per crew member: **physical** warnings (vital-sign
+  alerts) and **psychological** ones (`sleep_debt` / hazard `isolation`
+  alerts, mood ≤ 2/5, short sleep, the circadian irregular-sleep card), each
+  with pre-written "How you can help" advice (`ADVICE` in `captain.js`).
+  The Commander sees everything for everyone (decided 2026-11-14).
+- **Psychological warnings reach the Commander first** (decided 2026-11-14,
+  "so you do not stress the crew"). The astronaut console hides psychological
+  alerts and the circadian warning text until the Commander presses "Tell
+  {name} now" (`AHM.releaseToCrew`). Physical alerts are never held back.
+  Mood/sleep numbers stay visible to the astronaut (they produced them).
+  **The release flag is in `localStorage`, so it only works with both screens
+  on one machine** (the demo). A real ship needs it in the backend — requested
+  in STATUS.md.
+- **Ship's doctor** — today's doses from the **sample** plan in `meds.js`
+  (`schedule`, station time UTC): due now (−15/+30 min), overdue, upcoming,
+  "Mark given" (kept in `localStorage`). Live alerts from the last hour add
+  "Consider: …" suggestions from `meds.js` `onAlert`, always the CMO's
+  decision. No medication data exists in the backend or spec yet.
+- **Commander and doctor poll** `GET /vitals` + `GET /alerts` every 3 s
+  (`AHM.watchCrew`) instead of 4 SSE streams each: browsers allow ~6
+  connections per host and the console + Ground already use 5 on one machine.
+  In `?mock` mode they use in-page mock streams.
 - `self-check.html` / `self-check.js` — the astronaut console: alert banner with
   verdict, clickable body figure, vitals tiles vs baseline, Chart.js trend,
   check-in form (`share_with_ground` off by default), alert history.

@@ -350,3 +350,44 @@ a.choice:hover { border-color: var(--accent); }
 /* Body figure: the heart icon has thin vessels, so its selection outline is
    thinner than other regions' or it swallows them. */
 .region[data-region="heart"].selected > * { stroke-width: 1.6; }
+
+/* ---- Commander + ship's doctor ---------------------------------------------- */
+.captain-note, .sample-note { margin: 16px 0; padding: 10px 14px; border-radius: 8px;
+  background: rgba(143, 31, 15, .22); border: 1px solid var(--mars-dark); }
+.sample-note { background: rgba(27, 58, 138, .22); border-color: var(--blue); }
+.captain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+.cap-panel { border-top: 4px solid var(--ok); }
+.cap-panel.st-watch { border-top-color: var(--sev-watch); }
+.cap-panel.st-alert { border-top-color: var(--sev-alert); }
+.cap-panel.st-critical { border-top-color: var(--sev-critical); }
+.cap-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+
+.warns { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.warn { border-left: 4px solid var(--muted); padding: 8px 10px; background: rgba(255,255,255,.03); border-radius: 0 6px 6px 0; }
+.warn.sev-watch { border-color: var(--sev-watch); }
+.warn.sev-alert { border-color: var(--sev-alert); }
+.warn.sev-critical { border-color: var(--sev-critical); }
+.warn .head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.warn .sev { font-weight: 700; text-transform: uppercase; font-size: 11px; }
+.warn.sev-watch .sev { color: var(--sev-watch); }
+.warn.sev-alert .sev { color: var(--sev-alert); }
+.warn.sev-critical .sev { color: var(--sev-critical); }
+.advice { margin-top: 6px; }
+.advice-label { color: var(--accent); font-weight: 600; }
+.gate { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.gate.held { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; color: #f0a49a; }
+.gate.released { color: var(--ok); }
+.warn .actions { margin-top: 6px; display: flex; gap: 10px; align-items: center; }
+
+.doc-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .doc-grid { grid-template-columns: minmax(0, 1fr); } }
+.table-wrap { overflow-x: auto; }
+#schedule td { vertical-align: top; }
+#schedule tr.st-given td { color: var(--muted); }
+.dose-status { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ds-overdue { color: var(--sev-alert); }
+.ds-due { color: var(--sev-watch); }
+.ds-given { color: var(--ok); }
+.ds-upcoming { color: var(--muted); font-weight: 400; }
+h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px;
+  font-weight: 700; text-align: center; background: var(--sev-alert); color: #1a1205; vertical-align: middle; }

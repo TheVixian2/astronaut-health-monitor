@@ -1,0 +1,166 @@
+// Commander view: every crew member's physical and psychological warnings,
+// each with advice on how the Commander can help. Live (view=crew): the
+// Commander is on board.
+//
+// Psychological warnings reach the Commander FIRST. They stay hidden on the
+// crew member's own console until the Commander presses "Tell them now"
+// (AHM.releaseToCrew), so a hard message comes from a person, in private.
+// Advice is pre-written decision support, never a diagnosis.
+
+(function () {
+  const $ = id => document.getElementById(id);
+  const A = window.AHM;
+  const { SEVERITY_RANK, REGION_NAMES, esc, profileName } = A;
+  const cfg = A.settings();
+
+  const CIRC_REFRESH_MS = 60000;
+  const crew = new Map();   // aid -> { info, latest, alerts: Map(id -> alert), circ }
+
+  // ---- advice for the Commander ---------------------------------------------
+  // {n} is replaced with the crew member's first name.
+  const ADVICE = {
+    orthostatic: "Make sure {n} can lie down with legs raised and isn't given standing, exercise or EVA tasks until re-checked in 10 minutes. Ask the Crew Medical Officer to look at them.",
+    fever: "Lighten {n}'s workload and keep close-contact tasks to a minimum. Ask the Crew Medical Officer to examine them, and decide who covers their duties today.",
+    co2: "Have {n} move to a better-ventilated module and check the CO2 scrubber reading there. If others report headaches too, treat it as a cabin problem, not a personal one.",
+    sans: "Give {n} time today for the vision check, and agree with the Crew Medical Officer whether an OCT scan should be scheduled.",
+    physical: "Check in with {n} and the Crew Medical Officer about this alert.",
+    sleep_debt: "Talk to {n} in private before they see this. Protect their next sleep period: no late tasks, quarters in pre-sleep lighting an hour before bed. Ask how the workload feels.",
+    circadian: "Help {n} keep a regular schedule: a similar bedtime each night, pre-sleep lighting in the evening, nothing scheduled late. Raise it privately, as a routine thing.",
+    mood: "Find a private, unhurried moment with {n}. Ask open questions and listen rather than fix. Consider a lighter or more meaningful task, extra time for a private call home, and offer a private conference with the flight surgeon.",
+    sleep: "Ask {n} how they slept and whether anything is keeping them up. Avoid scheduling them for demanding or late tasks today.",
+  };
+  const advise = (kind, name) => (ADVICE[kind] || ADVICE.physical).replaceAll("{n}", name);
+
+  // Placeholder thresholds, from the crew member's own baseline.
+  const LOW_MOOD = 2;              // mood_1to5 at or below this
+  const SHORT_SLEEP_H = 6;         // or under 85% of their usual
+  const SHORT_SLEEP_RATIO = 0.85;
+
+  // ---- data ----------------------------------------------------------------
+
+  init();
+
+  async function init() {
+    let list;
+    try {
+      list = await A.watchCrew(cfg, {
+        onVitals: (aid, v) => { const c = crew.get(aid); if (c) { c.latest = v; render(); } },
+        onAlert: a => { const c = crew.get(a.astronaut_id); if (c) { c.alerts.set(a.id, a); render(); } },
+        onConn: (text, cls) => { $("conn").textContent = text; $("conn").className = `pill ${cls}`; },
+      });
+    } catch (err) {
+      $("crewPanels").innerHTML = `<p class="err">Could not load crew: ${esc(err.message)}. Is the backend running? (Add ?mock to use fake data.)</p>`;
+      return;
+    }
+    // watchCrew starts streaming before it returns, so fill the map first.
+    for (const info of list) if (!crew.has(info.id)) crew.set(info.id, { info, latest: null, alerts: new Map(), circ: null });
+    render();
+    loadCircadian();
+    setInterval(loadCircadian, CIRC_REFRESH_MS);
+    A.onReleaseChange(render);
+  }
+
+  async function loadCircadian() {
+    await Promise.all([...crew.keys()].map(async aid => {
+      try { crew.get(aid).circ = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/circadian?view=crew`, cfg.mock); }
+      catch { crew.get(aid).circ = null; }
+    }));
+    render();
+  }
+
+  // ---- warnings per crew member ---------------------------------------------
+
+  // Newest alert per profile from the last hour: the backend's alert list holds
+  // everything since it started and may repeat a profile; show each once.
+  const RECENT_MIN = 60;
+  function latestPerProfile(alerts) {
+    const m = new Map();
+    for (const a of alerts.values()) {
+      if (Date.now() - Date.parse(a.started_at) > RECENT_MIN * 60000) continue;
+      const prev = m.get(a.profile);
+      if (!prev || Date.parse(a.started_at) >= Date.parse(prev.started_at)) m.set(a.profile, a);
+    }
+    return [...m.values()].sort((x, y) => Date.parse(y.started_at) - Date.parse(x.started_at));
+  }
+
+  function warningsFor(aid, c) {
+    const name = c.info.name.replace(/^(Cmdr\.|Dr\.)\s*/, "").split(" ")[0];
+    const physical = [], psych = [];
+    for (const a of latestPerProfile(c.alerts)) {
+      const w = { severity: a.severity, title: profileName(a.profile), when: a.started_at,
+                  detail: `${REGION_NAMES[a.body_region] || a.body_region} · ${a.onboard_action}` };
+      if (A.isPsychological(a)) psych.push({ ...w, key: A.alertKey(a), advice: advise(a.profile, name) });
+      else physical.push({ ...w, advice: advise(ADVICE[a.profile] ? a.profile : "physical", name) });
+    }
+
+    const v = c.latest, base = v?.baseline || {};
+    if (v && typeof v.mood_1to5 === "number" && v.mood_1to5 <= LOW_MOOD) {
+      psych.push({ severity: v.mood_1to5 <= 1 ? "alert" : "watch", title: "Low mood",
+                   detail: `Mood ${v.mood_1to5}/5 (usual ${base.mood_1to5 ?? "?"}/5)`, advice: advise("mood", name), ownOnly: true });
+    }
+    if (v && typeof v.sleep_h_last_night === "number"
+        && (v.sleep_h_last_night < SHORT_SLEEP_H || (base.sleep_h_last_night && v.sleep_h_last_night < base.sleep_h_last_night * SHORT_SLEEP_RATIO))) {
+      psych.push({ severity: "watch", title: "Short sleep",
+                   detail: `${v.sleep_h_last_night} h last night (usual ${base.sleep_h_last_night ?? "?"} h)`, advice: advise("sleep", name), ownOnly: true });
+    }
+    const card = c.circ && A.circadianCardText(c.circ.card);
+    if (card) {
+      psych.push({ severity: "watch", title: "Irregular sleep timing", detail: card,
+                   key: A.circadianKey(aid, c.circ), advice: advise("circadian", name) });
+    }
+    return { name, physical, psych };
+  }
+
+  // ---- rendering -------------------------------------------------------------
+
+  function render() {
+    if (!crew.size) return;
+    $("crewPanels").innerHTML = [...crew.entries()].map(([aid, c]) => panel(aid, c)).join("");
+    document.querySelectorAll("[data-release]").forEach(b => b.addEventListener("click", () => {
+      A.releaseToCrew(b.dataset.release);
+      render();
+    }));
+  }
+
+  function panel(aid, c) {
+    const { name, physical, psych } = warningsFor(aid, c);
+    const all = physical.concat(psych);
+    const worst = all.reduce((w, x) => (!w || SEVERITY_RANK[x.severity] > SEVERITY_RANK[w] ? x.severity : w), null);
+    const v = c.latest;
+    const stats = v ? `HR ${v.heart_rate_bpm} · mood ${v.mood_1to5}/5 · sleep ${v.sleep_h_last_night} h` : "No data yet";
+    return `<article class="card cap-panel st-${worst || "nominal"}">
+      <div class="cc-head">
+        <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} · ${esc(aid)} · ${esc(stats)}</div></div>
+        <span class="st-pill">${esc(worst || "nominal")}</span>
+      </div>
+      <h3>Physical</h3>
+      ${physical.length ? `<ul class="warns">${physical.map(w => item(w, name)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
+      <h3>Psychological <span class="muted small">· you see these first</span></h3>
+      ${psych.length ? `<ul class="warns">${psych.map(w => item(w, name, true)).join("")}</ul>` : '<p class="muted small">Nothing to act on.</p>'}
+    </article>`;
+  }
+
+  function item(w, name, isPsych = false) {
+    let gate = "";
+    if (isPsych && w.ownOnly) {
+      gate = `<div class="gate muted small">Only you see this. ${esc(name)} entered or produced these numbers; there is nothing extra to tell them.</div>`;
+    } else if (isPsych) {
+      const at = A.releasedAt(w.key);
+      gate = at
+        ? `<div class="gate released small">Told ${esc(name)} at ${esc(time(at))}: now on their console.</div>`
+        : `<div class="gate held small"><span>Not shown to ${esc(name)} yet.</span>
+             <button type="button" data-release="${esc(w.key)}">Tell ${esc(name)} now</button></div>`;
+    }
+    return `<li class="warn sev-${esc(w.severity)}">
+      <div class="head"><span class="sev">${esc(w.severity)}</span> <strong>${esc(w.title)}</strong>
+        ${w.when ? `<span class="muted small">${esc(time(w.when))}</span>` : ""}</div>
+      <div class="small muted">${esc(w.detail)}</div>
+      <div class="advice"><span class="advice-label">How you can help:</span> ${esc(w.advice)}</div>
+      ${gate}
+    </li>`;
+  }
+
+  function time(t) {
+    return new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+})();
