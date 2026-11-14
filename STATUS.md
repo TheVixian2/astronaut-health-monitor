@@ -19,7 +19,15 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
-- _(none yet)_
+- **2026-11-14 — `docs/api-spec.md` IS STALE. Do not build from it yet.**
+  It still describes the pre-pivot project: five condition profiles, crew
+  `a1`-`a4`, the NOAA `/space-weather` endpoint, and no SANS. Agreed since:
+  SANS becomes the centrepiece (risk score from vision trend + cabin CO2 +
+  headache + mission day), `orthostatic` stays, `spe`/`sleep_debt`/`fever` are
+  cut candidates, and a behavioural check-in flow is added
+  (PHQ-2 -> AI summary -> astronaut reviews -> `share_with_ground` -> transmit).
+  See `docs/monitored-signals.md` for the full signal list and
+  `presentation/ideas.md` for the reasoning. **Luca owns this edit.**
 
 ---
 
