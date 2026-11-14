@@ -1,8 +1,9 @@
 """Mock backend: every endpoint in docs/api-spec.md, returning live-looking data.
 
-Vitals are a mean-reverting random walk around each astronaut's own baseline.
-POST /debug/scenario shifts them together (fever raises temp AND heart rate) and
-raises the matching alert. Insights are canned for now. The real baseline and
+Vitals are a mean-reverting random walk around each astronaut's own baseline,
+and a fake alert fires on a1 every ~60 s (insight canned, re-sent ~2 s later).
+Per STATUS.md Phase 2 scope: no /space-weather (spe is being cut) and
+/debug/scenario is a stub until the scenario enum settles. The real baseline,
 condition engine and insight_service.py replace the mock parts later.
 
 Run:  uvicorn main:app --reload   ->  http://localhost:8000/docs
@@ -33,7 +34,6 @@ Hazard = Literal["radiation", "isolation", "distance", "gravity", "environment"]
 BodyRegion = Literal["heart", "head", "lungs", "skin", "whole_body"]
 Environment = Literal["iss", "moon", "mars"]
 Source = Literal["real", "simulated"]
-Scenario = Literal["fever", "co2", "orthostatic", "sleep_debt", "spe", "sans", "clear"]
 
 
 def now() -> datetime:
@@ -101,13 +101,6 @@ class Mission(BaseModel):
     one_way_delay_s: int
 
 
-class SpaceWeather(BaseModel):
-    flux_10mev_pfu: float
-    observed_at: datetime
-    event_active: bool
-    source_url: str
-
-
 class Vision(BaseModel):
     amsler_distortion: Optional[bool] = None
     acuity_line: Optional[int] = None
@@ -124,7 +117,7 @@ class CheckinRequest(BaseModel):
 
 class ScenarioRequest(BaseModel):
     astronaut_id: str
-    scenario: Scenario
+    scenario: str  # enum is changing with the SANS pivot; free string until then
 
 
 # --- Mock data ---------------------------------------------------------------
@@ -145,14 +138,12 @@ CREW = {
                     temp_c=36.4, resp_rate_bpm=14, sleep_h_last_night=7.0, mood_1to5=4)),
 }
 
-# Condition profiles. Thresholds/wording are placeholders (see root CLAUDE.md).
-# `shift` = multiplier on the astronaut's baseline that the vitals drift toward.
-# `sans` is provisional: agreed in principle, not yet in api-spec.md.
+# Canned alert content for the mock only, NOT the condition engine (that waits
+# for the post-pivot spec). Wording is placeholder. `sans` is provisional.
 PROFILES = {
     "orthostatic": dict(
         severity="alert", hazard="gravity", body_region="heart", act_within_s=600,
         onboard_action="Lie flat, legs raised. Drink 500 ml with salt tablets, re-measure in 10 min.",
-        shift={"heart_rate_bpm": 1.30, "systolic_mmhg": 0.82},
         insight=Insight(
             why="Heart rate is well above your own baseline while systolic pressure is below it, "
                 "a pattern that can point to cardiovascular deconditioning in low gravity.",
@@ -162,7 +153,6 @@ PROFILES = {
     "fever": dict(
         severity="alert", hazard="environment", body_region="skin", act_within_s=3600,
         onboard_action="Rest, drink fluids, log temperature every hour.",
-        shift={"temp_c": 1.035, "heart_rate_bpm": 1.18},
         insight=Insight(
             why="Temperature and heart rate are rising together above your baseline, which may suggest "
                 "an infection. Immune function can change in spaceflight.",
@@ -172,7 +162,6 @@ PROFILES = {
     "co2": dict(
         severity="alert", hazard="environment", body_region="lungs", act_within_s=900,
         onboard_action="Move to a well-ventilated module and check the CO2 scrubber reading.",
-        shift={"resp_rate_bpm": 1.35, "heart_rate_bpm": 1.10},
         insight=Insight(
             why="Breathing rate is up together with heart rate, which can happen when cabin CO2 builds up.",
             trend="Respiratory rate about 35% above your baseline, heart rate up ~10%.",
@@ -181,26 +170,15 @@ PROFILES = {
     "sleep_debt": dict(
         severity="watch", hazard="isolation", body_region="head", act_within_s=86400,
         onboard_action="Protect tonight's sleep: dim lights 1 h before, no screens, use the eye mask.",
-        shift={"sleep_h_last_night": 0.70, "mood_1to5": 0.5, "heart_rate_bpm": 1.08},
         insight=Insight(
             why="Short sleep for several nights, lower mood and a raised resting heart rate together "
                 "may indicate accumulating sleep debt and strain.",
             trend="Sleep about 30% under your usual, mood down to 2/5, resting heart rate up ~8%.",
             recommended_action="Prioritise sleep tonight and consider a private conference with the "
                                "flight surgeon or a talk with a crewmate.")),
-    "spe": dict(
-        severity="critical", hazard="radiation", body_region="whole_body", act_within_s=300,
-        onboard_action="Shelter now: move to the storm shelter until the event clears.",
-        shift={},
-        insight=Insight(
-            why="Proton flux above 10 MeV has crossed the solar particle event threshold "
-                "(GOES data, used as a stand-in for deep space).",
-            trend="Flux rose above 10 pfu and is still climbing.",
-            recommended_action="Whole crew to the shelter now. Stay until flux drops below the threshold.")),
     "sans": dict(
         severity="watch", hazard="gravity", body_region="head", act_within_s=86400,
         onboard_action="Do an Amsler grid and acuity check today; log any headache.",
-        shift={},
         insight=Insight(
             why="Your SANS risk score is rising: vision check results, cabin CO2 and headache reports "
                 "together are worth a closer look. This is a risk score, not a diagnosis.",
@@ -219,24 +197,19 @@ class AstronautState:
         self.id = aid
         self.name, self.role, self.baseline = CREW[aid]
         self.values = {k: float(v) for k, v in self.baseline.model_dump().items()}
-        self.scenario: Optional[str] = None
         self.real_hr: Optional[tuple[float, float, str]] = None  # watch (bpm, loop time, source)
         self.alerts: list[Alert] = []
         self.active: dict[str, Alert] = {}  # profile -> alert
         self.checkins: list[CheckinRequest] = []
         self.manual: dict[str, float] = {}  # sleep/mood from the latest check-in
 
-    def target(self, field: str) -> float:
-        shift = PROFILES[self.scenario]["shift"] if self.scenario else {}
-        return getattr(self.baseline, field) * shift.get(field, 1.0)
-
     def tick(self) -> None:
         for field, step in WALK_STEP.items():
             v = self.values[field]
-            self.values[field] = v + random.gauss(0, step) + (self.target(field) - v) * 0.1
+            self.values[field] = v + random.gauss(0, step) + (getattr(self.baseline, field) - v) * 0.1
         self.values["spo2_pct"] = min(self.values["spo2_pct"], 100.0)
         for field in ("sleep_h_last_night", "mood_1to5"):
-            self.values[field] = self.manual.get(field, self.target(field))
+            self.values[field] = self.manual.get(field, getattr(self.baseline, field))
 
     def snapshot(self) -> Vitals:
         v = self.values
@@ -316,8 +289,7 @@ async def tick_loop() -> None:
             state.tick()
             publish(aid, "vitals", state.snapshot())
         since_auto += TICK_S
-        manual = any(s.scenario for s in crew.values())
-        if AUTO_ALERT_EVERY_S and since_auto >= AUTO_ALERT_EVERY_S and not manual:
+        if AUTO_ALERT_EVERY_S and since_auto >= AUTO_ALERT_EVERY_S:
             since_auto = 0
             crew["a1"].active.clear()
             raise_alert("a1", AUTO_CYCLE[auto_i % len(AUTO_CYCLE)])
@@ -417,15 +389,6 @@ async def put_mission(body: Mission) -> Mission:
     return mission
 
 
-@app.get("/space-weather")
-async def space_weather() -> SpaceWeather:
-    # Canned until the real NOAA GOES fetch lands; follows the spe scenario.
-    active = any("spe" in s.active for s in crew.values())
-    return SpaceWeather(
-        flux_10mev_pfu=142.0 if active else 0.21, observed_at=now(), event_active=active,
-        source_url="https://services.swpc.noaa.gov/json/goes/primary/integral-protons-6-hour.json")
-
-
 @app.post("/astronauts/{aid}/checkin", status_code=202)
 async def checkin(aid: str, body: CheckinRequest) -> Accepted:
     state = get_state(aid)
@@ -439,18 +402,6 @@ async def checkin(aid: str, body: CheckinRequest) -> Accepted:
 
 @app.post("/debug/scenario", status_code=202)
 async def debug_scenario(body: ScenarioRequest) -> Accepted:
-    state = get_state(body.astronaut_id)
-    if body.scenario == "clear":
-        state.scenario = None
-        state.manual.clear()
-        state.active.clear()
-        for s in crew.values():  # spe was crew-wide, so it clears crew-wide
-            s.active.pop("spe", None)
-    elif body.scenario == "spe":
-        for aid in crew:  # radiation hits the whole crew
-            raise_alert(aid, "spe")
-    else:
-        state.scenario = body.scenario
-        state.manual.clear()
-        raise_alert(body.astronaut_id, body.scenario)
+    # Stub: accepted and ignored until the post-pivot scenario enum is in the spec.
+    get_state(body.astronaut_id)
     return Accepted()
