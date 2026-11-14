@@ -153,6 +153,11 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   lists all vitals with a green-to-red bar and a marker. `AHM.thresholdLevel`
   (`common.js`, `THRESHOLDS`) measures distance from the astronaut's OWN usual
   (never a population range); watch / alert / critical steps are placeholders.
+- **No explanation boxes** (owner, 2026-11-14): the Commander's "Crew members
+  don't see these warnings" note, the Medications "Sample medication plan" note
+  and Mission Control's green-to-red key were removed on request. Don't add
+  boxes that explain the page back without asking. The decision-support footer
+  on `doctor.html` stays; the sample plan is still marked in `meds.js`.
 - **Cycle-aware usual** (owner, 2026-11-14): personal baselines already cover
   differences between bodies, but not the menstrual cycle (luteal phase: about
   +0.3-0.5 °C, a few bpm, HRV a little lower). Opt-in from the astronaut's own

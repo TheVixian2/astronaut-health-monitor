@@ -93,8 +93,7 @@
   function startPattern() {
     document.body.classList.add("pattern");
     setConn("pattern", "pill-on");
-    $("delayBanner").querySelector("strong").hidden = true;   // not a delayed live view here
-    $("delayText").hidden = true;
+    $("delayBanner").style.display = "none";   // not a delayed live view here
     window.AHMPattern.control(document.querySelector("header.bar .status"), ({ from, to }) => {
       for (const [aid, c] of crew) {
         const pts = window.AHMPattern.series(aid, from, to, SPARK_POINTS);
