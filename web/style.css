@@ -317,3 +317,7 @@ a.choice:hover { border-color: var(--accent); }
 .sc-grid > .solo { grid-column: 1 / -1; }
 .checkin-card .checkin { max-width: 640px; }
 .area-choice h2 { font-size: 18px; text-transform: none; letter-spacing: 0; margin: 10px 0 6px; }
+
+/* Body figure: the heart icon has thin vessels, so its selection outline is
+   thinner than other regions' or it swallows them. */
+.region[data-region="heart"].selected > * { stroke-width: 1.6; }
