@@ -47,12 +47,11 @@ Branch: `watch`
 - **Next:** `NSAllowsLocalNetworking` (see below), then verify against the real
   mock once the backend is up.
 - **Blocked on:** backend mock, to confirm ingest actually lands.
-- **Luca TODO — 4 clicks in Xcode, needed before the watch can reach the
-  backend:** select the `AstronautHealthMonitor Watch App` target -> Info tab ->
-  add `App Transport Security Settings` -> inside it add
-  `Allow Local Networking` = YES. Can't be done from disk: the template
-  generates its Info.plist, and ATS is a nested dictionary with no
-  `INFOPLIST_KEY_*` equivalent.
+- **ATS / `NSAllowsLocalNetworking` is NOT needed — verified 2026-11-14.**
+  Previously flagged here as a required Xcode setting. It isn't: the watch app
+  reached `http://localhost:8000` from the watchOS 27.2 Simulator with no ATS
+  exception at all (17/17 ingest POSTs returned 202, 17/17 alert polls 200).
+  Don't spend time on it.
 
 ## Backend — stefanalbu2010-byte (+ Luca later)
 
