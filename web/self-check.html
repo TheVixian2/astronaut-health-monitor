@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-check · AHM</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body class="selfcheck">
+  <header class="bar">
+    <div>
+      <h1><a href="index.html" class="home">Astronaut Health Monitor</a> <span class="muted">· Self-check</span></h1>
+      <div class="who"><strong id="name">…</strong> <span class="muted" id="role"></span></div>
+    </div>
+    <div class="status" aria-live="polite">
+      <span id="conn" class="pill pill-wait">connecting…</span>
+      <span><strong>Live</strong> · not delayed</span>
+      <span id="mission"></span>
+      <span>Data age: <strong id="age">—</strong></span>
+      <label class="muted small">Astronaut
+        <select id="aid"><option>a1</option><option>a2</option><option>a3</option><option>a4</option></select>
+      </label>
+    </div>
+  </header>
+
+  <!-- Newest unacknowledged alert. Hidden when there is none. -->
+  <section id="banner" class="banner" hidden aria-live="assertive"></section>
+
+  <main class="sc-grid">
+    <section class="card body-card">
+      <h2>Body <span class="muted">tap a region</span></h2>
+      <svg id="body" viewBox="0 0 200 400" role="group" aria-label="Body regions">
+        <g class="region" data-region="skin" tabindex="0" role="button" aria-label="Skin">
+          <rect x="30" y="92" width="22" height="125" rx="11"/>
+          <rect x="148" y="92" width="22" height="125" rx="11"/>
+          <rect x="66" y="222" width="30" height="160" rx="13"/>
+          <rect x="104" y="222" width="30" height="160" rx="13"/>
+        </g>
+        <g class="region" data-region="whole_body" tabindex="0" role="button" aria-label="Whole body">
+          <rect x="88" y="72" width="24" height="18" rx="4"/>
+          <rect x="58" y="86" width="84" height="142" rx="22"/>
+        </g>
+        <g class="region" data-region="lungs" tabindex="0" role="button" aria-label="Lungs">
+          <ellipse cx="82" cy="135" rx="15" ry="30"/>
+          <ellipse cx="118" cy="135" rx="15" ry="30"/>
+        </g>
+        <g class="region" data-region="heart" tabindex="0" role="button" aria-label="Heart">
+          <path d="M110 152 c-8 -9 -20 -2 -14 8 l14 14 l14 -14 c6 -10 -6 -17 -14 -8z"/>
+        </g>
+        <g class="region" data-region="head" tabindex="0" role="button" aria-label="Head">
+          <circle cx="100" cy="42" r="30"/>
+        </g>
+      </svg>
+      <div id="regionInfo" class="region-info"></div>
+    </section>
+
+    <section class="card">
+      <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
+      <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
+      <div class="chart-wrap">
+        <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small">last few minutes · dashed = your baseline · tap a tile to change</span></div>
+        <canvas id="chart" height="170"></canvas>
+        <p id="chartFallback" class="muted small" hidden>Chart unavailable (Chart.js did not load — offline?).</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Check-in</h2>
+      <form id="checkin" class="checkin">
+        <fieldset>
+          <legend>Mood</legend>
+          <div class="scale" id="moodScale">
+            <label><input type="radio" name="mood" value="1"> 1</label>
+            <label><input type="radio" name="mood" value="2"> 2</label>
+            <label><input type="radio" name="mood" value="3"> 3</label>
+            <label><input type="radio" name="mood" value="4"> 4</label>
+            <label><input type="radio" name="mood" value="5"> 5</label>
+          </div>
+          <span class="muted small">1 = very low · 5 = very good</span>
+        </fieldset>
+
+        <label class="row">Sleep last night <input type="number" name="sleep" min="0" max="16" step="0.5" placeholder="h"> h</label>
+
+        <fieldset>
+          <legend>Symptoms</legend>
+          <div class="chips">
+            <label><input type="checkbox" name="symptom" value="headache"> Headache</label>
+            <label><input type="checkbox" name="symptom" value="blurred_vision"> Blurred vision</label>
+            <label><input type="checkbox" name="symptom" value="dizziness"> Dizziness</label>
+            <label><input type="checkbox" name="symptom" value="nausea"> Nausea</label>
+            <label><input type="checkbox" name="symptom" value="congestion"> Congestion</label>
+            <label><input type="checkbox" name="symptom" value="fatigue"> Fatigue</label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Vision check</legend>
+          <label class="row"><input type="checkbox" name="amsler"> Amsler grid lines look wavy or missing</label>
+          <label class="row">Acuity chart: last line read <input type="number" name="acuity" min="1" max="14" step="1"></label>
+        </fieldset>
+
+        <label class="row share"><input type="checkbox" name="share"> Share this check-in with ground</label>
+        <p class="muted small">Off by default. You decide what leaves the spacecraft.</p>
+
+        <button type="submit">Submit check-in</button>
+        <span id="checkinResult" class="small" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Alert history</h2>
+      <ul id="history" class="alerts"><li class="muted">No alerts this session.</li></ul>
+    </section>
+  </main>
+
+  <footer class="foot muted small">Decision support only — not a diagnosis. If something feels wrong, tell the Crew Medical Officer.</footer>
+
+  <script src="mock.js"></script>
+  <script src="common.js"></script>
+  <script src="self-check.js"></script>
+</body>
+</html>
