@@ -145,6 +145,12 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - `demo.html` — Commander and Ground side by side (two iframes) for the
   pitch. The Commander pane polls (no SSE) and Ground holds 4 SSE streams,
   under the browser's ~6 per host. Tested against the real backend.
+- **The 6-connection limit is shared by every tab** (bug found 2026-11-14:
+  a Mission Control tab + a demo tab left open starved every new page, stuck
+  on "connecting…" until the backend was restarted). `AHM.openStream` returns
+  a `PausingEventSource` (`common.js`): a stream closes once its tab has been
+  hidden for 15 s and reopens when the tab is shown. Keep every new stream on
+  `openStream`; never `new EventSource` directly.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
 - **Check-in is one question at a time** (Back / Next, "Skip" when
   unanswered, Submit on the last): mood → sleep hours (± half-hour buttons) →

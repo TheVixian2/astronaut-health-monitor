@@ -188,7 +188,66 @@
 
   function openStream({ base, aid, view, mock }) {
     const url = `${base}/astronauts/${encodeURIComponent(aid)}/stream?view=${view}`;
-    return { url, source: mock ? new window.Mock.EventSource(url) : new EventSource(url) };
+    return { url, source: mock ? new window.Mock.EventSource(url) : new PausingEventSource(url) };
+  }
+
+  // Browsers allow only 6 open connections to one server, shared by EVERY tab,
+  // and each live stream holds one for as long as it is open (Mission Control
+  // holds 4, one per astronaut). A couple of forgotten tabs then use them all
+  // and every new page sits on "connecting…" with no data (seen 2026-11-14:
+  // a Mission Control tab + a demo tab starve a new console). So a stream
+  // closes once its tab has been hidden for HIDDEN_GRACE_MS and reopens when
+  // the tab is shown again. The grace period keeps quick window switches
+  // live (a window covered by another counts as hidden too, and a reopened
+  // Mission Control stream waits out the light delay again).
+  // Same interface as EventSource for what the pages use: addEventListener,
+  // onopen / onerror / onmessage, readyState, close().
+  const HIDDEN_GRACE_MS = 15000;
+  class PausingEventSource {
+    constructor(url) {
+      this.url = url;
+      this.listeners = [];
+      this.es = null;
+      this.closed = false;
+      this.pauseTimer = null;
+      this.onopen = this.onerror = this.onmessage = null;
+      this.onVisibility = () => {
+        clearTimeout(this.pauseTimer);
+        if (document.hidden) this.pauseTimer = setTimeout(() => this.pause(), HIDDEN_GRACE_MS);
+        else this.resume();
+      };
+      document.addEventListener("visibilitychange", this.onVisibility);
+      this.resume();
+      if (document.hidden) this.onVisibility();   // opened in the background: same grace
+    }
+    get readyState() { return this.closed ? 2 : this.es ? this.es.readyState : 0; }   // paused = connecting
+    addEventListener(type, fn, opts) {
+      this.listeners.push([type, fn, opts]);
+      if (this.es) this.es.addEventListener(type, fn, opts);
+    }
+    removeEventListener(type, fn) {
+      this.listeners = this.listeners.filter(([t, f]) => !(t === type && f === fn));
+      if (this.es) this.es.removeEventListener(type, fn);
+    }
+    resume() {
+      if (this.es || this.closed) return;
+      const es = this.es = new EventSource(this.url);
+      es.onopen = e => this.onopen && this.onopen(e);
+      es.onerror = e => this.onerror && this.onerror(e);
+      es.onmessage = e => this.onmessage && this.onmessage(e);
+      this.listeners.forEach(([t, fn, o]) => es.addEventListener(t, fn, o));
+    }
+    pause() {
+      if (!this.es) return;
+      this.es.close();
+      this.es = null;
+    }
+    close() {
+      clearTimeout(this.pauseTimer);
+      this.pause();
+      this.closed = true;
+      document.removeEventListener("visibilitychange", this.onVisibility);
+    }
   }
 
   // Errors carry .status so callers can tell 403 (private) from 404 (missing).
