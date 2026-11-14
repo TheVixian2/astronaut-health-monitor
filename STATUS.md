@@ -35,34 +35,58 @@ Anything that changed in `docs/api-spec.md`, newest at the top.
 
 Branch: `watch`
 
-- **Working:** Xcode project created (Watch-only, watchOS 27.2), builds clean.
-- **Next:** `VitalsSource` / `SimulatedSource` / `APIClient` / `ContentView`.
-- **Blocked on:** nothing.
+- **Working:** Phase 2 step 4 done on branch `watch`. `VitalsSource`,
+  `SimulatedSource` (random walk + exertion ramp), `HealthKitSource` stub,
+  `APIClient` (POST ingest + poll `/alerts`), `MonitorModel`, `ContentView`
+  with HR readout and alert banner. Builds and runs on the watchOS 27.2
+  Simulator; HR updates live; degrades to "offline" with no backend.
+- **Design note for the backend lane:** the watch **polls `GET
+  /astronauts/a1/alerts` every 3 s** rather than holding an SSE connection —
+  much less code on watchOS. The mock needs `/alerts` to return a JSON array
+  (`[]` is fine). Haptic fires only when the newest alert `id` changes.
+- **Next:** `NSAllowsLocalNetworking` (see below), then verify against the real
+  mock once the backend is up.
+- **Blocked on:** backend mock, to confirm ingest actually lands.
+- **Luca TODO — 4 clicks in Xcode, needed before the watch can reach the
+  backend:** select the `AstronautHealthMonitor Watch App` target -> Info tab ->
+  add `App Transport Security Settings` -> inside it add
+  `Allow Local Networking` = YES. Can't be done from disk: the template
+  generates its Info.plist, and ATS is a nested dictionary with no
+  `INFOPLIST_KEY_*` equivalent.
 
 ## Backend — stefanalbu2010-byte (+ Luca later)
 
 Branch: `backend`
 
-- **PHASE 2 IS GO (Luca, 2026-11-14).** Start with step 1 only.
-- **Build now — the mock (`backend/main.py`):** every endpoint from
-  `docs/api-spec.md` returning realistic canned data, CORS open for local dev,
-  and a working SSE stream on `/astronauts/{id}/stream` emitting a `vitals`
-  event every 3 s and a fake `alert` every ~60 s. Both other lanes are blocked
-  until this runs, so ship it before anything else.
-- **Two things to skip** — the spec is mid-pivot (see Contract changes above):
-  - **Skip `/space-weather`** entirely. The `spe` profile is being cut.
-  - **Stub `/debug/scenario`** but don't wire real scenarios yet — the enum
-    is changing.
-  Every other endpoint's *shape* is stable, so build them as written.
-- **After the mock:** `insight_service.py` (with the canned fallback — it must
-  never raise into the request path), then `tools/simulate_crew.py`
-  (`--seed-baseline` + deterministic seed; the crew wander near their own
-  distinct baselines via random walk with mean reversion — see
-  `docs/monitored-signals.md` §2).
-- **Do NOT build the condition engine from `docs/api-spec.md` yet** — the five
-  profiles there are pre-pivot. `docs/monitored-signals.md` §6 has the current
-  intent. Ask Luca before implementing conditions.
-- **Blocked on:** nothing for step 1.
+- **Done — mock is up (`backend/main.py`, branch `backend`, ready to merge).**
+  Every spec endpoint except `/space-weather` (skipped as asked), pydantic
+  models, CORS open. Run: `cd backend`, activate the venv, `uvicorn main:app --reload`
+  → `http://localhost:8000/docs`. Smoke-tested every endpoint and both SSE views.
+  - Vitals: random walk with mean reversion around a **different baseline per
+    astronaut** (`a1` ~58 bpm ... `a2` ~74). `POST /ingest` HR overrides the
+    simulated HR (and its `source`) for 10 s.
+  - SSE: `vitals` every 3 s; a fake `alert` on `a1` every 60 s (cycles fever,
+    co2, orthostatic, sleep_debt, sans). Set `MOCK_AUTO_ALERT_S=10` for faster
+    testing, `0` to turn it off.
+  - **Web, note:** an alert is sent with `insight: null`, then **re-sent ~2 s
+    later with the same `id`** and `insight` filled in. Update by `id`.
+  - `view=ground` is delayed by `one_way_delay_s`. **Default mission is
+    `mars` / 20 s** (demo-compressed). Change it with `PUT /mission`.
+  - `/debug/scenario` is a stub (any string, 202, does nothing).
+  - `/checkin` returns `202 {"accepted": true}`. The spec gives no response shape.
+- **Luca, please confirm in the spec:** (1) insight delivered by re-sending the
+  alert event with the same id, (2) the `/checkin` and `/debug/scenario` responses.
+- **Done — `backend/insight_service.py`:** `generate_insight(profile, vitals, baseline, ...)`
+  calls `claude-sonnet-5-5` via `messages.parse()` and returns `Insight(why, trend,
+  recommended_action)`. It never raises: no key, timeout, API error or refusal all
+  return the fallback. Tested the no-key and bad-key paths; **not yet tested with a
+  real key** (none on this machine). Profile-agnostic, so it works for any post-pivot
+  condition. Not wired into `main.py` yet — the mock's fake alerts keep canned text
+  until the condition engine exists.
+- **Next:** `tools/simulate_crew.py`. Not building the condition engine until the
+  post-pivot spec lands. **Note for the spec:** `sans` builds up over days, so
+  `orthostatic` is the only condition that can be triggered live in the demo.
+- **Blocked on:** nothing.
 
 ## Presentation — dbm711
 
