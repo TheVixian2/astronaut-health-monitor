@@ -156,12 +156,98 @@
     }
   }
 
+  // ---- circadian (mirrors backend/circadian.py; PROVISIONAL in the spec) ----
+  // Usual bedtime (UTC h), bedtime jitter (min), usual sleep (h), chance the
+  // pre-sleep mode is used. a2 is the irregular one, as in the backend.
+  const HABITS = { a1: [22.0, 15, 7.2, 0.9], a2: [23.0, 40, 6.6, 0.4], a3: [22.5, 12, 7.5, 0.85], a4: [22.5, 18, 7.0, 0.95] };
+  const CCT_K = { general: 4500, pre_sleep: 2700, phase_shift: 6500, off: 0 };
+  const SSLA = { source: "NASA ISS Solid-State Lighting Assembly: pre-sleep mode (2700K, blue-depleted)", url: "https://ntrs.nasa.gov/citations/20160005080" };
+  const IMMUNE = { source: "Light at night disrupts biological clocks, calendars, and immune function (2021)", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8564795" };
+  const lightingOverride = {};
+
+  function seeded(str) { // mulberry32 seeded from a string hash: same history every load
+    let h = 1779033703;
+    for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 3432918353);
+    let a = h >>> 0;
+    return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  const gaussR = rnd => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
+
+  // Fixed patterns, not random draws, so the mock always tells the backend's
+  // story: a2 irregular (bedtime spread ~2 h, bright light on 3 of 7 nights),
+  // everyone else nominal. LATE x jitter = minutes late; a night uses the
+  // pre-sleep mode when USE[i] < the astronaut's chance of using it.
+  const LATE = [-0.4, 1.6, -0.9, 0.2, 1.1, -1.3, 0.5];
+  const USE = [0, 0.37, 0.74, 0.11, 0.48, 0.85, 0.22];
+
+  function nightsFor(aid) {
+    const [bedH, jitter, sleepH, pPre] = HABITS[aid];
+    const rnd = seeded("circadian-" + aid);   // only for small sleep-length noise
+    const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+    const out = [];
+    for (let back = 7; back >= 1; back--) {
+      const i = 7 - back;
+      const day = new Date(today - back * 864e5);
+      const late = LATE[i] * jitter;
+      const bed = new Date(day.getTime() + bedH * 36e5 + late * 6e4);
+      bed.setUTCSeconds(0, 0);
+      const hours = Math.round(Math.min(9, Math.max(4, sleepH + gaussR(rnd) * 0.35 - Math.max(0, late) / 60 * 0.5)) * 10) / 10;
+      const pre = USE[i] < pPre ? 55 + (i % 3) * 5 : 5 + i;
+      out.push({
+        night_of: day.toISOString().slice(0, 10), bedtime: iso(bed), wake_time: iso(new Date(bed.getTime() + hours * 36e5)),
+        sleep_h: hours, pre_sleep_lighting_min: pre, bright_light_last_hour: pre < 30,
+      });
+    }
+    return out;
+  }
+  const iso = d => d.toISOString().replace(/\.\d+Z$/, "Z");
+
+  // Sharing choice survives reloads and is seen by both panes of demo.html.
+  function sharedMap() { try { return JSON.parse(localStorage.getItem("ahm-mock-circadian-share") || "{}"); } catch { return {}; } }
+  function setShared(aid, v) { const m = sharedMap(); m[aid] = v; try { localStorage.setItem("ahm-mock-circadian-share", JSON.stringify(m)); } catch {} }
+
+  function circadian(aid) {
+    const nights = nightsFor(aid);
+    const mins = nights.map(n => { const d = new Date(n.bedtime); return ((d.getUTCHours() - 18 + 24) % 24) * 60 + d.getUTCMinutes(); });
+    const spread = Math.max(...mins) - Math.min(...mins);
+    const bright = nights.filter(n => n.bright_light_last_hour).length;
+    const irregular = spread > 60, tooBright = bright >= 3;
+    let card = null;
+    if (irregular || tooBright) {
+      const parts = [];
+      if (irregular) parts.push(`Your bedtime varied by about ${(spread / 60).toFixed(1)} h over the last ${nights.length} nights.`);
+      if (tooBright) parts.push(`On ${bright} of ${nights.length} nights your quarters were still in bright light shortly before sleep.`);
+      parts.push("Irregular sleep timing and blue-rich light before bed may shift your body clock, and body-clock disruption has been linked to changes in immune function.");
+      card = parts.join(" ");
+    }
+    let text = "You might consider switching your quarters to pre-sleep lighting about 1 h before bed and setting screens aside.";
+    if (irregular) text += " A similar bedtime each night, within about 30 min, may also help.";
+    const lighting = lightingOverride[aid] || { mode: "general", cct_k: 4500, since: nights[nights.length - 1].wake_time };
+    return {
+      astronaut_id: aid, share_with_ground: !!sharedMap()[aid], lighting, nights,
+      summary: { status: card ? "watch" : "nominal", nights: nights.length, bedtime_spread_min: spread, nights_bright_before_sleep: bright },
+      card, recommendation: { text, source: SSLA.source, source_url: SSLA.url },
+      evidence: { text: "Circadian disruption is associated with immune changes; most evidence is from animal studies.", source: IMMUNE.source, source_url: IMMUNE.url },
+    };
+  }
+
+  const reject = (path, status) => { const e = new Error(`${path} → HTTP ${status} (mock)`); e.status = status; return Promise.reject(e); };
+  const CIRCADIAN_PATH = /^\/astronauts\/([^/]+)\/circadian$/;
+
   // REST stand-ins, same shapes as the spec. Async, like fetch.
   const ALERTS_PATH = /^\/astronauts\/[^/]+\/alerts$/;
   const CHECKIN_PATH = /^\/astronauts\/[^/]+\/checkin$/;
 
   function get(path) {
     const p = path.split("?")[0];
+    const circ = p.match(CIRCADIAN_PATH);
+    if (circ) {
+      const aid = circ[1];
+      if (!HABITS[aid]) return reject(p, 404);
+      const ground = new URLSearchParams(path.split("?")[1] || "").get("view") === "ground";
+      if (ground && !sharedMap()[aid]) return reject(p, 403);   // private by default
+      return Promise.resolve(circadian(aid));
+    }
     if (p === "/mission") return Promise.resolve({ ...MISSION });
     if (p === "/crew") return Promise.resolve(CREW.map(c => ({ ...c })));
     if (ALERTS_PATH.test(p)) {
@@ -183,5 +269,14 @@
     return Promise.reject(new Error(`mock: no POST ${path}`));
   }
 
-  window.Mock = { EventSource: MockEventSource, get, post };
+  function put(path, body) {
+    console.info("[mock] PUT", path, body);
+    let m = path.match(/^\/astronauts\/([^/]+)\/circadian\/sharing$/);
+    if (m) { setShared(m[1], !!body.share_with_ground); return Promise.resolve({ share_with_ground: !!body.share_with_ground }); }
+    m = path.match(/^\/astronauts\/([^/]+)\/lighting$/);
+    if (m) { lightingOverride[m[1]] = { mode: body.mode, cct_k: CCT_K[body.mode], since: iso(new Date()) }; return Promise.resolve(lightingOverride[m[1]]); }
+    return reject(path, 404);
+  }
+
+  window.Mock = { EventSource: MockEventSource, get, post, put };
 })();

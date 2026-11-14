@@ -15,6 +15,7 @@
   const cfg = A.settings();
   const TRANSIT_POLL_MS = 2000;
   const SPARK_POINTS = 40;          // ~2 min of HR per card
+  const CIRC_POLL_MS = 30000;
 
   // Real one-way light time per environment, shown permanently in the header
   // so the stakes stay visible even when the demo runs compressed.
@@ -44,7 +45,7 @@
       return;
     }
 
-    for (const info of list) crew.set(info.id, { info, latest: null, at: null, hr: [], baseHr: null, alerts: new Map() });
+    for (const info of list) crew.set(info.id, { info, latest: null, at: null, hr: [], baseHr: null, alerts: new Map(), circ: null });
     renderCrew();
 
     let open = 0;
@@ -63,6 +64,9 @@
       else if (live === 0 && open === 0) setConn("connecting…", "pill-wait");
       else setConn(`${live}/${sources.length} streams`, "pill-wait");
     }
+
+    pollCircadian();
+    setInterval(pollCircadian, CIRC_POLL_MS);
 
     $("showTransit").addEventListener("change", renderTransit);
     pollTransit();
@@ -90,6 +94,44 @@
     if (c) { c.alerts.set(a.id, a); renderCard(a.astronaut_id); }
     renderAlerts();
     renderTransit();
+  }
+
+  // ---- circadian (PROVISIONAL): only what each astronaut chose to share ------
+  // view=ground answers 403 until the astronaut shares. A summary, not a live
+  // signal, so a slow poll is enough.
+
+  async function pollCircadian() {
+    await Promise.all([...crew.keys()].map(async aid => {
+      const c = crew.get(aid);
+      try {
+        c.circ = { state: "shared", data: await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/circadian?view=ground`, cfg.mock) };
+      } catch (err) {
+        c.circ = err.status === 403 ? { state: "private" } : null;   // 404 / offline: no line at all
+      }
+      renderCard(aid);
+    }));
+  }
+
+  function circLine(c) {
+    if (!c.circ) return "";
+    if (c.circ.state === "private") return '<div class="small muted cc-circ">Sleep &amp; light: kept private by the astronaut</div>';
+    const d = c.circ.data, s = d.summary || {}, L = d.lighting || {};
+    const light = L.mode ? ` · lighting: ${esc(A.LIGHTING_NAMES[L.mode] || L.mode)}${L.cct_k ? ` ${L.cct_k} K` : ""}` : "";
+    if (s.status === "watch") {
+      return `<div class="small cc-circ watch">Sleep &amp; light (shared): bedtime varied ${hoursLikePython(s.bedtime_spread_min)} h · ` +
+             `bright light before sleep ${s.nights_bright_before_sleep}/${s.nights} nights${light}</div>`;
+    }
+    return `<div class="small muted cc-circ">Sleep &amp; light (shared): nothing stands out${light}</div>`;
+  }
+
+  // Minutes -> hours to one decimal, rounding halves to even like the
+  // backend's f"{x:.1f}", so Ground and the Self-check card (backend text)
+  // show the same number: 135 min -> "2.2", not JS toFixed's "2.3".
+  function hoursLikePython(min) {
+    const tenths = min / 6;
+    let r = Math.round(tenths);
+    if (Math.abs(tenths % 1) === 0.5 && r % 2 !== 0) r -= 1;
+    return (r / 10).toFixed(1);
   }
 
   // ---- demo overlay: in transit --------------------------------------------
@@ -176,7 +218,8 @@
       <div class="cvs">${rows}</div>
       ${spark(c.hr, c.baseHr)}
       <div class="small cc-age" data-aid="${esc(aid)}">${ageText(c)}</div>
-      ${latestAlert ? `<div class="small cc-alert sev-${esc(latestAlert.severity)}"><span class="dot"></span>${esc(profileName(latestAlert.profile))} · ${esc(REGION_NAMES[latestAlert.body_region] || latestAlert.body_region)}</div>` : ""}`;
+      ${latestAlert ? `<div class="small cc-alert sev-${esc(latestAlert.severity)}"><span class="dot"></span>${esc(profileName(latestAlert.profile))} · ${esc(REGION_NAMES[latestAlert.body_region] || latestAlert.body_region)}</div>` : ""}
+      ${circLine(c)}`;
   }
 
   // Tiny inline SVG sparkline of heart rate, baseline dashed.

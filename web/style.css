@@ -241,3 +241,31 @@ a.choice:hover { border-color: var(--accent); }
 .sleep-note { margin: 0 0 8px; }
 .sleep-note.short { color: var(--sev-watch); font-weight: 600; }
 .tips { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 6px; }
+
+/* Self-check: live circadian data */
+.light-chip { margin-left: 8px; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0;
+  padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--text); vertical-align: middle; }
+.light-chip.lc-pre_sleep { background: rgba(242, 140, 40, .18); color: #f7b06b; }
+.light-chip.lc-general { background: rgba(230, 234, 242, .12); }
+.light-chip.lc-phase_shift { background: rgba(106, 168, 255, .18); color: var(--accent); }
+.light-chip.lc-off { background: rgba(255,255,255,.04); color: var(--muted); }
+.circ-card { margin: 0 0 10px; }
+.circ-card.watch { color: var(--sev-watch); }
+.circ-rec { margin: 10px 0 4px; }
+.nights-head { margin-bottom: 4px; }
+.lg-bright { color: var(--sev-watch); }
+.nights { display: grid; gap: 3px; }
+.n-row { display: grid; grid-template-columns: 34px 1fr 40px; gap: 8px; align-items: center; }
+.n-track { position: relative; height: 12px; background: rgba(255,255,255,.03); border-radius: 3px; }
+.n-bar { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 3px; opacity: .85; }
+.n-bright { position: absolute; top: 2px; bottom: 2px; background: var(--sev-watch); border-radius: 2px; opacity: .8; }
+.n-h { text-align: right; font-variant-numeric: tabular-nums; }
+.n-axis .n-track { background: none; height: 14px; }
+.n-axis .n-track span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.n-axis .n-track span:first-child { transform: none; }
+.sleep-light details { margin-top: 10px; }
+.sleep-light summary { cursor: pointer; color: var(--accent); margin-bottom: 6px; }
+
+/* Ground: per-astronaut sleep & light line */
+.cc-circ { border-top: 1px solid var(--line); padding-top: 6px; }
+.cc-circ.watch { color: var(--sev-watch); }
