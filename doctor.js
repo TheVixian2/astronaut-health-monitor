@@ -18,6 +18,7 @@
   const STORE = "ahm-meds-marks";
 
   const names = new Map();       // aid -> crew name
+  const members = new Map();     // aid -> crew member (for the avatar)
   const suggestions = new Map(); // "aid|profile" -> { alert, med } (newest alert only)
 
   // ---- marks (given / dismissed) ------------------------------------------
@@ -52,7 +53,7 @@
         },
         onConn: (text, cls) => { $("medsConn").textContent = text; $("medsConn").className = `pill ${cls}`; },
       });
-      for (const c of list) names.set(c.id, c.name);
+      for (const c of list) { names.set(c.id, c.name); members.set(c.id, c); }
     } catch (err) {
       $("medsConn").textContent = "offline";
       $("medsConn").className = "pill pill-off";
@@ -87,6 +88,8 @@
     $("clock").textContent = now.toISOString().slice(11, 16);
     const list = doses(now);
     const who = aid => names.get(aid) || aid;
+    // Name with the crew member's avatar (the My health silhouette, by sex).
+    const person = aid => `<span class="person">${A.avatar(members.get(aid) || { id: aid }, "avatar-sm")}<strong>${esc(who(aid))}</strong></span>`;
 
     // Needs attention: overdue first, then due now, then alert-linked suggestions.
     const attn = [
@@ -99,15 +102,15 @@
     for (const id of ["attnCount", "medsCount"]) { $(id).textContent = n; $(id).hidden = !n; }
 
     const doseItem = ({ sev, d }) => `<li class="warn sev-${sev}">
-      <div class="head"><span class="sev">${d.status === "overdue" ? "overdue" : "due now"}</span>
-        <strong>${esc(who(d.aid))}</strong>: ${esc(d.drug)} ${esc(d.dose)}
+      <div class="head head-person"><span class="sev">${d.status === "overdue" ? "overdue" : "due now"}</span>${person(d.aid)}</div>
+      <div class="med-line"><strong>${esc(d.drug)}</strong> ${esc(d.dose)}
         <span class="muted small">${esc(d.time)}, ${esc(d.route)}</span></div>
       <div class="small muted">${esc(d.purpose)}${d.status === "overdue" ? `, ${esc(late(d.mins))} late` : ""}</div>
       <div class="actions"><button type="button" data-give="${esc(d.key)}">Mark given</button></div></li>`;
     const suggItem = ({ alert: a, med }) => `<li class="warn sev-${esc(a.severity)}">
-      <div class="head"><span class="sev">${esc(a.severity)}</span> <strong>${esc(who(a.astronaut_id))}</strong>:
-        ${esc(profileName(a.profile))} <span class="muted small">${esc(clock(a.started_at))}</span></div>
-      <div>Consider: <strong>${esc(med.drug)}</strong> ${esc(med.dose)}</div>
+      <div class="head head-person"><span class="sev">${esc(a.severity)}</span>${person(a.astronaut_id)}
+        <span class="muted small">${esc(clock(a.started_at))}</span></div>
+      <div class="med-line">${esc(profileName(a.profile))}. Consider: <strong>${esc(med.drug)}</strong> ${esc(med.dose)}</div>
       <div class="small muted">${esc(med.note)} Your decision.</div>
       <div class="actions"><button type="button" data-prn="${esc(a.id)}" data-what="given">Mark given</button>
         <button type="button" class="link" data-prn="${esc(a.id)}" data-what="dismissed">Not needed</button></div></li>`;
@@ -117,7 +120,7 @@
       : '<li class="muted">Nothing due right now.</li>';
 
     $("schedule").tBodies[0].innerHTML = list.map(d => `<tr class="st-${d.status}">
-      <td class="num">${esc(d.time)}</td><td>${esc(who(d.aid))}</td><td>${esc(d.drug)}</td>
+      <td class="num">${esc(d.time)}</td><td>${person(d.aid)}</td><td>${esc(d.drug)}</td>
       <td>${esc(d.dose)} <span class="muted small">${esc(d.route)}</span></td><td class="small">${esc(d.purpose)}</td>
       <td><span class="dose-status ds-${d.status}">${statusText(d)}</span></td>
       <td>${d.status === "given" ? "" : `<button type="button" class="link" data-give="${esc(d.key)}">Mark given</button>`}</td></tr>`).join("");
