@@ -114,14 +114,14 @@
 
   function circLine(c) {
     if (!c.circ) return "";
-    if (c.circ.state === "private") return '<div class="small muted cc-circ">Sleep &amp; light: kept private by the astronaut</div>';
+    if (c.circ.state === "private") return '<div class="small muted cc-circ">Sleep &amp; light: not shared by the astronaut</div>';
     const d = c.circ.data, s = d.summary || {}, L = d.lighting || {};
     const light = L.mode ? ` · lighting: ${esc(A.LIGHTING_NAMES[L.mode] || L.mode)}${L.cct_k ? ` ${L.cct_k} K` : ""}` : "";
     if (s.status === "watch") {
-      return `<div class="small cc-circ watch">Sleep &amp; light (shared): bedtime varied ${hoursLikePython(s.bedtime_spread_min)} h · ` +
+      return `<div class="small cc-circ watch">Sleep &amp; light: bedtime varied ${hoursLikePython(s.bedtime_spread_min)} h · ` +
              `bright light before sleep ${s.nights_bright_before_sleep}/${s.nights} nights${light}</div>`;
     }
-    return `<div class="small muted cc-circ">Sleep &amp; light (shared): nothing stands out${light}</div>`;
+    return `<div class="small muted cc-circ">Sleep &amp; light: nothing stands out${light}</div>`;
   }
 
   // Minutes -> hours to one decimal, rounding halves to even like the

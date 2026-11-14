@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commander · AHM</title>
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="captain">
+  <nav class="appnav area-onboard" aria-label="Commander">
+    <a class="brand" data-href="index.html" href="index.html" title="Home">AHM</a>
+    <span class="area-tag">Commander</span>
+    <div class="menu"><a data-href="captain.html" href="captain.html" aria-current="page">Crew wellbeing</a></div>
+    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+  </nav>
+
+  <header class="bar">
+    <div>
+      <h1>Crew wellbeing</h1>
+      <div class="muted">Physical and psychological warnings for every crew member, with how you can help</div>
+    </div>
+    <div class="status" aria-live="polite">
+      <span id="conn" class="pill pill-wait">connecting…</span>
+      <span><strong>Live</strong> · on board</span>
+    </div>
+  </header>
+
+  <section class="captain-note">
+    <strong>Psychological warnings reach you first.</strong>
+    The crew member does not see them until you choose <em>Tell them now</em>, so you can
+    raise it in person, in private. Physical alerts go to everyone at once.
+  </section>
+
+  <main id="crewPanels" class="captain-grid"><p class="muted">Loading crew…</p></main>
+
+  <footer class="foot muted small">Decision support only — not a diagnosis. Keep psychological
+    information confidential and discuss it in private. Medical questions go to the Crew Medical Officer.</footer>
+
+  <script src="mock.js"></script>
+  <script src="common.js"></script>
+  <script src="captain.js"></script>
+</body>
+</html>

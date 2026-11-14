@@ -28,16 +28,72 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 
 ## Files
 
-- `index.html` — landing page linking the views. Keeps `?mock`/`?base`/`?aid`.
-- `self-check.html` / `self-check.js` — the astronaut view: alert banner with
+- `login.html` + `auth.js` — **login gate with one account per role,
+  placeholder only.** Checked in the browser; all passwords `mars2026`
+  (change them in `ACCOUNTS` at the top of `auth.js`):
+
+  | Login | Role | Lands on | May open |
+  |---|---|---|---|
+  | `crew` | Astronaut | `self-check.html` | that only |
+  | `captain` | Commander | `captain.html` | that only |
+  | `doctor` | Crew Medical Officer | `doctor.html` | that only |
+  | `ground` | Flight surgeon | `ground.html` | + `stream-check.html` |
+  | `demo` | Presenter | `index.html` | everything, incl. `demo.html` |
+
+  `PAGE_ROLES` in `auth.js` decides who may open what; a wrong role is sent to
+  its own interface. Every page loads `auth.js` first in `<head>`. Session
+  lasts 12 h in `localStorage`. **Not security:** passwords are readable in
+  the code and the backend has no auth. The repo goes public at submission —
+  don't reuse a real password.
+- `index.html` — presenter-only list of every interface, plus the live demo.
+  Keeps `?mock`/`?base`/`?aid`.
+- **Menus** (the `.appnav` bar at the top of each page; "All views" link only
+  for the presenter, `[data-demo-only]`):
+  - **Astronaut console** (`self-check.html`): *My health · Check-in · Sleep &
+    light · Alerts*. Tabs inside one page, chosen by the URL hash (`#health`,
+    `#checkin`, `#sleep`, `#alerts`); sections carry `data-tab`. The alert
+    banner stays visible on every tab. "Alerts" shows a count badge.
+  - **Commander** (`captain.html` / `captain.js`): *Crew wellbeing*.
+  - **Ship's doctor** (`doctor.html` / `doctor.js`): *Medications*.
+  - **Ground** (`ground.html`, `stream-check.html`): *Crew overview · Raw
+    stream (debug)*.
+  - Inside `demo.html` the menus are hidden (`html.embedded`).
+- **Commander** — one panel per crew member: **physical** warnings (vital-sign
+  alerts) and **psychological** ones (`sleep_debt` / hazard `isolation`
+  alerts, mood ≤ 2/5, short sleep, the circadian irregular-sleep card), each
+  with pre-written "How you can help" advice (`ADVICE` in `captain.js`).
+  The Commander sees everything for everyone (decided 2026-11-14).
+- **Psychological warnings reach the Commander first** (decided 2026-11-14,
+  "so you do not stress the crew"). The astronaut console hides psychological
+  alerts and the circadian warning text until the Commander presses "Tell
+  {name} now" (`AHM.releaseToCrew`). Physical alerts are never held back.
+  Mood/sleep numbers stay visible to the astronaut (they produced them).
+  **The release flag is in `localStorage`, so it only works with both screens
+  on one machine** (the demo). A real ship needs it in the backend — requested
+  in STATUS.md.
+- **Ship's doctor** — today's doses from the **sample** plan in `meds.js`
+  (`schedule`, station time UTC): due now (−15/+30 min), overdue, upcoming,
+  "Mark given" (kept in `localStorage`). Live alerts from the last hour add
+  "Consider: …" suggestions from `meds.js` `onAlert`, always the CMO's
+  decision. No medication data exists in the backend or spec yet.
+- **Commander and doctor poll** `GET /vitals` + `GET /alerts` every 3 s
+  (`AHM.watchCrew`) instead of 4 SSE streams each: browsers allow ~6
+  connections per host and the console + Ground already use 5 on one machine.
+  In `?mock` mode they use in-page mock streams.
+- `self-check.html` / `self-check.js` — the astronaut console: alert banner with
   verdict, clickable body figure, vitals tiles vs baseline, Chart.js trend,
   check-in form (`share_with_ground` off by default), alert history.
 - **Circadian (PROVISIONAL in the spec):** Self-check's Light & sleep card
   reads `GET /circadian?view=crew` — lighting chip, `card` text, 7-night
   bedtime chart, `recommendation` + source, and the share toggle
-  (`PUT /circadian/sharing`, off by default). Ground shows one line per
-  astronaut from `view=ground`: a **403 means "kept private by the
-  astronaut"**, 404 shows nothing. Without the endpoint the card falls back to
+  (`PUT /circadian/sharing`). **Shared with ground by default** (decided
+  2026-11-14; backend default change requested from stefanalbu2010-byte); the
+  astronaut can opt out. **On the ship console sleep data is private**: the
+  console is a shared screen, so the card and the "Sleep last night" tile stay
+  hidden until the astronaut taps "Show my sleep data", and re-hide after 2 min
+  without touching the card. Ground shows one line per astronaut from
+  `view=ground`: a **403 means "not shared by the astronaut"**, 404 shows
+  nothing. Without the endpoint the card falls back to
   the static guidance. `card` is accepted as a string (backend) or an object
   (spec) via `AHM.circadianCardText()`.
 - `ground.html` / `ground.js` — the flight surgeon: one `view=ground` stream
@@ -71,7 +127,16 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - **`docs/api-spec.md` is the contract.** Read from it, don't guess field names.
 - Data arrives over **SSE** (`EventSource`), not polling. Listen for the named
   `vitals` and `alert` events.
-- Severity colours are fixed: `watch` yellow, `alert` orange, `critical` red.
+- Severity colours are fixed: `watch` yellow, `alert` orange, `critical` red
+  (the palette's Mars red `#D62828`).
+- **Colour palette** (team decision, 2026-11-14): Light Silver `#C0C6D4`, Mars
+  Orange Red `#D62828`, Dark Mars Red `#8F1F0F`, Black `#0B0B0B`, Blue
+  `#1B3A8A`. They live as tokens at the top of `style.css`; use the tokens,
+  never raw hex, in new CSS and JS (the chart reads them with
+  `getComputedStyle`). On board = Mars red, Ground = blue. Thin lines and link
+  text use `--accent`, a lighter tint of the blue, because `#1B3A8A` is too
+  dark to read on black. Status colours (ok green, watch yellow, alert orange)
+  stay outside the palette because they carry meaning.
 - The long Claude explanation (`insight.why` / `trend` / `recommended_action`)
   is shown **here only** — the watch gets just the one-line `onboard_action`.
 - `insight` can be `null`; render the alert without it rather than waiting.

@@ -1,16 +1,33 @@
+/* Team colour palette (2026-11-14):
+     Light Silver #C0C6D4 · Mars Orange Red #D62828 · Dark Mars Red #8F1F0F
+     Black #0B0B0B · Blue #1B3A8A
+   Everything else below is a shade or tint of those five, except the status
+   colours (ok green, watch yellow, alert orange), which carry meaning. */
 :root {
-  --bg: #0f1420;
-  --panel: #171e2e;
-  --line: #263049;
-  --text: #e6eaf2;
-  --muted: #8b95ab;
+  /* palette */
+  --silver: #C0C6D4;
+  --mars: #D62828;
+  --mars-dark: #8F1F0F;
+  --black: #0B0B0B;
+  --blue: #1B3A8A;
+
+  /* roles */
+  --bg: var(--black);
+  --panel: #141519;          /* black, lifted one step */
+  --line: #2a2d35;           /* silver at low strength on black */
+  --text: var(--silver);
+  --text-strong: #e6e9f0;    /* lighter silver for headings and key numbers */
+  --muted: #868c99;          /* dimmed silver */
+  --accent: #6f8fe6;         /* tint of the palette blue: #1B3A8A is too dark for thin lines/text on black */
+  --blue-hover: #24479f;
+  --body: #1c1f27;           /* body figure */
   --ok: #3ccf8e;
-  --accent: #6aa8ff;
-  --body: #2a3550;
-  /* Severity colours are fixed by web/CLAUDE.md */
+
+  /* Severity colours stay yellow / orange / red (web/CLAUDE.md); critical
+     uses the palette's Mars red. */
   --sev-watch: #f5c542;
   --sev-alert: #f28c28;
-  --sev-critical: #e5484d;
+  --sev-critical: var(--mars);
   color-scheme: dark;
 }
 
@@ -24,8 +41,9 @@ body {
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-h1 { font-size: 18px; margin: 0; }
-h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; }
+h1 { font-size: 18px; margin: 0; color: var(--text-strong); }
+h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-strong); }
+h1 .muted, h2 .muted { color: var(--muted); }
 code { font-family: ui-monospace, Consolas, monospace; }
 .muted { color: var(--muted); font-weight: normal; text-transform: none; letter-spacing: 0; }
 .small { font-size: 12px; }
@@ -42,8 +60,9 @@ input, select, button {
   border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
 }
 input[type=checkbox] { padding: 0; }
-button { cursor: pointer; background: #24314f; }
-button:hover { background: #2e3d61; }
+button { cursor: pointer; background: var(--blue); border-color: var(--blue); color: var(--text-strong); }
+button:hover { background: var(--blue-hover); }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button.link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 0 4px; font-size: 12px; }
 
 .status {
@@ -53,7 +72,7 @@ button.link { background: none; border: 0; color: var(--muted); text-decoration:
 .status strong { color: var(--text); }
 .pill { padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; }
 .pill-on { background: rgba(60, 207, 142, .15); color: var(--ok); }
-.pill-off { background: rgba(229, 72, 77, .15); color: var(--sev-critical); }
+.pill-off { background: rgba(214, 40, 40, .15); color: var(--sev-critical); }
 .pill-wait { background: rgba(245, 197, 66, .15); color: var(--sev-watch); }
 .stale { color: var(--sev-alert); }
 
@@ -66,7 +85,7 @@ th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line
 th { color: var(--muted); font-weight: 500; font-size: 12px; }
 td.num { font-variant-numeric: tabular-nums; }
 .up { color: var(--sev-alert); }
-.down { color: #6aa8ff; }
+.down { color: var(--accent); }
 
 .alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .alert { border-left: 4px solid var(--muted); padding: 8px 10px; background: rgba(255,255,255,.03); border-radius: 0 6px 6px 0; }
@@ -86,7 +105,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .log {
   margin: 0; max-height: 280px; overflow: auto; font-size: 12px;
   font-family: ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word;
-  color: #b8c2d8;
+  color: var(--text);
 }
 
 /* ---- shared bits ------------------------------------------------------- */
@@ -140,10 +159,10 @@ a.choice:hover { border-color: var(--accent); }
 /* body figure */
 .body-card svg { display: block; width: 100%; max-width: 220px; margin: 0 auto; }
 .region { cursor: pointer; outline: none; }
-.region > * { fill: var(--body); stroke: #3b4a6e; stroke-width: 1.5; transition: fill .15s; }
-.region[data-region="lungs"] > * { fill: #34446b; }
-.region[data-region="heart"] > * { fill: #4a5a85; }
-.region:hover > *, .region:focus-visible > * { fill: #3d5288; }
+.region > * { fill: var(--body); stroke: #3a3f4c; stroke-width: 1.5; transition: fill .15s; }
+.region[data-region="lungs"] > * { fill: #22325f; }          /* palette blue, darkened */
+.region[data-region="heart"] > * { fill: var(--mars-dark); }  /* palette dark Mars red */
+.region:hover > *, .region:focus-visible > * { fill: #2b3f7a; }
 .region.selected > * { stroke: var(--accent); stroke-width: 3; }
 .region.sev-watch > * { fill: var(--sev-watch); }
 .region.sev-alert > * { fill: var(--sev-alert); }
@@ -166,7 +185,7 @@ a.choice:hover { border-color: var(--accent); }
 .tile.charted { border-color: var(--accent); }
 .tile.off .t-delta { color: var(--sev-alert); font-weight: 700; }
 .t-label { color: var(--muted); font-size: 12px; }
-.t-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.t-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-strong); }
 .t-unit { font-size: 12px; color: var(--muted); font-weight: 400; }
 .t-base { font-size: 12px; }
 .chart-wrap { margin-top: 14px; height: 210px; display: flex; flex-direction: column; }
@@ -193,7 +212,7 @@ a.choice:hover { border-color: var(--accent); }
 .delay-banner {
   display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline;
   margin: 16px 0; padding: 10px 14px; border-radius: 8px;
-  background: rgba(106, 168, 255, .1); border: 1px solid rgba(106, 168, 255, .35);
+  background: rgba(27, 58, 138, .28); border: 1px solid var(--blue);
 }
 .delay-banner strong { color: var(--accent); letter-spacing: .06em; }
 
@@ -218,10 +237,10 @@ a.choice:hover { border-color: var(--accent); }
 .st-pill { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: rgba(60, 207, 142, .15); color: var(--ok); }
 .st-watch .st-pill { background: rgba(245, 197, 66, .15); color: var(--sev-watch); }
 .st-alert .st-pill { background: rgba(242, 140, 40, .15); color: var(--sev-alert); }
-.st-critical .st-pill { background: rgba(229, 72, 77, .15); color: var(--sev-critical); }
+.st-critical .st-pill { background: rgba(214, 40, 40, .15); color: var(--sev-critical); }
 .cvs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .cv { display: flex; flex-direction: column; min-width: 0; }
-.cv-val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cv-val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-strong); }
 .cv-val .t-unit { display: none; }
 .cv-off { color: var(--sev-alert); font-weight: 700; }
 .spark { display: block; width: 100%; height: 40px; }
@@ -246,8 +265,8 @@ a.choice:hover { border-color: var(--accent); }
 .light-chip { margin-left: 8px; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0;
   padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--text); vertical-align: middle; }
 .light-chip.lc-pre_sleep { background: rgba(242, 140, 40, .18); color: #f7b06b; }
-.light-chip.lc-general { background: rgba(230, 234, 242, .12); }
-.light-chip.lc-phase_shift { background: rgba(106, 168, 255, .18); color: var(--accent); }
+.light-chip.lc-general { background: rgba(192, 198, 212, .14); }
+.light-chip.lc-phase_shift { background: rgba(27, 58, 138, .45); color: var(--accent); }
 .light-chip.lc-off { background: rgba(255,255,255,.04); color: var(--muted); }
 .circ-card { margin: 0 0 10px; }
 .circ-card.watch { color: var(--sev-watch); }
@@ -269,3 +288,106 @@ a.choice:hover { border-color: var(--accent); }
 /* Ground: per-astronaut sleep & light line */
 .cc-circ { border-top: 1px solid var(--line); padding-top: 6px; }
 .cc-circ.watch { color: var(--sev-watch); }
+
+/* Self-check: shared-console privacy for sleep data */
+.sleep-gate { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 12px;
+  border: 1px dashed var(--line); border-radius: 8px; margin-bottom: 10px; }
+.sleep-gate p { margin: 0; }
+.private-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin-bottom: 8px; }
+.tile.masked { cursor: default; }
+.tile.masked .t-value { font-size: 15px; color: var(--muted); padding: 4px 0; }
+
+/* ---- login + area menus --------------------------------------------------- */
+.login-page { display: grid; place-items: center; min-height: 100vh; }
+.login-box { width: min(360px, 100%); }
+.login-box h1 { margin-bottom: 4px; }
+.login-form { display: grid; gap: 12px; margin: 16px 0; }
+.login-form label { display: grid; gap: 4px; color: var(--muted); }
+.login-form input { padding: 8px 10px; }
+.login-form button { padding: 8px 14px; }
+
+.user { color: var(--muted); }
+.pick { margin: 20px 0 10px; }
+.areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.area-choice { display: block; color: inherit; text-decoration: none; padding: 20px; border-top: 4px solid var(--line); }
+.area-choice:hover { border-color: var(--accent); }
+.area-choice p { margin: 0; }
+/* Area colours: On board = Mars red (the spacecraft), Ground = palette blue. */
+.area-choice.onboard { border-top-color: var(--mars); }
+.area-choice.ground { border-top-color: var(--blue); }
+.area-choice.onboard:hover { border-color: var(--mars); }
+.area-choice.ground:hover { border-color: var(--accent); }
+.area-tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  padding: 2px 8px; border-radius: 999px; }
+.onboard .area-tag, .area-onboard .area-tag { background: rgba(143, 31, 15, .45); color: #f0a49a; }
+.ground .area-tag, .area-ground .area-tag { background: rgba(27, 58, 138, .5); color: #b9c8f2; }
+
+/* the menu bar at the top of each area */
+.appnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 0;
+  border-bottom: 1px solid var(--line); }
+.appnav .brand { font-weight: 800; color: var(--text-strong); text-decoration: none; letter-spacing: .08em;
+  display: inline-flex; align-items: center; }
+/* The palette's four-stripe mark (silver, Mars red, dark Mars red, blue) after
+   the brand name, and on the login and area pages. */
+.appnav .brand::after, .stripe-mark {
+  content: ""; display: inline-block; width: 30px; height: 8px; margin-left: 8px; transform: skewX(-35deg);
+  background: linear-gradient(90deg, var(--silver) 0 25%, var(--mars) 25% 50%, var(--mars-dark) 50% 75%, var(--blue) 75% 100%);
+}
+.appnav .menu { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.appnav .menu a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; }
+.appnav .menu a:hover { color: var(--text); background: rgba(255,255,255,.05); }
+.appnav .menu a[aria-current="page"] { color: var(--text-strong); background: var(--panel); box-shadow: inset 0 -2px 0 var(--accent); }
+.area-onboard .menu a[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--mars); }
+.appnav .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px;
+  font-weight: 700; text-align: center; background: var(--sev-alert); color: #1a1205; }
+.embedded .appnav { display: none; }   /* inside demo.html the panes show content only */
+
+/* on-board tabs: a tab with a single card uses the full width */
+.sc-grid > .solo { grid-column: 1 / -1; }
+.checkin-card .checkin { max-width: 640px; }
+.area-choice h2 { font-size: 18px; text-transform: none; letter-spacing: 0; margin: 10px 0 6px; }
+
+/* Body figure: the heart icon has thin vessels, so its selection outline is
+   thinner than other regions' or it swallows them. */
+.region[data-region="heart"].selected > * { stroke-width: 1.6; }
+
+/* ---- Commander + ship's doctor ---------------------------------------------- */
+.captain-note, .sample-note { margin: 16px 0; padding: 10px 14px; border-radius: 8px;
+  background: rgba(143, 31, 15, .22); border: 1px solid var(--mars-dark); }
+.sample-note { background: rgba(27, 58, 138, .22); border-color: var(--blue); }
+.captain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+.cap-panel { border-top: 4px solid var(--ok); }
+.cap-panel.st-watch { border-top-color: var(--sev-watch); }
+.cap-panel.st-alert { border-top-color: var(--sev-alert); }
+.cap-panel.st-critical { border-top-color: var(--sev-critical); }
+.cap-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+
+.warns { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.warn { border-left: 4px solid var(--muted); padding: 8px 10px; background: rgba(255,255,255,.03); border-radius: 0 6px 6px 0; }
+.warn.sev-watch { border-color: var(--sev-watch); }
+.warn.sev-alert { border-color: var(--sev-alert); }
+.warn.sev-critical { border-color: var(--sev-critical); }
+.warn .head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.warn .sev { font-weight: 700; text-transform: uppercase; font-size: 11px; }
+.warn.sev-watch .sev { color: var(--sev-watch); }
+.warn.sev-alert .sev { color: var(--sev-alert); }
+.warn.sev-critical .sev { color: var(--sev-critical); }
+.advice { margin-top: 6px; }
+.advice-label { color: var(--accent); font-weight: 600; }
+.gate { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.gate.held { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; color: #f0a49a; }
+.gate.released { color: var(--ok); }
+.warn .actions { margin-top: 6px; display: flex; gap: 10px; align-items: center; }
+
+.doc-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .doc-grid { grid-template-columns: minmax(0, 1fr); } }
+.table-wrap { overflow-x: auto; }
+#schedule td { vertical-align: top; }
+#schedule tr.st-given td { color: var(--muted); }
+.dose-status { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ds-overdue { color: var(--sev-alert); }
+.ds-due { color: var(--sev-watch); }
+.ds-given { color: var(--ok); }
+.ds-upcoming { color: var(--muted); font-weight: 400; }
+h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px;
+  font-weight: 700; text-align: center; background: var(--sev-alert); color: #1a1205; vertical-align: middle; }

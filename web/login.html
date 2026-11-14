@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · AHM</title>
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+  <main class="login-box card">
+    <h1>Astronaut Health Monitor <span class="stripe-mark" aria-hidden="true"></span></h1>
+    <p class="muted">Sign in to continue.</p>
+    <form id="login" class="login-form" autocomplete="off">
+      <label>Username <input name="user" required autofocus autocapitalize="none" spellcheck="false"></label>
+      <label>Password <input name="password" type="password" required></label>
+      <button type="submit">Sign in</button>
+      <p id="loginError" class="err small" role="alert" hidden>Wrong username or password.</p>
+    </form>
+    <p class="muted small">Demo build: placeholder accounts, one per role
+      (crew, captain, doctor, ground, demo).</p>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const asked = AHMAuth.safeNext(params.get("next"));
+    // Go where the visitor was heading if their role may open it, else to their own interface.
+    const target = s => (asked && AHMAuth.canOpen(asked, s) ? asked : s.home);
+
+    const already = AHMAuth.session();
+    if (already) location.replace(target(already));
+
+    document.getElementById("login").addEventListener("submit", e => {
+      e.preventDefault();
+      const f = e.target;
+      const s = AHMAuth.login(f.user.value, f.password.value);
+      if (s) {
+        location.replace(target(s));
+      } else {
+        document.getElementById("loginError").hidden = false;
+        f.password.value = "";
+        f.password.focus();
+      }
+    });
+  </script>
+</body>
+</html>

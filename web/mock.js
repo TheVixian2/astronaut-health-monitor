@@ -204,6 +204,8 @@
 
   // Sharing choice survives reloads and is seen by both panes of demo.html.
   function sharedMap() { try { return JSON.parse(localStorage.getItem("ahm-mock-circadian-share") || "{}"); } catch { return {}; } }
+  // Shared with ground by default (team decision 2026-11-14); false only after the astronaut opts out.
+  function isShared(aid) { return sharedMap()[aid] !== false; }
   function setShared(aid, v) { const m = sharedMap(); m[aid] = v; try { localStorage.setItem("ahm-mock-circadian-share", JSON.stringify(m)); } catch {} }
 
   function circadian(aid) {
@@ -224,7 +226,7 @@
     if (irregular) text += " A similar bedtime each night, within about 30 min, may also help.";
     const lighting = lightingOverride[aid] || { mode: "general", cct_k: 4500, since: nights[nights.length - 1].wake_time };
     return {
-      astronaut_id: aid, share_with_ground: !!sharedMap()[aid], lighting, nights,
+      astronaut_id: aid, share_with_ground: isShared(aid), lighting, nights,
       summary: { status: card ? "watch" : "nominal", nights: nights.length, bedtime_spread_min: spread, nights_bright_before_sleep: bright },
       card, recommendation: { text, source: SSLA.source, source_url: SSLA.url },
       evidence: { text: "Circadian disruption is associated with immune changes; most evidence is from animal studies.", source: IMMUNE.source, source_url: IMMUNE.url },
@@ -245,7 +247,7 @@
       const aid = circ[1];
       if (!HABITS[aid]) return reject(p, 404);
       const ground = new URLSearchParams(path.split("?")[1] || "").get("view") === "ground";
-      if (ground && !sharedMap()[aid]) return reject(p, 403);   // private by default
+      if (ground && !isShared(aid)) return reject(p, 403);   // only if the astronaut opted out
       return Promise.resolve(circadian(aid));
     }
     if (p === "/mission") return Promise.resolve({ ...MISSION });

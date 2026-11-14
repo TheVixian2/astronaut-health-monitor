@@ -3,15 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Self-check · AHM</title>
+  <title>On board · AHM</title>
+  <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="selfcheck">
+  <!-- On-board menu. Each item shows one tab of this page; the alert banner
+       below stays visible whichever tab is open. Hidden inside demo.html. -->
+  <nav class="appnav area-onboard" aria-label="On board">
+    <a class="brand" data-href="index.html" href="index.html" title="Choose area">AHM</a>
+    <span class="area-tag">On board</span>
+    <div class="menu">
+      <a href="#health" data-tab-link="health">My health</a>
+      <a href="#checkin" data-tab-link="checkin">Check-in</a>
+      <a href="#sleep" data-tab-link="sleep">Sleep &amp; light</a>
+      <a href="#alerts" data-tab-link="alerts">Alerts <span id="alertCount" class="count" hidden></span></a>
+    </div>
+    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+  </nav>
+
   <header class="bar">
     <div>
-      <h1><a href="index.html" class="home">Astronaut Health Monitor</a> <span class="muted">· Self-check</span></h1>
+      <h1>Astronaut console</h1>
       <div class="who"><strong id="name">…</strong> <span class="muted" id="role"></span></div>
     </div>
     <div class="status" aria-live="polite">
@@ -29,7 +44,7 @@
   <section id="banner" class="banner" hidden aria-live="assertive"></section>
 
   <main class="sc-grid">
-    <section class="card body-card">
+    <section class="card body-card" data-tab="health">
       <h2>Body <span class="muted">tap a region</span></h2>
       <svg id="body" viewBox="0 0 200 400" role="group" aria-label="Body regions">
         <g class="region" data-region="skin" tabindex="0" role="button" aria-label="Skin">
@@ -42,12 +57,38 @@
           <rect x="88" y="72" width="24" height="18" rx="4"/>
           <rect x="58" y="86" width="84" height="142" rx="22"/>
         </g>
-        <g class="region" data-region="lungs" tabindex="0" role="button" aria-label="Lungs">
-          <ellipse cx="82" cy="135" rx="15" ry="30"/>
-          <ellipse cx="118" cy="135" rx="15" ry="30"/>
-        </g>
+        <!-- Front view, so the astronaut's left is the viewer's right.
+             Heart is drawn BEFORE the lungs so the lungs overlap it, as in a
+             real front view: it shows between the lungs and in the cardiac
+             notch. Flat anatomical icon, not a valentine: ventricles tapering to
+             the apex (down, astronaut's left, resting on the diaphragm), the
+             superior vena cava on the astronaut's right, the aortic arch with
+             its three branches. -->
         <g class="region" data-region="heart" tabindex="0" role="button" aria-label="Heart">
-          <path d="M110 152 c-8 -9 -20 -2 -14 8 l14 14 l14 -14 c6 -10 -6 -17 -14 -8z"/>
+          <!-- superior vena cava -->
+          <rect x="95.5" y="121" width="4.5" height="21" rx="2"/>
+          <!-- aortic arch branches: brachiocephalic, left common carotid, left subclavian -->
+          <rect x="101.6" y="114" width="2.4" height="9" rx="1.2"/>
+          <rect x="105" y="112" width="2.4" height="10" rx="1.2"/>
+          <rect x="108.6" y="114" width="2.4" height="8" rx="1.2"/>
+          <!-- ascending aorta and arch, descending behind the left lung -->
+          <path d="M100.5 141 L100.5 129 C100.5 119 114 119 114 128 L114 136 L109.5 136 L109.5 128.5
+                   C109.5 124 105 124 105 129 L105 141 Z"/>
+          <!-- atria + ventricles, apex down and to the astronaut's left -->
+          <path d="M95 139 C91 146 91 156 96 163 C102 169 114 170 124 167 C128 165 128 161 127 157
+                   C125 150 121 142 115 138 C109 135 101 136 95 139 Z"/>
+        </g>
+        <!-- Lungs: narrow rounded apex under the collarbone, broad base curving
+             over the diaphragm dome (~y 168), straight inner (medial) border.
+             The astronaut's left lung (viewer's right) is narrower and has the
+             cardiac notch where the heart shows through. -->
+        <g class="region" data-region="lungs" tabindex="0" role="button" aria-label="Lungs">
+          <!-- right lung (viewer's left): larger -->
+          <path d="M84 96 C74 100 66 120 65 145 C64 158 65 166 68 170 Q81 158 94 166
+                   C96 150 95 120 93 104 C91 98 88 95 84 96 Z"/>
+          <!-- left lung (viewer's right): narrower, with the cardiac notch -->
+          <path d="M116 96 C126 100 134 120 135 145 C136 158 135 166 132 170 Q126 162 121 168
+                   C125 160 127 147 119 139 C112 133 107 124 107 104 C109 98 112 95 116 96 Z"/>
         </g>
         <g class="region" data-region="head" tabindex="0" role="button" aria-label="Head">
           <circle cx="100" cy="42" r="30"/>
@@ -56,7 +97,7 @@
       <div id="regionInfo" class="region-info"></div>
     </section>
 
-    <section class="card">
+    <section class="card" data-tab="health">
       <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
       <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
       <div class="chart-wrap">
@@ -66,7 +107,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card checkin-card solo" data-tab="checkin">
       <h2>Check-in</h2>
       <form id="checkin" class="checkin">
         <fieldset>
@@ -112,8 +153,21 @@
     <!-- Light & sleep: suggestion from our mentor/judge (events/2026-11-14-mentor-judges.md).
          Live data from GET /astronauts/{id}/circadian (PROVISIONAL in the spec);
          if that endpoint is missing, only the static guidance below is shown. -->
-    <section class="card sleep-light">
+    <section class="card sleep-light solo" data-tab="sleep">
       <h2>Light &amp; sleep <span id="lightChip" class="light-chip" hidden></span></h2>
+
+      <!-- The console is a shared screen on board, so personal sleep data
+           stays hidden until the astronaut asks for it, and re-hides itself. -->
+      <div id="sleepGate" class="sleep-gate">
+        <p class="muted">Your sleep and lighting details are hidden on this shared console.</p>
+        <button type="button" id="showSleep">Show my sleep data</button>
+      </div>
+
+      <div id="sleepPrivate" hidden>
+      <div class="private-bar small muted">
+        <span>Visible to anyone near this console · hides again in <span id="hideIn">2:00</span></span>
+        <button type="button" id="hideSleep" class="link">Hide now</button>
+      </div>
       <p id="sleepNote" class="sleep-note muted">Waiting for data…</p>
 
       <div id="circLive" hidden>
@@ -125,7 +179,8 @@
         <label class="row share">
           <input type="checkbox" id="circShare"> Share sleep &amp; lighting with ground
         </label>
-        <p id="circShareNote" class="muted small">Off by default. Your sleeping-quarters data stays on board unless you choose otherwise.</p>
+        <p id="circShareNote" class="muted small">The flight surgeon sees this by default. Untick to keep it on board.</p>
+      </div>
       </div>
 
       <details id="tipsBox">
@@ -151,7 +206,7 @@
       </div>
     </section>
 
-    <section class="card wide">
+    <section class="card wide" data-tab="alerts">
       <h2>Alert history</h2>
       <ul id="history" class="alerts"><li class="muted">No alerts this session.</li></ul>
     </section>

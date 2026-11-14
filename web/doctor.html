@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ship's doctor · AHM</title>
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="doctor">
+  <nav class="appnav area-onboard" aria-label="Ship's doctor">
+    <a class="brand" data-href="index.html" href="index.html" title="Home">AHM</a>
+    <span class="area-tag">Ship's doctor</span>
+    <div class="menu"><a data-href="doctor.html" href="doctor.html" aria-current="page">Medications</a></div>
+    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+  </nav>
+
+  <header class="bar">
+    <div>
+      <h1>Medications</h1>
+      <div class="muted">Doses to give out to the crew today · station time (UTC) <strong id="clock">--:--</strong></div>
+    </div>
+    <div class="status" aria-live="polite">
+      <span id="conn" class="pill pill-wait">connecting…</span>
+      <span><strong>Live</strong> · on board</span>
+    </div>
+  </header>
+
+  <section class="sample-note small">
+    <strong>Sample medication plan.</strong> Illustrative demo data, not medical guidance.
+    "Given" marks are kept in this browser only.
+  </section>
+
+  <main class="doc-grid">
+    <section class="card">
+      <h2>Needs attention <span id="attnCount" class="count" hidden></span></h2>
+      <ul id="attention" class="warns"><li class="muted">Nothing due right now.</li></ul>
+    </section>
+    <section class="card">
+      <h2>Today's schedule</h2>
+      <div class="table-wrap">
+        <table id="schedule">
+          <thead><tr><th>Time</th><th>Crew member</th><th>Medication</th><th>Dose</th><th>For</th><th>Status</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot muted small">Decision support only. Every dose is the Crew Medical Officer's decision.</footer>
+
+  <script src="mock.js"></script>
+  <script src="common.js"></script>
+  <script src="meds.js"></script>
+  <script src="doctor.js"></script>
+</body>
+</html>

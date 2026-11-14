@@ -19,14 +19,18 @@
   let region = "whole_body";         // selected body region
   let chartField = "heart_rate_bpm";
   const history = [];                // [{t, v}] vitals snapshots for the chart
-  const alerts = new Map();          // id -> alert, first-seen order
+  const alerts = new Map();          // id -> alert, first-seen order (every alert received)
+  // What this astronaut may see: physical alerts at once; psychological ones
+  // only after the Commander has released them (captain.html), so a hard
+  // message reaches the crew member through a person, not a screen.
+  const shown = () => [...alerts.values()].filter(a => !A.isPsychological(a) || A.isReleased(A.alertKey(a)));
   const acknowledged = new Set();    // alert ids hidden from the banner
 
   // ---- setup ---------------------------------------------------------------
 
   $("aid").value = cfg.aid;
   $("aid").addEventListener("change", () => {
-    location.href = A.linkWithSettings("self-check.html", { aid: $("aid").value });
+    location.href = A.linkWithSettings("self-check.html", { aid: $("aid").value }) + location.hash;
   });
 
   document.querySelectorAll("#body .region").forEach(g => {
@@ -37,7 +41,7 @@
 
   $("tiles").addEventListener("click", e => {
     const tile = e.target.closest(".tile");
-    if (tile) { chartField = tile.dataset.key; renderTiles(); rebuildChart(); }
+    if (tile && !isMasked(tile.dataset.key)) { chartField = tile.dataset.key; renderTiles(); rebuildChart(); }
   });
 
   $("checkin").addEventListener("submit", onCheckin);
@@ -99,7 +103,7 @@
   function renderCircadian() {
     const live = !!circ;
     $("circLive").hidden = !live;
-    $("lightChip").hidden = !live;
+    $("lightChip").hidden = !live || !sleepRevealed;   // quarters' lighting is personal too
     $("staticEvidence").hidden = live;   // the live card carries its own evidence line
     if (!live) { $("tipsBox").open = true; return; }
 
@@ -110,7 +114,10 @@
     $("lightChip").className = `light-chip lc-${L.mode}`;
 
     const cardText = A.circadianCardText(circ.card);
+    // The irregular-sleep warning is psychological: held until the Commander releases it.
+    const held = cardText && !A.isReleased(A.circadianKey(cfg.aid, circ));
     const el = $("circCard");
+    el.hidden = !!held;
     el.textContent = cardText || `Nothing stands out over the last ${circ.summary?.nights ?? 7} nights.`;
     el.className = `circ-card ${cardText ? "watch" : "muted"}`;
 
@@ -123,9 +130,43 @@
 
     $("circShare").checked = !!circ.share_with_ground;
     $("circShareNote").textContent = circ.share_with_ground
-      ? "Shared: the flight surgeon can see your sleep and lighting summary. You can turn this off any time."
-      : "Off by default. Your sleeping-quarters data stays on board unless you choose otherwise.";
+      ? "Shared with the flight surgeon (the default). Untick to keep it on board."
+      : "Not shared: the flight surgeon can't see your sleep and lighting summary. Tick to share again.";
   }
+
+  // ---- shared-console privacy ----------------------------------------------
+  // The ship console is a shared screen, so sleep and lighting data are hidden
+  // until the astronaut taps "Show my sleep data", and hide again on their own.
+
+  const REVEAL_S = 120;
+  let sleepRevealed = false;
+  let hideAt = 0;
+
+  function isMasked(key) { return key === "sleep_h_last_night" && !sleepRevealed; }
+
+  function setRevealed(on) {
+    sleepRevealed = on;
+    hideAt = on ? Date.now() + REVEAL_S * 1000 : 0;
+    $("sleepGate").hidden = on;
+    $("sleepPrivate").hidden = !on;
+    if (!on && chartField === "sleep_h_last_night") { chartField = "heart_rate_bpm"; rebuildChart(); }
+    renderTiles();
+    renderCircadian();
+    updateHideIn();
+  }
+
+  function updateHideIn() {
+    if (!sleepRevealed) return;
+    const left = Math.max(0, Math.ceil((hideAt - Date.now()) / 1000));
+    $("hideIn").textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+    if (left === 0) setRevealed(false);
+  }
+
+  $("showSleep").addEventListener("click", () => setRevealed(true));
+  $("hideSleep").addEventListener("click", () => setRevealed(false));
+  // Using the card keeps it open; walking away lets it hide.
+  document.querySelector(".sleep-light").addEventListener("pointerdown", () => { if (sleepRevealed) hideAt = Date.now() + REVEAL_S * 1000; });
+  setInterval(updateHideIn, 1000);
 
   // Minutes from 20:00 UTC, so bedtimes either side of midnight line up.
   function chartMin(t) {
@@ -201,7 +242,7 @@
 
   function selectRegion(r) {
     region = r;
-    const first = FIELDS.find(f => f.region === r);
+    const first = FIELDS.find(f => f.region === r && !isMasked(f.key));
     if (first) chartField = first.key;
     renderBody();
     renderTiles();
@@ -212,7 +253,7 @@
   // Highest severity among this session's alerts, per body region.
   function regionSeverity() {
     const out = {};
-    for (const a of alerts.values()) {
+    for (const a of shown()) {
       if (!out[a.body_region] || SEVERITY_RANK[a.severity] > SEVERITY_RANK[out[a.body_region]]) out[a.body_region] = a.severity;
     }
     return out;
@@ -230,7 +271,7 @@
   }
 
   function renderRegionInfo() {
-    const list = [...alerts.values()].filter(a => region === "whole_body" || a.body_region === region);
+    const list = shown().filter(a => region === "whole_body" || a.body_region === region);
     const hint = region === "head"
       ? '<p class="muted small">Eyes and sleep live here. Use the vision check in the check-in form.</p>' : "";
     $("regionInfo").innerHTML = `<h3>${esc(REGION_NAMES[region])}</h3>${hint}` + (list.length
@@ -249,6 +290,13 @@
       const pct = deltaPct(now, base);
       const off = pct != null && Math.abs(pct) >= 10;
       const inRegion = region === "whole_body" || f.region === region;
+      if (isMasked(f.key)) {
+        // Shared console: sleep stays hidden until the astronaut reveals it.
+        return `<button type="button" class="tile masked ${inRegion ? "" : "dim"}" data-key="${f.key}" disabled>
+          <span class="t-label">${f.label}</span>
+          <span class="t-value">Hidden</span>
+          <span class="t-base muted">private on this console</span></button>`;
+      }
       const cls = ["tile", inRegion ? "" : "dim", off ? "off" : "", f.key === chartField ? "charted" : ""].join(" ");
       const delta = pct == null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
       return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">
@@ -266,6 +314,7 @@
     if (!window.Chart) { $("chartFallback").hidden = false; $("chart").hidden = true; return; }
     if (chart) chart.destroy();
     const css = getComputedStyle(document.documentElement);
+    const tok = name => css.getPropertyValue(name).trim();   // colours come from style.css tokens
     chart = new window.Chart($("chart"), {
       type: "line",
       data: {
@@ -281,8 +330,8 @@
         animation: false, responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { color: "#8b95ab", maxTicksLimit: 6 }, grid: { color: "#263049" } },
-          y: { ticks: { color: "#8b95ab" }, grid: { color: "#263049" }, grace: "10%" },
+          x: { ticks: { color: tok("--muted"), maxTicksLimit: 6 }, grid: { color: tok("--line") } },
+          y: { ticks: { color: tok("--muted") }, grid: { color: tok("--line") }, grace: "10%" },
         },
       },
     });
@@ -304,7 +353,7 @@
   // ---- alerts --------------------------------------------------------------
 
   function renderBanner() {
-    const open = [...alerts.values()].filter(a => !acknowledged.has(a.id));
+    const open = shown().filter(a => !acknowledged.has(a.id));
     const el = $("banner");
     if (!open.length) { el.hidden = true; return; }
     const a = open[open.length - 1];
@@ -335,8 +384,10 @@
 
   function renderHistory() {
     const ul = $("history");
-    if (!alerts.size) { ul.innerHTML = '<li class="muted">No alerts this session.</li>'; return; }
-    ul.innerHTML = [...alerts.values()].reverse().map(a => `
+    $("alertCount").textContent = shown().length;   // badge on the "Alerts" menu item
+    $("alertCount").hidden = !shown().length;
+    if (!shown().length) { ul.innerHTML = '<li class="muted">No alerts this session.</li>'; return; }
+    ul.innerHTML = shown().reverse().map(a => `
       <li class="alert sev-${esc(a.severity)}">
         <div class="head"><span class="sev">${esc(a.severity)}</span>
           <strong>${esc(profileName(a.profile))}</strong>
@@ -403,4 +454,28 @@
     const d = t instanceof Date ? t : new Date(t);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
+
+  // ---- on-board menu: one tab visible at a time ----------------------------
+  // The URL hash is the tab (#health, #checkin, #sleep, #alerts), so a tab can
+  // be linked to and the browser's back button works. Kept at the end of the
+  // file: it touches `chart`, which must already be declared.
+  const TABS = ["health", "checkin", "sleep", "alerts"];
+
+  function showTab() {
+    const want = location.hash.slice(1);
+    const tab = TABS.includes(want) ? want : "health";
+    document.querySelectorAll("[data-tab]").forEach(s => { s.hidden = s.dataset.tab !== tab; });
+    document.querySelectorAll("[data-tab-link]").forEach(a => {
+      if (a.dataset.tabLink === tab) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    if (tab === "health" && chart) chart.resize();   // canvas was hidden; refit it
+  }
+
+  window.addEventListener("hashchange", showTab);
+
+  // The Commander released a psychological warning (another tab or pane on
+  // this machine): show it now.
+  A.onReleaseChange(() => { renderBanner(); renderHistory(); renderBody(); renderRegionInfo(); renderCircadian(); });
+  showTab();
 })();
