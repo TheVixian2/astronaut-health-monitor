@@ -171,35 +171,11 @@
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 
-  // ---- psychological warnings: Commander first --------------------------------
-  // Decision (NotKaemy, 2026-11-14): a psychological warning reaches the
-  // Commander before the crew member, so the Commander can decide how and when
-  // to tell them instead of the person learning it from a screen. Physical
-  // alerts are never held back.
-  //
-  // The "released" state lives in localStorage, so it only crosses tabs/panes
-  // on ONE machine (fine for the demo). A real ship needs it in the backend.
+  // ---- physical vs psychological ----------------------------------------------
+  // The Commander's view sorts warnings into these two groups. (Crew members
+  // never see warnings at all: decision, NotKaemy 2026-11-14.)
   const PSYCH_PROFILES = new Set(["sleep_debt"]);
   const isPsychological = a => a.hazard === "isolation" || PSYCH_PROFILES.has(a.profile);
-  const alertKey = a => `alert:${a.id}`;
-  // One key per astronaut per night: a new night's sleep warning needs a new release.
-  const circadianKey = (aid, circ) => `circ:${aid}:${circ?.nights?.[circ.nights.length - 1]?.night_of || ""}`;
-  const RELEASE_KEY = "ahm-psych-released";
-
-  function releasedMap() {
-    try { return JSON.parse(localStorage.getItem(RELEASE_KEY) || "{}"); } catch { return {}; }
-  }
-  const releasedAt = key => releasedMap()[key] || null;
-  const isReleased = key => !!releasedAt(key);
-  function releaseToCrew(key) {
-    const m = releasedMap();
-    m[key] = Date.now();
-    try { localStorage.setItem(RELEASE_KEY, JSON.stringify(m)); } catch { /* demo only */ }
-  }
-  // Fires in OTHER tabs/panes when the Commander releases something.
-  function onReleaseChange(fn) {
-    window.addEventListener("storage", e => { if (e.key === RELEASE_KEY) fn(); });
-  }
 
   // ---- watch the whole crew (Commander, ship's doctor) -------------------------
   // These roles are on board, so nothing is delayed. Against the real backend
@@ -256,9 +232,7 @@
     return list;
   }
 
-  Object.assign(window.AHM, {
-    isPsychological, alertKey, circadianKey, releasedAt, isReleased, releaseToCrew, onReleaseChange, watchCrew,
-  });
+  Object.assign(window.AHM, { isPsychological, watchCrew });
 
   // ---- page chrome shared by every page (menus, user, sign-out) -------------
   // Links marked data-href keep ?mock / ?base / ?aid when moving between pages.

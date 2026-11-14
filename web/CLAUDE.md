@@ -50,9 +50,8 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - **Menus** (the `.appnav` bar at the top of each page; "All views" link only
   for the presenter, `[data-demo-only]`):
   - **Astronaut console** (`self-check.html`): *My health · Check-in · Sleep &
-    light · Alerts*. Tabs inside one page, chosen by the URL hash (`#health`,
-    `#checkin`, `#sleep`, `#alerts`); sections carry `data-tab`. The alert
-    banner stays visible on every tab. "Alerts" shows a count badge.
+    light*. Tabs inside one page, chosen by the URL hash (`#health`,
+    `#checkin`, `#sleep`); sections carry `data-tab`.
   - **Commander** (`captain.html` / `captain.js`): *Crew wellbeing*.
   - **Ship's doctor** (`doctor.html` / `doctor.js`): *Medications*.
   - **Ground** (`ground.html`, `stream-check.html`): *Crew overview · Raw
@@ -63,14 +62,16 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   alerts, mood ≤ 2/5, short sleep, the circadian irregular-sleep card), each
   with pre-written "How you can help" advice (`ADVICE` in `captain.js`).
   The Commander sees everything for everyone (decided 2026-11-14).
-- **Psychological warnings reach the Commander first** (decided 2026-11-14,
-  "so you do not stress the crew"). The astronaut console hides psychological
-  alerts and the circadian warning text until the Commander presses "Tell
-  {name} now" (`AHM.releaseToCrew`). Physical alerts are never held back.
-  Mood/sleep numbers stay visible to the astronaut (they produced them).
-  **The release flag is in `localStorage`, so it only works with both screens
-  on one machine** (the demo). A real ship needs it in the backend — requested
-  in STATUS.md.
+- **The astronaut console is DATA ONLY — no warnings** (decided by NotKaemy
+  2026-11-14: "the crew members should not know what happened to them").
+  It shows the person's own numbers against their own baseline, the chart,
+  the body figure (to pick a region, never coloured by alerts), check-in and
+  their sleep/lighting log. It does **not** subscribe to `alert` events and
+  shows no banner, verdict, advice, insight, warning colours, or the
+  circadian `card` / `recommendation` / `evidence` texts. Warnings go only to
+  the Commander, the ship's doctor and Ground. Don't add any back without the
+  owner's say-so. (This replaces the earlier "Commander first, then release
+  to the crew" mechanism.)
 - **Ship's doctor** — today's doses from the **sample** plan in `meds.js`
   (`schedule`, station time UTC): due now (−15/+30 min), overdue, upcoming,
   "Mark given" (kept in `localStorage`). Live alerts from the last hour add
@@ -80,9 +81,11 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   (`AHM.watchCrew`) instead of 4 SSE streams each: browsers allow ~6
   connections per host and the console + Ground already use 5 on one machine.
   In `?mock` mode they use in-page mock streams.
-- `self-check.html` / `self-check.js` — the astronaut console: alert banner with
-  verdict, clickable body figure, vitals tiles vs baseline, Chart.js trend,
-  check-in form (`share_with_ground` off by default), alert history.
+- `self-check.html` / `self-check.js` — the astronaut console (data only):
+  body figure, vitals tiles vs baseline, Chart.js trend, check-in form
+  (`share_with_ground` off by default), sleep & light log.
+- `demo.html` left pane is the **Commander** (who learns first on board now
+  that crew consoles show no warnings); right pane is Ground.
 - **Circadian (PROVISIONAL in the spec):** Self-check's Light & sleep card
   reads `GET /circadian?view=crew` — lighting chip, `card` text, 7-night
   bedtime chart, `recommendation` + source, and the share toggle
@@ -102,10 +105,9 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   header. The **"signals in transit" strip is a demo overlay**: it polls the
   undelayed `GET /alerts` to show the `incoming — 00:18` countdown. Polled, not
   streamed, so the page stays at 4 SSE connections (browser limit ~6 per host).
-- `demo.html` — Self-check and Ground side by side (two iframes) for the
-  pitch. Holds 5 SSE connections (1 + 4), just under the browser's ~6 per
-  host; Ground's in-transit polling shares the last slot. Tested against the
-  real backend.
+- `demo.html` — Commander and Ground side by side (two iframes) for the
+  pitch. The Commander pane polls (no SSE) and Ground holds 4 SSE streams,
+  under the browser's ~6 per host. Tested against the real backend.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict
