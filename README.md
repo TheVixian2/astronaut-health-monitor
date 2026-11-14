@@ -57,6 +57,13 @@ give it this as your first message:
 It picks up the project rules, the current state of the other two lanes, and the
 API contract on its own from there.
 
+**Using VS Code?** Claude Code works there too — the extension, or just `claude`
+in the integrated terminal. Two things: open the **repo folder itself**
+(File -> Open Folder -> `astronaut-health-monitor`), not a parent folder or a
+single file, or the lane `CLAUDE.md` won't load. And on the web lane, install
+the **Live Server** extension to serve `web/index.html` over `http://localhost`
+instead of `file://`.
+
 **Push to your own branch only — never to `main`.** Luca merges every couple of
 hours. The one exception is the shared files (`CLAUDE.md`, `STATUS.md`, `docs/`,
 `presentation/`), which are edited on `main` directly — see coordination rule 3b.
