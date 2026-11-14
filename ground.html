@@ -9,7 +9,8 @@
   <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <!-- Loaded without blocking: a slow or missing network (offline on board) must never hold up the page's scripts. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="ground" data-viewer="ground">
@@ -56,17 +57,19 @@
     <section class="crew" id="crew" aria-label="Crew"><p class="muted">Loading crew…</p></section>
 
     <section class="card">
+      <h2>Alerts received <span class="muted">(newest first)</span></h2>
+      <ul id="alerts" class="alerts"><li class="muted">Nothing received yet.</li></ul>
+    </section>
+
+    <!-- Habitat: its own section at the bottom (owner, 2026-11-14), so the crew
+         cards get the full width. -->
+    <section class="card hab-section">
       <h2>Habitat <span class="muted">Where the crew is, including the hygiene module</span> <span id="habConn" class="pill pill-wait">loading…</span></h2>
       <div id="cabin"><p class="muted small">Cabin air: loading live ISS data…</p></div>
-      <svg id="habMap" viewBox="0 0 1000 300" role="img" aria-label="Habitat map with crew positions" style="width:100%;height:auto"></svg>
+      <svg id="habMap" viewBox="0 0 1000 300" role="img" aria-label="Habitat map with crew positions"></svg>
       <p class="muted small" id="habUntracked"></p>
       <p class="muted small">Base operations view: Mission Control sees every module, including hygiene. The Commander
         sees who is in the hygiene module only as hours per person. Positions shown here are live, not light-delayed (demo simplification).</p>
-    </section>
-
-    <section class="card">
-      <h2>Alerts received <span class="muted">(newest first)</span></h2>
-      <ul id="alerts" class="alerts"><li class="muted">Nothing received yet.</li></ul>
     </section>
   </main>
 

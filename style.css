@@ -452,9 +452,13 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .transit-list .sev-alert .sev, .transit-list .sev-alert .count { color: var(--alert-ink); }
 .transit-list .sev-critical .sev, .transit-list .sev-critical .count { color: var(--crit-ink); }
 
-.ground-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
-@media (max-width: 900px) { .ground-grid { grid-template-columns: minmax(0, 1fr); } }
-.crew { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+/* Mission Control: the crew across the full width (two cards a row), then
+   alerts, then the habitat as its own section at the bottom (owner, 2026-11-14). */
+.ground-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.crew { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .crew { grid-template-columns: minmax(0, 1fr); } }   /* also the half-width pane in demo.html */
+@media (max-width: 480px) { .th-row { grid-template-columns: 7em 4.6em minmax(40px, 1fr) 4em; gap: 6px; } }
+.hab-section #habMap { display: block; width: 100%; max-width: 1100px; height: auto; margin: 4px auto 0; }
 
 .crew-card { border-top: 4px solid var(--ok); display: grid; gap: 8px; }
 .crew-card.st-watch { border-top-color: var(--sev-watch); }
@@ -469,8 +473,8 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 /* Threshold rows on Mission Control: label, reading, green-to-red scale with a
    marker, change from usual. Boundaries --b1..--b3 come from AHM.thresholdLevel. */
 .th-list { display: grid; gap: 3px; }
-.th-row { display: grid; grid-template-columns: minmax(0, 7.5em) 5.2em minmax(50px, 1fr) 4.4em; align-items: center;
-  gap: 8px; font-size: var(--t-sm); }
+.th-row { display: grid; grid-template-columns: 9.5em 6em minmax(60px, 1fr) 5.4em; align-items: center;
+  gap: 12px; font-size: var(--t-sm); }
 .th-label { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .th-val { font-stretch: var(--narrow); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text-strong); white-space: nowrap; }
 .th-val .t-unit { font-size: var(--t-xs); }

@@ -9,7 +9,8 @@
   <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <!-- Loaded without blocking: a slow or missing network (offline on board) must never hold up the page's scripts. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
