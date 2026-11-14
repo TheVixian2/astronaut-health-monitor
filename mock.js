@@ -35,13 +35,13 @@
   const MANUAL = {};
 
   const BASELINES = {
-    a1: { heart_rate_bpm: 58, spo2_pct: 98, temp_c: 36.5, resp_rate_bpm: 12, sleep_h_last_night: 7.2, mood_1to5: 4 },
-    a2: { heart_rate_bpm: 74, spo2_pct: 97, temp_c: 36.8, resp_rate_bpm: 15, sleep_h_last_night: 6.8, mood_1to5: 4 },
-    a3: { heart_rate_bpm: 66, spo2_pct: 98, temp_c: 36.6, resp_rate_bpm: 13, sleep_h_last_night: 7.5, mood_1to5: 5 },
-    a4: { heart_rate_bpm: 62, spo2_pct: 98, temp_c: 36.4, resp_rate_bpm: 14, sleep_h_last_night: 7.0, mood_1to5: 4 },
+    a1: { heart_rate_bpm: 58, spo2_pct: 98, temp_c: 36.5, resp_rate_bpm: 12, sleep_h_last_night: 7.2, mood_1to5: 4, hrv_sdnn_ms: 55 },
+    a2: { heart_rate_bpm: 74, spo2_pct: 97, temp_c: 36.8, resp_rate_bpm: 15, sleep_h_last_night: 6.8, mood_1to5: 4, hrv_sdnn_ms: 42 },
+    a3: { heart_rate_bpm: 66, spo2_pct: 98, temp_c: 36.6, resp_rate_bpm: 13, sleep_h_last_night: 7.5, mood_1to5: 5, hrv_sdnn_ms: 50 },
+    a4: { heart_rate_bpm: 62, spo2_pct: 98, temp_c: 36.4, resp_rate_bpm: 14, sleep_h_last_night: 7.0, mood_1to5: 4, hrv_sdnn_ms: 47 },
   };
 
-  const STEP = { heart_rate_bpm: 1.0, spo2_pct: 0.2, temp_c: 0.02, resp_rate_bpm: 0.3 };
+  const STEP = { heart_rate_bpm: 1.0, spo2_pct: 0.2, temp_c: 0.02, resp_rate_bpm: 0.3, hrv_sdnn_ms: 1.5 };
 
   const PROFILES = [
     { profile: "orthostatic", severity: "alert", hazard: "gravity", body_region: "heart", act_within_s: 600,
@@ -133,6 +133,7 @@
         temp_c: Math.round(v.temp_c * 10) / 10, resp_rate_bpm: Math.round(v.resp_rate_bpm),
         sleep_h_last_night: MANUAL[this.aid]?.sleep_h_last_night ?? v.sleep_h_last_night,
         mood_1to5: MANUAL[this.aid]?.mood_1to5 ?? v.mood_1to5,
+        hrv_sdnn_ms: Math.round(v.hrv_sdnn_ms),
       };
     }
 

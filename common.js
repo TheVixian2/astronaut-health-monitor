@@ -9,7 +9,38 @@
     { key: "temp_c", label: "Temperature", unit: "°C", region: "skin" },
     { key: "sleep_h_last_night", label: "Sleep last night", unit: "h", region: "head" },
     { key: "mood_1to5", label: "Mood", unit: "/5", region: "head" },
+    // Heart-rate variability as Apple Watch records it (SDNN, ms). From the
+    // watch for a1, simulated for the others (backend).
+    { key: "hrv_sdnn_ms", label: "HRV", unit: "ms", region: "heart" },
+    // Derived here from HRV (withStress below), not sent by the backend.
+    { key: "stress_0to100", label: "Stress", unit: "/100", region: "head", derived: true },
   ];
+
+  // ---- stress level -----------------------------------------------------------
+  // Watches estimate stress from heart-rate variability: when the nervous system
+  // is under load, the time between beats varies less. Apple Watch records HRV
+  // as SDNN (ms) but keeps no stress score of its own, so the scale is ours
+  // (owner's request, 2026-11-14), a design choice and not a validated score:
+  //   HRV at the astronaut's own usual = 30 (low); every 10 % below it adds 16.
+  //   Bands as on other watches' 0-100 stress scales: 0-25 resting, 26-50 low,
+  //   51-75 medium, 76-100 high.
+  const STRESS_AT_USUAL = 30;
+  const STRESS_BANDS = [[25, "Resting"], [50, "Low"], [75, "Medium"], [100, "High"]];
+  function stressFromHrv(hrv, usual) {
+    if (typeof hrv !== "number" || typeof usual !== "number" || usual <= 0) return null;
+    return Math.max(0, Math.min(100, Math.round(STRESS_AT_USUAL + (1 - hrv / usual) * 160)));
+  }
+  function stressBand(score) {
+    return score == null ? "" : STRESS_BANDS.find(([max]) => score <= max)[1];
+  }
+  // A vitals snapshot with stress_0to100 added (and the usual level in baseline).
+  function withStress(v) {
+    if (!v || typeof v.hrv_sdnn_ms !== "number") return v;
+    const usual = v.baseline ? v.baseline.hrv_sdnn_ms : null;
+    const score = stressFromHrv(v.hrv_sdnn_ms, usual);
+    return { ...v, stress_0to100: score,
+             baseline: v.baseline ? { ...v.baseline, stress_0to100: score == null ? null : STRESS_AT_USUAL } : v.baseline };
+  }
 
   // Flat icon per vital (24 x 24, filled shapes). Colour comes from CSS:
   // .vi-<name> sets `color` (tokens --ic-*), .d paths are the darker detail
@@ -31,6 +62,13 @@
     mood_1to5: ["mood", `<circle cx="12" cy="12" r="9.2"/>
       <circle class="d" cx="9" cy="10" r="1.3"/><circle class="d" cx="15" cy="10" r="1.3"/>
       <path class="ds" d="M8.3 14.2c.9 1.6 2.2 2.4 3.7 2.4s2.8-.8 3.7-2.4"/>`],
+    // a pulse trace with uneven beat spacing: the variability between beats
+    hrv_sdnn_ms: ["hrv", `<rect x="2.4" y="4.4" width="19.2" height="15.2" rx="3.6"/>
+      <path class="ds" d="M4.4 13.2h2.4l1.2-4.6 1.8 8.2 1.4-3.6h1.9l.9-3.1 1.5 6.2 1-2.7h3.1"/>`],
+    // a gauge with the needle towards the high end
+    stress_0to100: ["stress", `<path d="M12 4.6a9.5 9.5 0 0 0-8.4 13.9c.3.6.9.9 1.5.9h13.8c.6 0 1.2-.3 1.5-.9A9.5 9.5 0 0 0 12 4.6z"/>
+      <path class="ds" d="M6.1 14.4h1.5M8 9.1l1 1M12 7.3v1.4M16 9.1l-1 1M16.4 14.4h1.5M12 15.2l3.7-4.6"/>
+      <circle class="d" cx="12" cy="15.2" r="1.7"/>`],
   };
   function vitalIcon(key) {
     const ic = VITAL_ICONS[key];
@@ -192,6 +230,7 @@
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
+    withStress, stressBand,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 

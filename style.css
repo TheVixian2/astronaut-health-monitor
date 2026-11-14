@@ -81,6 +81,8 @@
   --ic-temp: #f0a49a;
   --ic-sleep: #8e9bc7;                 /* silver-blue, between --silver and --blue */
   --ic-mood: #e6e9f0;
+  --ic-hrv: #e0705b;                   /* Mars red, lifted */
+  --ic-stress: var(--silver);
   --ic-detail: rgba(11, 11, 11, .55);
   --ic-mercury: var(--mars);
 
@@ -126,6 +128,8 @@ html[data-light="pre_sleep"], html[data-light="off"] {
   --ic-temp: #94817B;
   --ic-sleep: #CDBDB7;
   --ic-mood: #EDE1DC;
+  --ic-hrv: #E0705B;
+  --ic-stress: #CDBDB7;
   --ic-detail: rgba(11, 11, 11, .55);
 
   color-scheme: dark;
@@ -315,11 +319,11 @@ a.home:hover { text-decoration: underline; }
    (each cell draws its left and top rule; the strip clips the outer ones, so
    it also works when the cells wrap onto two rows). The charted reading is
    marked by a Mars-red bar along its top edge. */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0;
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(max(150px, 25%), 1fr)); gap: 0;   /* at most 4 a row: 8 readings = 4 + 4 */
   border: 1px solid var(--line); border-radius: var(--r-plate); overflow: hidden; background: var(--wash); }
 .tile {
-  display: flex; flex-direction: column; justify-content: space-between; gap: 10px; text-align: left;
-  min-height: 118px; padding: 14px 18px 12px; color: var(--text);
+  display: flex; flex-direction: column; justify-content: space-between; gap: 6px; text-align: left;
+  min-height: 104px; padding: 12px 16px 10px; color: var(--text);
   background: transparent; border: 0; border-radius: 0; font-weight: 400;
   box-shadow: -1px 0 0 var(--line), 0 -1px 0 var(--line);
 }
@@ -337,9 +341,9 @@ a.home:hover { text-decoration: underline; }
 
 /* Flat vital icons (AHM.vitalIcon in common.js): filled shapes in the vital's
    colour, details in a contrasting tone. */
-.vi { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: var(--r-plate);
+.vi { flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: var(--r-plate);
   background: color-mix(in srgb, currentColor 13%, transparent); }
-.vi svg { width: 24px; height: 24px; fill: currentColor; }
+.vi svg { width: 22px; height: 22px; fill: currentColor; }
 .vi .d { fill: var(--ic-detail); }
 .vi .ds { fill: none; stroke: var(--ic-detail); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .vi .ds-light { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
@@ -350,6 +354,8 @@ a.home:hover { text-decoration: underline; }
 .vi-temp  { color: var(--ic-temp); }
 .vi-sleep { color: var(--ic-sleep); }
 .vi-mood  { color: var(--ic-mood); }
+.vi-hrv   { color: var(--ic-hrv); }
+.vi-stress { color: var(--ic-stress); }
 
 /* The vitals card stretches to the body card's height (same grid row); the
    chart takes all the height left under the strip. The canvas is absolutely
@@ -363,8 +369,8 @@ body.selfcheck[data-tab="health"], body.selfcheck[data-tab="checkin"], body.self
   min-height: 100vh; min-height: calc(100dvh / var(--z, 1)); display: flex; flex-direction: column; padding-bottom: 14px; }
 body.selfcheck[data-tab="health"] #console, body.selfcheck[data-tab="checkin"] #console,
 body.selfcheck[data-tab="sleep"] #console { flex: 1; }
-.chart-wrap { margin-top: 16px; flex: 1; min-height: 150px; display: flex; flex-direction: column; position: relative; min-width: 0; }
-.chart-wrap .chart-box { position: relative; flex: 1; min-height: 120px; }
+.chart-wrap { margin-top: 16px; flex: 1; min-height: 130px; display: flex; flex-direction: column; position: relative; min-width: 0; }
+.chart-wrap .chart-box { position: relative; flex: 1; min-height: 100px; }
 .chart-wrap .chart-box canvas { position: absolute; inset: 0; }
 /* Under the page zoom (auth.js) Chart.js measures its box in zoomed pixels and
    would draw the canvas z times too big; pinning the canvas to its box keeps

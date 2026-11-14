@@ -161,8 +161,24 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   health, Check-in and Sleep & light stretch to the window's height.
 - **Vital icons:** every vital has a flat icon (`AHM.vitalIcon(key)` in
   `common.js`, `VITAL_ICONS`): heart + pulse, blood drop, lungs, thermometer,
-  moon, smiley. Colours are the `--ic-*` tokens in `style.css` (`.vi-*`).
-  Shown on the My health tiles; reuse it wherever a vital is labelled.
+  moon, smiley, pulse trace (HRV), gauge (stress). Colours are the `--ic-*`
+  tokens in `style.css` (`.vi-*`). Shown on the My health tiles; reuse it
+  wherever a vital is labelled.
+- **HRV and stress** (owner, 2026-11-14): eight readings, four per row. HRV is
+  `hrv_sdnn_ms` from the vitals (SDNN, as Apple Watch records it). **Stress
+  (0-100) is derived in the web** (`AHM.withStress` in `common.js`), not sent by
+  the backend: HRV at the astronaut's usual = 30, each 10 % below adds 16;
+  bands 0-25 resting, 26-50 low, 51-75 medium, 76-100 high. Apple Watch keeps
+  no stress score, so the scale is ours and the chart note says so. Fields with
+  `derived: true` are skipped where raw backend fields are listed
+  (`stream-check.js`). If the backend ever sends a stress score, show that.
+- **Body shape** (owner, 2026-11-14): a Male | Female slider on the body card
+  swaps the silhouette (`setSex`, shapes in `bodyShapes()` in `self-check.js`,
+  generated so both share their points and morph). Sex is not in the crew data,
+  so it is a per-viewer choice in localStorage per astronaut (`ahm-body-sex`);
+  a `sex` field on `GET /crew` would be used if added. Skeletal mass was asked
+  for too: Apple Watch cannot measure it and no field carries it, so it is not
+  shown yet (open question to the owner).
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict
   logic here only.
