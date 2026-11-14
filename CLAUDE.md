@@ -92,7 +92,16 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - **`docs/api-spec.md` is the contract.** Read from it, don't guess field names.
 - Data arrives over **SSE** (`EventSource`), not polling. Listen for the named
   `vitals` and `alert` events.
-- Severity colours are fixed: `watch` yellow, `alert` orange, `critical` red.
+- Severity colours are fixed: `watch` yellow, `alert` orange, `critical` red
+  (the palette's Mars red `#D62828`).
+- **Colour palette** (team decision, 2026-11-14): Light Silver `#C0C6D4`, Mars
+  Orange Red `#D62828`, Dark Mars Red `#8F1F0F`, Black `#0B0B0B`, Blue
+  `#1B3A8A`. They live as tokens at the top of `style.css`; use the tokens,
+  never raw hex, in new CSS and JS (the chart reads them with
+  `getComputedStyle`). On board = Mars red, Ground = blue. Thin lines and link
+  text use `--accent`, a lighter tint of the blue, because `#1B3A8A` is too
+  dark to read on black. Status colours (ok green, watch yellow, alert orange)
+  stay outside the palette because they carry meaning.
 - The long Claude explanation (`insight.why` / `trend` / `recommended_action`)
   is shown **here only** — the watch gets just the one-line `onboard_action`.
 - `insight` can be `null`; render the alert without it rather than waiting.
