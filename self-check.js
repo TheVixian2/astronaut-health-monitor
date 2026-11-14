@@ -55,7 +55,7 @@
 
   $("tiles").addEventListener("click", e => {
     const tile = e.target.closest(".tile");
-    if (tile && !isMasked(tile.dataset.key)) { chartField = tile.dataset.key; renderTiles(); rebuildChart(); }
+    if (tile) { chartField = tile.dataset.key; renderTiles(); rebuildChart(); }
   });
 
   $("checkin").addEventListener("submit", onCheckin);
@@ -120,7 +120,7 @@
 
   function selectRegion(r) {
     region = r;
-    const first = FIELDS.find(f => f.region === r && !isMasked(f.key));
+    const first = FIELDS.find(f => f.region === r);
     if (first) chartField = first.key;
     document.querySelectorAll("#body .region").forEach(g => {
       g.classList.toggle("selected", g.dataset.region === region);
@@ -146,13 +146,8 @@
     $("tiles").innerHTML = FIELDS.map(f => {
       const now = latest[f.key], base = latest.baseline ? latest.baseline[f.key] : null;
       const inRegion = region === "whole_body" || f.region === region;
-      if (isMasked(f.key)) {
-        // Shared console: sleep stays hidden until the astronaut reveals it.
-        return `<button type="button" class="tile masked ${inRegion ? "" : "dim"}" data-key="${f.key}" disabled>
-          <span class="t-label">${f.label}</span>
-          <span class="t-value">Hidden</span>
-          <span class="t-base muted">private on this console</span></button>`;
-      }
+      // "Sleep last night" is shown like any other vital (owner's call,
+      // 2026-11-14); only the 7-night log and lighting stay behind the gate.
       // Plain numbers: the difference from baseline is shown, never coloured as a warning.
       const p = deltaPct(now, base);
       const delta = p == null ? "" : `${p >= 0 ? "+" : ""}${p.toFixed(0)}%`;
@@ -255,22 +250,19 @@
   }
 
   // ---- shared-console privacy ----------------------------------------------
-  // The ship console is a shared screen, so sleep and lighting data are hidden
-  // until the astronaut taps "Show my sleep data", and hide again on their own.
+  // The ship console is a shared screen, so the 7-night sleep log and the
+  // lighting are hidden until the astronaut taps "Show my sleep data", and
+  // hide again on their own. Last night's hours are public (tile + note).
 
   const REVEAL_S = 120;
   let sleepRevealed = false;
   let hideAt = 0;
-
-  function isMasked(key) { return key === "sleep_h_last_night" && !sleepRevealed; }
 
   function setRevealed(on) {
     sleepRevealed = on;
     hideAt = on ? Date.now() + REVEAL_S * 1000 : 0;
     $("sleepGate").hidden = on;
     $("sleepPrivate").hidden = !on;
-    if (!on && chartField === "sleep_h_last_night") { chartField = "heart_rate_bpm"; rebuildChart(); }
-    renderTiles();
     renderCircadian();
     updateHideIn();
   }
@@ -520,10 +512,12 @@
     <section class="card sleep-light solo" data-tab="sleep">
       <h2>Light &amp; sleep <span id="lightChip" class="light-chip" hidden></span></h2>
 
-      <!-- The console is a shared screen on board, so personal sleep data
-           stays hidden until the astronaut asks for it, and re-hides itself. -->
+      <!-- Last night's hours are public; the 7-night log and lighting are
+           hidden on this shared screen until the astronaut asks, and re-hide. -->
+      <p id="sleepNote" class="sleep-note muted">Waiting for data…</p>
+
       <div id="sleepGate" class="sleep-gate">
-        <p class="muted">Your sleep and lighting details are hidden on this shared console.</p>
+        <p class="muted">Your 7-night sleep log and lighting are hidden on this shared console.</p>
         <button type="button" id="showSleep">Show my sleep data</button>
       </div>
 
@@ -532,7 +526,6 @@
         <span>Visible to anyone near this console · hides again in <span id="hideIn">2:00</span></span>
         <button type="button" id="hideSleep" class="link">Hide now</button>
       </div>
-      <p id="sleepNote" class="sleep-note muted">Waiting for data…</p>
 
       <div id="circLive" hidden>
         <div class="nights-head small muted">Last 7 nights · bar = asleep · <span class="lg-bright">■</span> bright light in the last hour before sleep</div>
