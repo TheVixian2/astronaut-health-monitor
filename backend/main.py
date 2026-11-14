@@ -21,7 +21,7 @@ from typing import Literal, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 import circadian
 
@@ -428,7 +428,15 @@ async def get_circadian(aid: str, view: Literal["crew", "ground"] = "crew") -> c
     get_state(aid)
     if view == "ground" and not circadian.is_shared(aid):
         raise HTTPException(403, "Not shared: the astronaut keeps sleep and lighting data private.")
-    return circadian.assess(aid, now())
+    return circadian.assess(aid, now(), mission.environment)
+
+
+@app.put("/astronauts/{aid}/circadian/plan")
+async def put_circadian_plan(aid: str, body: circadian.PlanRequest) -> circadian.Circadian:
+    # The astronaut's own choice to follow (or stop) the suggested lighting plan.
+    get_state(aid)
+    circadian.set_plan(aid, body.accepted, now())
+    return circadian.assess(aid, now(), mission.environment)
 
 
 @app.put("/astronauts/{aid}/circadian/sharing")
@@ -443,3 +451,21 @@ async def put_lighting(aid: str, body: circadian.LightingRequest) -> circadian.L
     # Records the crew's own switch of the SSLA mode; the app never changes it by itself.
     get_state(aid)
     return circadian.set_lighting(aid, body.mode, now())
+
+
+class CircadianDebugRequest(BaseModel):
+    astronaut_id: str
+    action: Literal["advance", "reset"]
+    nights: int = Field(default=3, ge=1, le=14)
+
+
+@app.post("/debug/circadian")
+async def debug_circadian(body: CircadianDebugRequest) -> circadian.Circadian:
+    # Dev only: fast-forward the lighting log so the demo can show the loop close in seconds.
+    get_state(body.astronaut_id)
+    if body.action == "advance":
+        circadian.advance(body.astronaut_id, body.nights)
+    else:
+        circadian.reset(body.astronaut_id)
+    crew[body.astronaut_id].tick()  # refresh last night's sleep in vitals right away
+    return circadian.assess(body.astronaut_id, now(), mission.environment)
