@@ -268,3 +268,94 @@ to tighten, not final claims.**
 - **Keep in mind for Q&A:** the earlier under-reporting argument (crew control
   what goes down, so they report more honestly) is weaker with sharing on by
   default. The opt-out is still there; lean on that if a judge asks.
+
+## 2026-11-14 — real NASA data is now live in the backend
+
+- **NASA JPL Horizons, queried live:** Earth-Mars one-way light time **today is 11.0
+  min** (661 s). It ranges from about 3 to 22 min over the orbit. Slide line:
+  *"Mars today: 11 min one way (NASA JPL Horizons), up to 22 min. Either way, a
+  reply takes longer than an orthostatic episode can wait."* `GET /mission/light-time`.
+- **The personal baseline is now real:** the median of six weeks of stored data,
+  mission days 7-14 (days 1-6 skipped because of space adaptation). Say: *"Every
+  number is compared to this astronaut's own days 7-14, never to an average human."*
+- **SANS is explainable:** the score shows its parts (mission day, acuity vs your
+  own baseline, Amsler grid, headaches, cabin CO2), so a judge can see *why* it
+  rose. One check-in takes a1 from 40 to ~73 on stage.
+## 2026-11-14 — judge 3: sensors, blackout, history (see `events/2026-11-14-judge-3-sensors-blackout.md`)
+
+- **Niche, said out loud:** *"We do one thing properly: catching eye problems (SANS) that
+  build up over months in microgravity, with everything around it built so an astronaut can
+  trust it and act on it far from Earth."*
+- **Sensors are not right 100% of the time, and we designed for that.** Every reading is
+  checked for impossible values, sudden jumps, a stuck sensor and a watch that stops
+  sending. An alert asks *"Do you feel this?"*. If the astronaut says no, the readings are
+  marked as a likely sensor error: **flagged, never deleted**, and kept out of the baseline,
+  charts and reports. Line: *"The astronaut is the final sensor check."*
+- **Blackout demo beat (~15 s):** switch on the blackout (solar conjunction, ~2 weeks with no
+  contact) → raise an alert → the app says *"Earth is out of contact for about 13 more days…
+  tell a crewmate or the Crew Medical Officer"* and shows the on-board protocol → the Ground
+  screen shows nothing → end the blackout → the held alert arrives at Ground.
+  *"It keeps the crew safe when nobody on Earth can help."*
+- **Reports from history:** one ~1.3 KB plain-language report for the flight surgeon:
+  vitals vs the astronaut's own baseline, every alert with the astronaut's answer, sensor
+  errors marked and excluded, SANS score, sleep. Small enough for a congested deep-space link.
+- **Speed (her "speeds everything up"):** the report shows **time to action**: in testing
+  the astronaut answered in **3 s**, vs a **44-min** round trip to Earth.
+- **Better than what's on the market (draft, check before saying it):** consumer
+  wearables are built for Earth. They assume a phone, the cloud and a doctor nearby.
+  Some (e.g. Oura) do use personal baselines, so **don't claim that alone is unique.**
+  What they don't have, and we do:
+  1. a verdict that knows the light-time delay ("act now" vs "can wait for Houston")
+  2. a blackout mode that keeps working and forwards data when contact returns
+  3. SANS early warning between OCT scans
+  4. the astronaut confirming or correcting sensor errors in their own history
+  5. explanations and protocols that need no internet
+## 2026-11-14 — TEAM DECISION: mental health is the focus
+
+- **The story now:** *"Months from Earth, in a small crew, the hardest thing to see is how
+  someone is really doing. We build a wellbeing profile from many small signals, and the
+  astronaut stays in control of who sees it."*
+- **NASA grounding (name both on a slide):** HRP risks *Adverse Cognitive or Behavioral
+  Conditions and Psychiatric Disorders* and *Inadequate Cooperation, Coordination,
+  Communication and Psychosocial Adaptation within a Team*. https://www.nasa.gov/hrp/risks
+- **Signals, each vs the astronaut's own normal:** mood, sleep and body clock (from the
+  station lighting), NASA's 3-minute reaction test, resting heart rate, and **PHQ-2**, two
+  validated questions that use their standard cut-off. *"Validated questions, not
+  invented ones."*
+- **Astronaut first is the ethics answer:** the astronaut sees it first and chooses whether
+  the commander and/or the flight surgeon see it. Only an urgent level is passed on
+  automatically, and the astronaut is told it was. Even then: *"the level and which areas,
+  never your answers."* This answers the under-reporting problem: people report more
+  honestly when they're in control.
+- **The crew view separates "it's the mission" from "it's me":** if most of the crew
+  sleeps less, it's probably the schedule or environment, and the app tells each astronaut
+  that ("it may be the schedule, not you"). Crew-wide trends never name anyone and need at
+  least 3 people.
+- **Demo (~30 s, repeatable):** a2's profile shows *watch* (mood down after the mission
+  midpoint, slower reactions, drifting bedtimes) → a2's check-in → *concern* → a2 taps
+  "share with commander" → the commander's console gets a notice. Then show the urgent case
+  (a3): commander and flight surgeon notified automatically, and a3 sees "you were notified".
+- **Keep SANS, circadian and blackout as supporting features.** One line each: they show
+  the same baseline engine works for the body too.
+- **Say it:** decision support, never a diagnosis; PHQ-2 is a screen, not a diagnosis.
+## 2026-11-14 — Commander and ship's doctor roles (web, NotKaemy)
+
+- **New on-board roles, each with its own login and screen:** the Commander
+  sees every crew member's physical and psychological warnings with advice on
+  how to help; the ship's doctor sees which medications are due or overdue
+  for whom, plus suggestions when an alert fires (always "your decision").
+- **Strong demo beat: psychological warnings reach the Commander first.** The
+  crew member's console doesn't show them until the Commander presses
+  "Tell them now", so hard news comes from a person, in private, not from a
+  screen. Physical alerts still go to everyone at once. Suggested line:
+  "The app never tells you you're struggling. Your commander does, face to
+  face."
+- **Expect a privacy question.** The Commander sees everyone's psychological
+  data by default (team decision). The earlier argument (crew under-report
+  when it can affect flight status) cuts against that. Honest answer: the
+  Commander is responsible for the crew's wellbeing on a mission with no ground
+  support for 22 minutes; the data is shown with advice to talk in private,
+  never to act on someone's duties without the doctor.
+- **Medication data is a sample plan** (vitamin D for everyone, melatonin,
+  ibuprofen for back pain, decongestant for fluid shift). Say "illustrative";
+  don't present the doses as medical guidance.
