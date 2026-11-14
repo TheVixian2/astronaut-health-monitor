@@ -338,3 +338,24 @@ to tighten, not final claims.**
 - **Keep SANS, circadian and blackout as supporting features.** One line each: they show
   the same baseline engine works for the body too.
 - **Say it:** decision support, never a diagnosis; PHQ-2 is a screen, not a diagnosis.
+## 2026-11-14 — Commander and ship's doctor roles (web, NotKaemy)
+
+- **New on-board roles, each with its own login and screen:** the Commander
+  sees every crew member's physical and psychological warnings with advice on
+  how to help; the ship's doctor sees which medications are due or overdue
+  for whom, plus suggestions when an alert fires (always "your decision").
+- **Strong demo beat: psychological warnings reach the Commander first.** The
+  crew member's console doesn't show them until the Commander presses
+  "Tell them now", so hard news comes from a person, in private, not from a
+  screen. Physical alerts still go to everyone at once. Suggested line:
+  "The app never tells you you're struggling. Your commander does, face to
+  face."
+- **Expect a privacy question.** The Commander sees everyone's psychological
+  data by default (team decision). The earlier argument (crew under-report
+  when it can affect flight status) cuts against that. Honest answer: the
+  Commander is responsible for the crew's wellbeing on a mission with no ground
+  support for 22 minutes; the data is shown with advice to talk in private,
+  never to act on someone's duties without the doctor.
+- **Medication data is a sample plan** (vitamin D for everyone, melatonin,
+  ibuprofen for back pain, decongestant for fluid shift). Say "illustrative";
+  don't present the doses as medical guidance.

@@ -333,5 +333,30 @@ Branch: `web`
     default; the astronaut can opt out". Also `card` is shown as an object in
     the spec, but `circadian.py` returns a **string or null** — the web
     accepts both for now; please pick one.
+- **Done on `web` (not merged yet) — login per role + Commander + ship's
+  doctor.** Placeholder logins `crew`, `captain`, `doctor`, `ground`, `demo`
+  (presenter, all views), each landing on its own interface. Details in
+  `web/CLAUDE.md`.
+  - **Commander** (`captain.html`): physical + psychological warnings for every
+    crew member, each with advice on how to help. Sees everything (NotKaemy's
+    decision).
+  - **Psychological warnings reach the Commander first** (NotKaemy): the crew
+    member's console hides `sleep_debt`/`isolation` alerts and the circadian
+    warning text until the Commander presses "Tell them now". Physical alerts
+    are never held back.
+  - **Ship's doctor** (`doctor.html`): today's doses (due / overdue / given)
+    and medication suggestions from live alerts — from a **sample** plan in
+    `web/meds.js`, labelled as not medical guidance.
+- **Backend asks for the above — @stefanalbu2010-byte, Luca for the spec:**
+  1. **Commander-first release.** Today the "released" flag is in browser
+     storage, so it only works with both screens on one machine. Proposal:
+     `released_to_crew_at` on psychological alerts, `PUT
+     /astronauts/{id}/alerts/{alert_id}/release`, and `view=crew` streams not
+     sending psychological alerts until released. Same idea for the circadian
+     `card`.
+  2. **Medications.** Nothing in the backend or spec. Proposal: `GET
+     /medications` → `[{astronaut_id, drug, dose, route, times[], purpose}]`
+     and `PUT /medications/doses/{key}` `{given_at}`. The web's sample plan
+     already has that shape (`web/meds.js`).
 - **Blocked on:** the post-pivot `docs/api-spec.md` for PHQ-2 and the SANS
   score display. Not blocked on anything else.
