@@ -111,6 +111,13 @@
   }
 
   function renderTransit() {
+    // Drop entries well past their arrival time. Normally the delayed stream
+    // delivers them first; this catches alerts that reached ground before this
+    // page connected, which the stream will never replay.
+    const delayMsNow = mission ? mission.one_way_delay_s * 1000 : 0;
+    for (const [id, a] of transit) {
+      if (Date.now() > Date.parse(a.started_at) + delayMsNow + 5000) transit.delete(id);
+    }
     const show = $("showTransit").checked && transit.size > 0;
     $("transit").hidden = !show;
     if (!show) return;
