@@ -340,21 +340,28 @@ Branch: `web`
   - **Commander** (`captain.html`): physical + psychological warnings for every
     crew member, each with advice on how to help. Sees everything (NotKaemy's
     decision).
-  - **Psychological warnings reach the Commander first** (NotKaemy): the crew
-    member's console hides `sleep_debt`/`isolation` alerts and the circadian
-    warning text until the Commander presses "Tell them now". Physical alerts
-    are never held back.
   - **Ship's doctor** (`doctor.html`): today's doses (due / overdue / given)
     and medication suggestions from live alerts — from a **sample** plan in
     `web/meds.js`, labelled as not medical guidance.
-- **Backend asks for the above — @stefanalbu2010-byte, Luca for the spec:**
-  1. **Commander-first release.** Today the "released" flag is in browser
-     storage, so it only works with both screens on one machine. Proposal:
-     `released_to_crew_at` on psychological alerts, `PUT
-     /astronauts/{id}/alerts/{alert_id}/release`, and `view=crew` streams not
-     sending psychological alerts until released. Same idea for the circadian
-     `card`.
-  2. **Medications.** Nothing in the backend or spec. Proposal: `GET
+- **Decision (NotKaemy): the astronaut console shows DATA ONLY — no warnings
+  at all.** "The crew members should not know what happened to them." Their
+  console shows their own numbers vs. baseline, chart, check-in and sleep
+  log; no banner, verdict, advice, insight, alert history or warning colours.
+  Warnings go only to the Commander, the ship's doctor and Ground. Done on
+  `web` (not merged yet). This replaces the "Commander first, then release"
+  idea, so that backend ask is **withdrawn**.
+  - **Luca — this contradicts two things you own:** (1) root `CLAUDE.md`
+    says the astronaut is the primary user and first responder, and the
+    **watch** shows the wearer an alert banner + haptic + action line. Both
+    are yours to update or keep; the web no longer warns the crew. (2) The
+    demo script's step 3 ("Self-check lights up: Act on board now"). In
+    `demo.html` the left pane is now the **Commander** view, which sees the
+    alert instantly while Ground counts down — same story, different
+    on-board screen.
+  - **@dbm711:** `presentation/demo-script.md` step 3 needs rewording to the
+    Commander's screen; notes in `presentation/ideas.md`.
+- **Backend ask — @stefanalbu2010-byte, Luca for the spec:**
+  1. **Medications.** Nothing in the backend or spec. Proposal: `GET
      /medications` → `[{astronaut_id, drug, dose, route, times[], purpose}]`
      and `PUT /medications/doses/{key}` `{given_at}`. The web's sample plan
      already has that shape (`web/meds.js`).

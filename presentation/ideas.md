@@ -359,3 +359,21 @@ to tighten, not final claims.**
 - **Medication data is a sample plan** (vitamin D for everyone, melatonin,
   ibuprofen for back pain, decongestant for fluid shift). Say "illustrative";
   don't present the doses as medical guidance.
+
+## 2026-11-14 — crew consoles show data only (web, NotKaemy)
+
+- **Change: crew members see no warnings at all.** Their console is just their
+  own data against their own baseline. Warnings go to the Commander, the
+  ship's doctor and Ground. The "Commander first, then Tell them now" idea in
+  the section above is replaced: there is nothing to release.
+- **Demo update for `demo-script.md` step 3:** the left pane of `demo.html` is
+  now the **Commander's** screen. It shows the alert instantly, with advice on
+  how to help, while Ground shows "incoming — 00:18". The line still works:
+  "On board they knew in a second. On Mars, ground would know in 22 minutes."
+- **Framing for the pitch:** "The crew member sees their numbers, not a
+  diagnosis. The commander and the ship's doctor decide what to say and do."
+- **Expect this question from a judge:** "What if the crew member is alone
+  when something urgent happens (e.g. orthostatic intolerance during
+  exercise)?" Today the answer is: the Commander and doctor are alerted at
+  once, and the watch (Luca's) still decides what the wearer sees. Agree on
+  an answer as a team before judging.
