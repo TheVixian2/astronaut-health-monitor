@@ -49,7 +49,7 @@ PROTOCOLS = {
     "sleep_debt": [
         "Consider pre-sleep lighting (2700K) about 1 hour before bed, and screens aside.",
         "Use the eye mask and earplugs.",
-        "A private conference with the flight surgeon is always an option, even if it's delayed.",
+        "A private conference with Mission Control is always an option, even if it's delayed.",
     ],
 }
 
@@ -109,14 +109,14 @@ def fallback_insight(profile: str, v: dict, b: dict, ctx: Context, real_one_way_
         until = (f"for about {blackout_left_s / 86400:.0f} more days" if blackout_left_s >= 86400
                  else f"for about {_mins(blackout_left_s)} more min" if blackout_left_s > 0 else "for now")
         verdict = (f"Earth is out of contact {until} (communications blackout). Follow the on-board steps and "
-                   f"tell a crewmate or the Crew Medical Officer. This is saved and will be sent to the flight "
-                   f"surgeon as soon as contact returns.")
+                   f"tell a crewmate or the Crew Medical Officer. This is saved and will be sent to Mission Control "
+                   f"as soon as contact returns.")
     elif acts_on_board(act_within, real_one_way_delay_s):
         verdict = (f"Ground will see this in about {_mins(real_one_way_delay_s)} min, and a reply takes about "
                    f"{_mins(2 * real_one_way_delay_s)} min. That is longer than this can safely wait, so the "
                    f"on-board step comes first.")
     else:
-        verdict = (f"This can wait for the flight surgeon: they will see it in about "
+        verdict = (f"This can wait for Mission Control: they will see it in about "
                    f"{_mins(real_one_way_delay_s)} min.")
     hr, bhr = v["heart_rate_bpm"], b["heart_rate_bpm"]
 
@@ -128,6 +128,6 @@ def fallback_insight(profile: str, v: dict, b: dict, ctx: Context, real_one_way_
             trend=f"Last {SLEEP_DEBT_NIGHTS} nights: {nights} h vs your usual {b['sleep_h_last_night']:.1f} h; "
                   f"mood {ctx.mood}/5; heart rate {_signed(100 * pct(hr, bhr))}.",
             recommended_action="You might consider protecting tonight's sleep with the station's pre-sleep "
-                               "lighting (2700K) about 1 h before bed. A private conference with the flight "
-                               "surgeon is always an option. " + verdict)
+                               "lighting (2700K) about 1 h before bed. A private conference with Mission "
+                               "Control is always an option. " + verdict)
     raise ValueError(profile)

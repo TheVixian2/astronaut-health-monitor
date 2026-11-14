@@ -160,7 +160,7 @@ Only `timestamp` and `share_with_ground` are required.
 total of 3 or more is a positive screen. `reaction_test` is the 3-minute PVT-B
 (lapse = response over 355 ms). Both feed the wellbeing level.
 
-**`share_with_ground` is the astronaut's control over what the flight surgeon
+**`share_with_ground` is the astronaut's control over what Mission Control
 sees.** It is a deliberate design position, not a toggle for convenience — see
 `presentation/ideas.md` on under-reporting.
 

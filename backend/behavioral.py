@@ -16,7 +16,7 @@ uses its validated screening cut-off (score >= 3; Kroenke, Spitzer & Williams, M
 Astronaut first (team decision 2026-11-14):
   - The astronaut sees their profile first and chooses whether the commander and/or ground
     see it.
-  - Only at "urgent" are the commander and the flight surgeon notified automatically, and the
+  - Only at "urgent" are the commander and Mission Control notified automatically, and the
     astronaut is told. Even then they get the level and the areas affected, never the answers.
   - Crew view: strain that hits most of the crew (schedule, CO2, blackout) is told apart from
     strain that is personal. Crew-wide trends never name anyone and need >= 3 people.
@@ -201,7 +201,7 @@ def suggestions_for(level: Level, signals: list[Signal]) -> list[str]:
     if active & {"sleep", "body_clock"}:
         out.append("You might consider the station's pre-sleep lighting about 1 h before bed (see your sleep plan).")
     if active & {"mood", "phq2"}:
-        out.append("A private conference with the flight surgeon or psychologist is confidential and always an option.")
+        out.append("A private conference with Mission Control or psychologist is confidential and always an option.")
         out.append("Talking with a crewmate you trust, or a message or call home, can help.")
     if "reaction_time" in active:
         out.append("Slower reactions can come from tiredness; consider protecting sleep before demanding tasks.")

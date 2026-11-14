@@ -2,10 +2,13 @@
 
 NASA Space Apps Challenge 2026, "Create Health Monitoring Software for Astronauts
 on Space Missions". We compare each astronaut's vitals to **their own personal
-baseline** and flag named condition profiles. Decision support only — never a
-diagnosis. The **astronaut is the primary user**: on a Mars mission the ground is
-up to ~22 min away one way, so the astronaut is the first responder (NASA's
-"Earth-independent medical operations"). Three parts share one API: a standalone
+baseline**. **Since 2026-11-14 the focus is behavioral (mental) health** of a
+crew of four on a long Mars mission (app name: Dr. Galactic). Decision support
+only — never a diagnosis. Mission Control is up to ~22 min away one way, so help
+starts on board: flags go to the **commander first**, who releases them to the
+astronaut (the deputy if the commander is flagged); Mission Control gets them
+after the light delay. Only signals with published evidence are used —
+see `docs/monitored-signals.md`. Three parts share one API: a standalone
 watchOS app, a FastAPI backend, and a no-build-step web app.
 
 **The API contract is `docs/api-spec.md`.** It is the single source of truth for

@@ -189,7 +189,7 @@ Append freely. Dated bullets. Unsorted is fine.
 - **Built (backend): the app reads the station's lighting system instead of asking.**
   No extra question for the crew. It notices that `a2`'s bedtime varied ~2 h and the
   lights stayed bright before sleep on 4 of 7 nights, and *suggests* NASA's pre-sleep
-  mode. **Ethics line for the pitch:** "It's private by default: the flight surgeon
+  mode. **Ethics line for the pitch:** "It's private by default: Mission Control
   sees it only if the astronaut chooses. It suggests, never orders, and never changes
   the lights by itself." It ties straight back to the under-reporting point.
 ## 2026-11-14 — judge on business: draft answers (see `events/2026-11-14-judge-business.md`)
@@ -205,7 +205,7 @@ to tighten, not final claims.**
   minutes to hours away. The questions it answers are "is this normal *for me*?" and
   "can this wait for Houston?"
 - **Who is it for:**
-  - *User:* the astronaut, as first responder. The flight surgeon gets a delayed,
+  - *User:* the astronaut, as first responder. Mission Control gets a delayed,
     consented view.
   - *Customers:* space agencies running long missions (Artemis, Mars), commercial
     space stations and private astronaut missions.
@@ -254,16 +254,16 @@ to tighten, not final claims.**
   The longer and farther the mission, the more the lighting matters, which fits
   judge 2's "longer flights will need our system".
 - **Keep it honest:** "may help", "linked to". Phase-shift light is normally used with
-  flight-surgeon guidance, and the plan says so.
+  Mission Control guidance, and the plan says so.
 ## 2026-11-14 — circadian privacy changed (web, NotKaemy)
 
 - **Update to the ethics line above.** Sleep & lighting data is now **shared with
-  the flight surgeon by default**; the astronaut can opt out at any time. The
+  Mission Control by default**; the astronaut can opt out at any time. The
   "private by default" wording no longer matches the app — don't say it on stage.
 - **New privacy point instead: the ship console is a shared screen.** On board,
   the sleep card and the sleep tile stay hidden until the astronaut taps
   "Show my sleep data", and hide again after 2 minutes. Crewmates walking past
-  the console don't see each other's sleep. Suggested line: "Your flight surgeon
+  the console don't see each other's sleep. Suggested line: "Mission Control
   can see it, like a doctor would. Your crewmates can't."
 - **Keep in mind for Q&A:** the earlier under-reporting argument (crew control
   what goes down, so they report more honestly) is weaker with sharing on by
@@ -296,7 +296,7 @@ to tighten, not final claims.**
   tell a crewmate or the Crew Medical Officer"* and shows the on-board protocol → the Ground
   screen shows nothing → end the blackout → the held alert arrives at Ground.
   *"It keeps the crew safe when nobody on Earth can help."*
-- **Reports from history:** one ~1.3 KB plain-language report for the flight surgeon:
+- **Reports from history:** one ~1.3 KB plain-language report for Mission Control:
   vitals vs the astronaut's own baseline, every alert with the astronaut's answer, sensor
   errors marked and excluded, SANS score, sleep. Small enough for a congested deep-space link.
 - **Speed (her "speeds everything up"):** the report shows **time to action**: in testing
@@ -323,7 +323,7 @@ to tighten, not final claims.**
   validated questions that use their standard cut-off. *"Validated questions, not
   invented ones."*
 - **Astronaut first is the ethics answer:** the astronaut sees it first and chooses whether
-  the commander and/or the flight surgeon see it. Only an urgent level is passed on
+  the commander and/or Mission Control see it. Only an urgent level is passed on
   automatically, and the astronaut is told it was. Even then: *"the level and which areas,
   never your answers."* This answers the under-reporting problem: people report more
   honestly when they're in control.
@@ -334,7 +334,7 @@ to tighten, not final claims.**
 - **Demo (~30 s, repeatable):** a2's profile shows *watch* (mood down after the mission
   midpoint, slower reactions, drifting bedtimes) → a2's check-in → *concern* → a2 taps
   "share with commander" → the commander's console gets a notice. Then show the urgent case
-  (a3): commander and flight surgeon notified automatically, and a3 sees "you were notified".
+  (a3): commander and Mission Control notified automatically, and a3 sees "you were notified".
 - **Keep SANS, circadian and blackout as supporting features.** One line each: they show
   the same baseline engine works for the body too.
 - **Say it:** decision support, never a diagnosis; PHQ-2 is a screen, not a diagnosis.

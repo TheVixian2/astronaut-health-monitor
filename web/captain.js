@@ -26,7 +26,7 @@
     physical: "Check in with {n} and the Crew Medical Officer about this alert.",
     sleep_debt: "Protect {n}'s next sleep period: no late tasks, quarters in pre-sleep lighting an hour before bed. If you raise it, do it in private and ask how the workload feels.",
     circadian: "Help {n} keep a regular schedule: a similar bedtime each night, pre-sleep lighting in the evening, nothing scheduled late. Raise it privately, as a routine thing.",
-    mood: "Find a private, unhurried moment with {n}. Ask open questions and listen rather than fix. Consider a lighter or more meaningful task, extra time for a private call home, and offer a private conference with the flight surgeon.",
+    mood: "Find a private, unhurried moment with {n}. Ask open questions and listen rather than fix. Consider a lighter or more meaningful task, extra time for a private call home, and offer a private conference with Mission Control.",
     sleep: "Ask {n} how they slept and whether anything is keeping them up. Avoid scheduling them for demanding or late tasks today.",
   };
   const advise = (kind, name) => (ADVICE[kind] || ADVICE.physical).replaceAll("{n}", name);
@@ -36,7 +36,7 @@
   // yourself" makes no sense, so their own panel says who to go to instead.
   const SELF_ADVICE = {
     physical: "This one is about you. Ask the Crew Medical Officer to check on you, and hand over anything that can't wait.",
-    psych: "This one is about you. Protect your own next sleep period, and consider a private talk with the Crew Medical Officer or the flight surgeon.",
+    psych: "This one is about you. Protect your own next sleep period, and consider a private talk with the Crew Medical Officer or Mission Control.",
   };
   const OWN_ROLE = "Commander";
   let ownAid = null;

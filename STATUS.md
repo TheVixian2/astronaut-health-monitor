@@ -31,11 +31,15 @@ Anything that changed in `docs/api-spec.md`, newest at the top.
     nothing": the official challenge says astronauts must be able to *evaluate and act on
     their own health*, so nothing stays hidden for good. (2) **Stress score driven by
     the watch**: HRV, resting HR, sleep, activity = 60-80 % of the score; PHQ-2, mood,
-    reaction test the rest. (3) **Flight surgeon stays** — the challenge text names them.
+    reaction test the rest. (3) **No "flight surgeon": the ground role is called Mission Control** (Luca).
     (4) Ship's doctor page stays. Shapes in `docs/api-spec.md` → "Decided, NOT built yet".
   - **@stefanalbu2010-byte:** release endpoint + deputy routing; `/ingest` accepts
     `hrv_sdnn_ms`, `active_min`; simulator + seed add HRV/activity (a2 drifts down after
     the midpoint); `behavioral.py` adds `hrv` and `activity` signals with the 60-80 % weight.
+  - **@NotKaemy — done for you by Luca's session (pull first):** BP removed from
+    `common.js`, `ground.js`, `mock.js`; check-in lost the vision check and the "Off by
+    default…" line; every "flight surgeon" is now **Mission Control** (UI, logins, backend
+    text, docs). Still yours: old profile entries in `captain.js`/`meds.js`/`common.js`/`mock.js`.
   - **@NotKaemy:** remove BP from `common.js` (VITALS), `mock.js`, `ground.js` (SYS
     column) and the removed profiles from `HAZARDS`/`HRP_RISKS`/`meds.js`; bring back
     "Tell them now" on the Commander page and show **released** warnings + guidance on

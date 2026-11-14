@@ -18,7 +18,7 @@ not.
    The watch shows the condition name, severity colour, a haptic, and the single
    pre-written action line.
 4. **Point at the Ground panel.** It shows `incoming — 00:18`, counting down.
-   The flight surgeon does not know yet.
+   Mission Control does not know yet.
 5. **Let it land.** Eighteen seconds later the alert appears on Ground.
 6. **The line:** *"On a real Mars mission that gap is 22 minutes, not 18 seconds.
    Her window to act was 10. That's why the decision has to be made on board."*

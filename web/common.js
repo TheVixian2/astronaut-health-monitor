@@ -4,8 +4,6 @@
 (function () {
   const FIELDS = [
     { key: "heart_rate_bpm", label: "Heart rate", unit: "bpm", region: "heart" },
-    { key: "systolic_mmhg", label: "Systolic BP", unit: "mmHg", region: "heart" },
-    { key: "diastolic_mmhg", label: "Diastolic BP", unit: "mmHg", region: "heart" },
     { key: "spo2_pct", label: "SpO₂", unit: "%", region: "lungs" },
     { key: "resp_rate_bpm", label: "Resp. rate", unit: "/min", region: "lungs" },
     { key: "temp_c", label: "Temperature", unit: "°C", region: "skin" },

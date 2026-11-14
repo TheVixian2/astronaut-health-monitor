@@ -213,7 +213,7 @@ class Blackout(BaseModel):
     until: Optional[datetime] = None
     reason: Optional[str] = None
     note: str = ("During a blackout everything on board keeps working: monitoring, alerts, explanations and "
-                 "protocols need no link to Earth. Data for the flight surgeon is held and delivered when "
+                 "protocols need no link to Earth. Data for Mission Control is held and delivered when "
                  "contact returns.")
 
 
@@ -298,7 +298,7 @@ class Report(BaseModel):
     data_quality: DataQualitySummary
     time_to_action: TimeToAction
     delivery: str
-    text: str        # compact plain-language summary, the store-and-forward packet for the flight surgeon
+    text: str        # compact plain-language summary, the store-and-forward packet for Mission Control
     size_bytes: int
     note: str
 
@@ -528,7 +528,7 @@ def wellbeing(s: AstronautState, t: datetime, view: str,
     phq = behavioral.latest_phq2(s.checkins)
     level = behavioral.level_from(sigs, score, phq[0] if phq else None)
     if s.wb_auto_notified:
-        share_note = ("Because several strong signals added up, your commander and the flight surgeon were told "
+        share_note = ("Because several strong signals added up, your commander and Mission Control were told "
                       "your wellbeing level and which areas are affected, not your answers. This is a wellbeing "
                       "check, not a diagnosis.")
     else:
@@ -563,7 +563,7 @@ def send_notice(s: AstronautState, target: str, level: str, reason: str, areas: 
         "automatic_urgent": f"{name}'s wellbeing check reached the urgent level (areas: {area_text}). They have "
                             f"been told you were notified. Consider checking in with them privately.",
         "shared_by_astronaut": f"{name} chose to share their wellbeing check with you: {level} (areas: {area_text}).",
-        "told_astronaut": "Several strong signals added up, so your commander and the flight surgeon were told your "
+        "told_astronaut": "Several strong signals added up, so your commander and Mission Control were told your "
                           "wellbeing level and the areas affected, not your answers. This is a wellbeing check, "
                           "not a diagnosis.",
     }[reason]
@@ -618,7 +618,7 @@ def blackout_left_s() -> Optional[float]:
 
 
 def ground_eta_s() -> int:
-    """When the flight surgeon will see something sent now: light time, plus any blackout left."""
+    """When Mission Control will see something sent now: light time, plus any blackout left."""
     return int(mission.real_one_way_delay_s + (blackout_left_s() or 0))
 
 
@@ -1061,7 +1061,7 @@ def _report_text(s: AstronautState, days: int, t: datetime, vitals: list[VitalSu
 @app.get("/astronauts/{aid}/report")
 async def get_report(aid: str, days: int = Query(7, ge=1, le=42),
                      view: Literal["crew", "ground"] = "crew") -> Report:
-    """The astronaut's history as one compact report: the store-and-forward packet for the flight surgeon."""
+    """The astronaut's history as one compact report: the store-and-forward packet for Mission Control."""
     s = get_state(aid)
     t = now()
     since = store.iso(t - timedelta(days=days))
@@ -1109,10 +1109,10 @@ async def get_report(aid: str, days: int = Query(7, ge=1, le=42),
     size = len(text.encode("utf-8"))
     left = blackout_left_s()
     if left is not None:
-        delivery = (f"Communications blackout: saved on board ({size} bytes); it reaches the flight surgeon about "
+        delivery = (f"Communications blackout: saved on board ({size} bytes); it reaches Mission Control about "
                     f"{mission.real_one_way_delay_s / 60:.0f} min after contact returns.")
     else:
-        delivery = f"Reaches the flight surgeon about {mission.real_one_way_delay_s / 60:.0f} min after sending ({size} bytes)."
+        delivery = f"Reaches Mission Control about {mission.real_one_way_delay_s / 60:.0f} min after sending ({size} bytes)."
     return Report(
         astronaut_id=aid, name=s.name, view=view, generated_at=t, period_days=days, mission_day=mission_day(t),
         vitals=vitals, alerts=alerts, checkins=ck,
