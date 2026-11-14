@@ -167,6 +167,9 @@ class CheckinRequest(BaseModel):
     phq2: Optional[behavioral.Phq2] = None
     phq9: Optional[behavioral.Phq9] = None          # asked when PHQ-2 >= 2 (two-step screening)
     reaction_test: Optional[behavioral.ReactionTest] = None
+    # PROVISIONAL, optional: a known reason why some body signals may change for a few days
+    # (behavioral.CONTEXT_TAGS). Never shown to anyone else; only used to leave those days out.
+    context: Optional[list[behavioral.ContextTag]] = Field(default=None, max_length=3)
 
 
 class ScenarioRequest(BaseModel):
@@ -1378,9 +1381,15 @@ def _view_for(target: AstronautState, viewer: str) -> str:
 
 @app.get("/checkin/questions")
 async def checkin_questions() -> dict:
-    """Exact wording: PHQ-2, the PHQ-9 follow-up, and the reaction test."""
+    """Exact wording: PHQ-2, the PHQ-9 follow-up, the reaction test, and the optional context tags."""
     return {"phq2": behavioral.PHQ2_QUESTIONS, "phq9": behavioral.PHQ9_QUESTIONS,
-            "reaction_test": behavioral.REACTION_TEST}
+            "reaction_test": behavioral.REACTION_TEST,
+            "context": {
+                "question": "Anything that might affect your body this week? (optional)",
+                "options": [{"id": k, "label": v["label"]} for k, v in behavioral.CONTEXT_TAGS.items()],
+                "note": "It leaves those days out of your heart-rate, HRV, sleep and activity readings, so they "
+                        "aren't read as a change in how you're doing. Your mood and questionnaire answers always "
+                        "count. Nobody else sees which one you chose."}}
 
 
 @app.get("/wellbeing/method")
