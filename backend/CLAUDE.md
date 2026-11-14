@@ -25,7 +25,10 @@ Simulator talks to `localhost`.
 
 Env vars: `AHM_DB` (database path, default `data/ahm.db`), `AHM_LIVE_LIGHT_TIME=1`
 (the verdict uses today's JPL Horizons Earth-Mars light time instead of 1320 s),
-`AHM_MISSION_DAY` (mission day used only when the database has no mission start).
+`AHM_MISSION_DAY` (mission day used only when the database has no mission start),
+`AHM_DEPUTY` (who gets the commander's own psychological flags; default the Crew Medical
+Officer `a3`), `AHM_RELEASE_AFTER_S` (a flag is shown to the astronaut automatically after
+this long; default 12 h).
 
 ## Conventions
 
@@ -47,6 +50,13 @@ Env vars: `AHM_DB` (database path, default `data/ahm.db`), `AHM_LIVE_LIGHT_TIME=
   request path or the tick loop on disk.
 - Wording shown to the astronaut suggests, never orders, and never diagnoses.
   Check-ins and circadian data the astronaut hasn't shared stay out of the ground view.
+- **Psychological alerts are commander-first** (Luca, 2026-11-14): `wellbeing_concern`,
+  `wellbeing_urgent` and `sleep_debt` go to the commander (the deputy if the commander is
+  flagged) and Mission Control, never to the astronaut's own view until released
+  (`PUT .../release`) or after `AHM_RELEASE_AFTER_S`. PHQ-9 question 9 above 0 is released at
+  once. Psychological data is never sent to a cloud model; those explanations are built on board.
+- Every profile weight lives in `behavioral.INPUTS` / `GROUP_WEIGHT`. After changing one, run
+  `python ../tools/check_profile.py --seeds 30` and keep false "concern" at 0%.
 
 ## Layout
 
@@ -54,11 +64,13 @@ Env vars: `AHM_DB` (database path, default `data/ahm.db`), `AHM_LIVE_LIGHT_TIME=
 - `engine.py` — crew baselines, the `sleep_debt` profile, thresholds,
   scenario shifts, "do you feel this?" questions, on-board protocols, fallback
   explanations (blackout-aware).
-- `behavioral.py` — **the team's main focus (2026-11-14):** wellbeing profile from PHQ-2,
-  mood, sleep/body clock, reaction test and resting HR, each vs the astronaut's own baseline
-  (PHQ-2 uses its validated cut-off). Astronaut first: nothing is shared until they choose;
-  only "urgent" notifies the commander and ground automatically (level + areas, never answers).
+- `behavioral.py` — **the team's main focus:** the psychological profile. Nine inputs (sleep,
+  HRV, time with crew, activity, body clock, resting HR; PHQ-2/PHQ-9, mood, reaction test), each
+  as SDs from the astronaut's own days 7-14, weighted (watch/station 70, check-ins 30), with the
+  PHQ safety rules on top, a confidence, and a daily trend. `method()` lists every weight.
   Crew-wide trends never name anyone and need >= 3 people.
+- `location.py` — room from Bluetooth beacons (two scans must agree), simulated schedule,
+  daily time with crewmates / alone in quarters. Rooms only; others see it only in an emergency.
 - `quality.py` — sensor checks per reading: impossible values, spikes, stuck sensor,
   watch dropout. Sensor errors the astronaut reports are flagged `artifact`, never deleted.
 - `store.py` — SQLite schema, background writer, reads (baseline, history, check-ins).
@@ -66,4 +78,4 @@ Env vars: `AHM_DB` (database path, default `data/ahm.db`), `AHM_LIVE_LIGHT_TIME=
 - `horizons.py` — live Earth-Mars light time from NASA JPL Horizons.
 - `insight_service.py` — the Claude call plus its fallback.
 - `/tools` (sibling folder, same owner) — `simulate_crew.py` (`--reset-db`,
-  `--seed-baseline`, `--run`).
+  `--seed-baseline`, `--run`) and `check_profile.py` (accuracy check on simulated crews).
