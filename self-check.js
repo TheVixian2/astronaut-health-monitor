@@ -1,18 +1,32 @@
-// Astronaut console: the crew member's own tablet. Live (view=crew).
+// Astronaut console: a crew member's own data. Live (view=crew).
 //
 // DATA ONLY, NO WARNINGS (decision, NotKaemy 2026-11-14): crew members see
 // their own numbers against their own baseline, never alerts, verdicts,
 // advice or "something is wrong" wording. Warnings go to the Commander
-// (captain.html), the ship's doctor (doctor.html) and Ground. This page does
+// (captain.html), the ship's doctor (doctor.html) and Ground. This code does
 // not even subscribe to `alert` events.
+//
+// Used by three pages, each with an empty <main id="console">:
+// - self-check.html: any astronaut, picked with the #aid selector (?aid=).
+// - captain.html / doctor.html: the Commander's / ship's doctor's own data,
+//   next to their crew tab. data-crew-role names whose data it is (looked up
+//   in GET /crew, data-aid is the fallback) and data-poll makes it poll
+//   GET /vitals instead of holding an SSE stream (browser limit ~6 per host).
 
 (function () {
   const $ = id => document.getElementById(id);
   const A = window.AHM;
   const { FIELDS, REGION_NAMES, deltaPct, dur, fmt, esc } = A;
 
+  const root = $("console");
+  root.innerHTML = consoleMarkup();
+
   const cfg = A.settings();
   cfg.view = "crew";                 // the console is never the delayed view
+  const ownRole = root.dataset.crewRole || null;   // set on captain.html / doctor.html
+  if (ownRole) cfg.aid = root.dataset.aid || cfg.aid;
+  const POLL = root.hasAttribute("data-poll") && !cfg.mock;
+  const POLL_MS = 3000;
 
   const MAX_POINTS = 120;            // ~6 min at one vitals event per 3 s
   const STALE_S = 10;
@@ -26,10 +40,12 @@
 
   // ---- setup ---------------------------------------------------------------
 
-  $("aid").value = cfg.aid;
-  $("aid").addEventListener("change", () => {
-    location.href = A.linkWithSettings("self-check.html", { aid: $("aid").value }) + location.hash;
-  });
+  if ($("aid")) {                    // astronaut picker: self-check.html only
+    $("aid").value = cfg.aid;
+    $("aid").addEventListener("change", () => {
+      location.href = A.linkWithSettings("self-check.html", { aid: $("aid").value }) + location.hash;
+    });
+  }
 
   document.querySelectorAll("#body .region").forEach(g => {
     const pick = () => selectRegion(g.dataset.region);
@@ -49,6 +65,9 @@
   async function init() {
     try {
       const crew = await A.getJSON(cfg.base, "/crew", cfg.mock);
+      // Commander / ship's doctor: whoever holds that role on this crew.
+      const own = ownRole && crew.find(c => c.role === ownRole);
+      if (own) cfg.aid = own.id;
       const me = crew.find(c => c.id === cfg.aid);
       $("name").textContent = me ? me.name : cfg.aid;
       $("role").textContent = me ? `${me.role} · ${me.id}` : "";
@@ -57,15 +76,33 @@
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
     renderMission();
 
-    const { source } = A.openStream(cfg);
-    source.onopen = () => setConn(cfg.mock ? "connected (mock)" : "connected", "pill-on");
-    source.onerror = () => setConn(source.readyState === 2 ? "disconnected" : "reconnecting…",
-                                   source.readyState === 2 ? "pill-off" : "pill-wait");
-    source.addEventListener("vitals", e => onVitals(JSON.parse(e.data)));
-    // No "alert" listener on purpose: the crew console shows data only.
+    // No "alert" listener or alert polling on purpose: data only.
+    if (POLL) startPolling();
+    else {
+      const { source } = A.openStream(cfg);
+      source.onopen = () => setConn(cfg.mock ? "connected (mock)" : "connected", "pill-on");
+      source.onerror = () => setConn(source.readyState === 2 ? "disconnected" : "reconnecting…",
+                                     source.readyState === 2 ? "pill-off" : "pill-wait");
+      source.addEventListener("vitals", e => onVitals(JSON.parse(e.data)));
+    }
 
     selectRegion(region);
     setInterval(renderAge, 1000);
+    loadCircadian();                 // needs cfg.aid, known only now
+    setInterval(loadCircadian, CIRC_REFRESH_MS);
+  }
+
+  function startPolling() {
+    let lastTs = null;
+    const tick = async () => {
+      try {
+        const v = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/vitals`, false);
+        setConn("connected", "pill-on");
+        if (v.timestamp !== lastTs) { lastTs = v.timestamp; onVitals(v); }
+      } catch { setConn("offline", "pill-off"); }
+    };
+    tick();
+    setInterval(tick, POLL_MS);
   }
 
   function onVitals(v) {
@@ -297,9 +334,6 @@
 
   const utcTime = t => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC", hour12: false });
 
-  loadCircadian();
-  setInterval(loadCircadian, CIRC_REFRESH_MS);
-
   // ---- check-in ------------------------------------------------------------
 
   async function onCheckin(e) {
@@ -357,13 +391,15 @@
   }
 
   // ---- console menu: one tab visible at a time ------------------------------
-  // The URL hash is the tab (#health, #checkin, #sleep), so a tab can be linked
-  // to. Kept at the end of the file: it touches `chart`, declared above.
-  const TABS = ["health", "checkin", "sleep"];
+  // The URL hash is the tab (#health, #checkin, #sleep, plus #crew / #meds on
+  // the Commander's / doctor's page), so a tab can be linked to. The tabs are
+  // the page's [data-tab-link] menu entries; the first is the default. Kept at
+  // the end of the file: it touches `chart`, declared above.
+  const TABS = [...document.querySelectorAll("[data-tab-link]")].map(a => a.dataset.tabLink);
 
   function showTab() {
     const want = location.hash.slice(1);
-    const tab = TABS.includes(want) ? want : "health";
+    const tab = TABS.includes(want) ? want : TABS[0] || "health";
     document.querySelectorAll("[data-tab]").forEach(s => { s.hidden = s.dataset.tab !== tab; });
     document.querySelectorAll("[data-tab-link]").forEach(a => {
       if (a.dataset.tabLink === tab) a.setAttribute("aria-current", "page");
@@ -374,4 +410,171 @@
 
   window.addEventListener("hashchange", showTab);
   showTab();
+
+  // ---- console markup ------------------------------------------------------
+  // One copy for every page that shows a crew member's own data: the astronaut
+  // console and the Commander's and ship's doctor's profiles. Injected into
+  // #console. A hoisted function, so it can sit at the end of the file.
+  function consoleMarkup() {
+    return `
+    <section class="card body-card" data-tab="health">
+      <h2>Body <span class="muted">tap a region</span></h2>
+      <svg id="body" viewBox="0 0 200 400" role="group" aria-label="Body regions">
+        <g class="region" data-region="skin" tabindex="0" role="button" aria-label="Skin">
+          <rect x="30" y="92" width="22" height="125" rx="11"/>
+          <rect x="148" y="92" width="22" height="125" rx="11"/>
+          <rect x="66" y="222" width="30" height="160" rx="13"/>
+          <rect x="104" y="222" width="30" height="160" rx="13"/>
+        </g>
+        <g class="region" data-region="whole_body" tabindex="0" role="button" aria-label="Whole body">
+          <rect x="88" y="72" width="24" height="18" rx="4"/>
+          <rect x="58" y="86" width="84" height="142" rx="22"/>
+        </g>
+        <!-- Front view, so the astronaut's left is the viewer's right.
+             Heart is drawn BEFORE the lungs so the lungs overlap it, as in a
+             real front view: it shows between the lungs and in the cardiac
+             notch. Flat anatomical icon, not a valentine: ventricles tapering to
+             the apex (down, astronaut's left, resting on the diaphragm), the
+             superior vena cava on the astronaut's right, the aortic arch with
+             its three branches. -->
+        <g class="region" data-region="heart" tabindex="0" role="button" aria-label="Heart">
+          <!-- superior vena cava -->
+          <rect x="95.5" y="121" width="4.5" height="21" rx="2"/>
+          <!-- aortic arch branches: brachiocephalic, left common carotid, left subclavian -->
+          <rect x="101.6" y="114" width="2.4" height="9" rx="1.2"/>
+          <rect x="105" y="112" width="2.4" height="10" rx="1.2"/>
+          <rect x="108.6" y="114" width="2.4" height="8" rx="1.2"/>
+          <!-- ascending aorta and arch, descending behind the left lung -->
+          <path d="M100.5 141 L100.5 129 C100.5 119 114 119 114 128 L114 136 L109.5 136 L109.5 128.5
+                   C109.5 124 105 124 105 129 L105 141 Z"/>
+          <!-- atria + ventricles, apex down and to the astronaut's left -->
+          <path d="M95 139 C91 146 91 156 96 163 C102 169 114 170 124 167 C128 165 128 161 127 157
+                   C125 150 121 142 115 138 C109 135 101 136 95 139 Z"/>
+        </g>
+        <!-- Lungs: narrow rounded apex under the collarbone, broad base curving
+             over the diaphragm dome (~y 168), straight inner (medial) border.
+             The astronaut's left lung (viewer's right) is narrower and has the
+             cardiac notch where the heart shows through. -->
+        <g class="region" data-region="lungs" tabindex="0" role="button" aria-label="Lungs">
+          <!-- right lung (viewer's left): larger -->
+          <path d="M84 96 C74 100 66 120 65 145 C64 158 65 166 68 170 Q81 158 94 166
+                   C96 150 95 120 93 104 C91 98 88 95 84 96 Z"/>
+          <!-- left lung (viewer's right): narrower, with the cardiac notch -->
+          <path d="M116 96 C126 100 134 120 135 145 C136 158 135 166 132 170 Q126 162 121 168
+                   C125 160 127 147 119 139 C112 133 107 124 107 104 C109 98 112 95 116 96 Z"/>
+        </g>
+        <g class="region" data-region="head" tabindex="0" role="button" aria-label="Head">
+          <circle cx="100" cy="42" r="30"/>
+        </g>
+      </svg>
+      <div id="regionInfo" class="region-info"></div>
+    </section>
+
+    <section class="card" data-tab="health">
+      <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
+      <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
+      <div class="chart-wrap">
+        <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small">last few minutes · dashed = your baseline · tap a tile to change</span></div>
+        <canvas id="chart" height="170"></canvas>
+        <p id="chartFallback" class="muted small" hidden>Chart unavailable (Chart.js did not load — offline?).</p>
+      </div>
+    </section>
+
+    <section class="card checkin-card solo" data-tab="checkin">
+      <h2>Check-in</h2>
+      <form id="checkin" class="checkin">
+        <fieldset>
+          <legend>Mood</legend>
+          <div class="scale" id="moodScale">
+            <label><input type="radio" name="mood" value="1"> 1</label>
+            <label><input type="radio" name="mood" value="2"> 2</label>
+            <label><input type="radio" name="mood" value="3"> 3</label>
+            <label><input type="radio" name="mood" value="4"> 4</label>
+            <label><input type="radio" name="mood" value="5"> 5</label>
+          </div>
+          <span class="muted small">1 = very low · 5 = very good</span>
+        </fieldset>
+
+        <label class="row">Sleep last night <input type="number" name="sleep" min="0" max="16" step="0.5" placeholder="h"> h</label>
+
+        <fieldset>
+          <legend>Symptoms</legend>
+          <div class="chips">
+            <label><input type="checkbox" name="symptom" value="headache"> Headache</label>
+            <label><input type="checkbox" name="symptom" value="blurred_vision"> Blurred vision</label>
+            <label><input type="checkbox" name="symptom" value="dizziness"> Dizziness</label>
+            <label><input type="checkbox" name="symptom" value="nausea"> Nausea</label>
+            <label><input type="checkbox" name="symptom" value="congestion"> Congestion</label>
+            <label><input type="checkbox" name="symptom" value="fatigue"> Fatigue</label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Vision check</legend>
+          <label class="row"><input type="checkbox" name="amsler"> Amsler grid lines look wavy or missing</label>
+          <label class="row">Acuity chart: last line read <input type="number" name="acuity" min="1" max="14" step="1"></label>
+        </fieldset>
+
+        <label class="row share"><input type="checkbox" name="share"> Share this check-in with ground</label>
+        <p class="muted small">Off by default. You decide what leaves the spacecraft.</p>
+
+        <button type="submit">Submit check-in</button>
+        <span id="checkinResult" class="small" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <!-- Light & sleep: suggestion from our mentor/judge (events/2026-11-14-mentor-judges.md).
+         Live data from GET /astronauts/{id}/circadian (PROVISIONAL in the spec);
+         if that endpoint is missing, only the static guidance below is shown. -->
+    <section class="card sleep-light solo" data-tab="sleep">
+      <h2>Light &amp; sleep <span id="lightChip" class="light-chip" hidden></span></h2>
+
+      <!-- The console is a shared screen on board, so personal sleep data
+           stays hidden until the astronaut asks for it, and re-hides itself. -->
+      <div id="sleepGate" class="sleep-gate">
+        <p class="muted">Your sleep and lighting details are hidden on this shared console.</p>
+        <button type="button" id="showSleep">Show my sleep data</button>
+      </div>
+
+      <div id="sleepPrivate" hidden>
+      <div class="private-bar small muted">
+        <span>Visible to anyone near this console · hides again in <span id="hideIn">2:00</span></span>
+        <button type="button" id="hideSleep" class="link">Hide now</button>
+      </div>
+      <p id="sleepNote" class="sleep-note muted">Waiting for data…</p>
+
+      <div id="circLive" hidden>
+        <div class="nights-head small muted">Last 7 nights · bar = asleep · <span class="lg-bright">■</span> bright light in the last hour before sleep</div>
+        <div id="nightsChart" class="nights"></div>
+        <label class="row share">
+          <input type="checkbox" id="circShare"> Share sleep &amp; lighting with ground
+        </label>
+        <p id="circShareNote" class="muted small">The flight surgeon sees this by default. Untick to keep it on board.</p>
+      </div>
+      </div>
+
+      <details id="tipsBox">
+        <summary>How the station's lighting modes work</summary>
+      <ul class="tips">
+        <li><strong>1 h before sleep:</strong> switch your module lights to
+          <em>Pre-sleep</em> mode (about 2700 K, blue-depleted). Blue light around
+          460 nm is what suppresses melatonin most.</li>
+        <li><strong>In that hour:</strong> keep screens dim or off.</li>
+        <li><strong>Working day:</strong> <em>General</em> mode (about 4500 K).
+          If a schedule shift is coming, <em>Phase-shift</em> mode (about 6500 K,
+          blue-enriched) helps move your body clock.</li>
+        <li><strong>Why it matters up here:</strong> the station sees about 16
+          sunrises a day, so its lights are your clock. A disrupted clock is
+          associated with weaker immune defence.</li>
+      </ul>
+      </details>
+      <p id="staticEvidence" class="muted small">Evidence on light, sleep timing and immunity is still
+        emerging, much of it from animal studies. Suggestions, not a diagnosis.</p>
+      <div class="nasa-ref small">
+        Sources: <a href="https://ntrs.nasa.gov/citations/20160005080" target="_blank" rel="noopener">NASA ISS Solid-State Lighting Assembly (NTRS)</a>
+        · NASA risk: <a href="https://www.nasa.gov/reference/risk-from-inadequate-sleep-and-irregular-schedules/" target="_blank" rel="noopener">Risk of Inadequate Sleep and Irregular Schedules</a>
+      </div>
+    </section>
+`;
+  }
 })();

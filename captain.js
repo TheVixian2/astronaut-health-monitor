@@ -1,5 +1,7 @@
-// Commander view: every crew member's physical and psychological warnings,
-// each with advice on how the Commander can help. On board, so not delayed.
+// Commander, "Crew wellbeing" tab: every crew member's physical and
+// psychological warnings, each with advice on how the Commander can help. On
+// board, so not delayed. The page's other tabs are the Commander's own data
+// (self-check.js).
 //
 // Crew members never see warnings on their own console (data only; decision,
 // NotKaemy 2026-11-14), so whether and how to raise anything is the
@@ -29,6 +31,16 @@
   };
   const advise = (kind, name) => (ADVICE[kind] || ADVICE.physical).replaceAll("{n}", name);
 
+  // The Commander is crew too, and sees their own warnings here (the Commander
+  // sees everything; decision, NotKaemy 2026-11-14). Advice for "Talk to
+  // yourself" makes no sense, so their own panel says who to go to instead.
+  const SELF_ADVICE = {
+    physical: "This one is about you. Ask the Crew Medical Officer to check on you, and hand over anything that can't wait.",
+    psych: "This one is about you. Protect your own next sleep period, and consider a private talk with the Crew Medical Officer or the flight surgeon.",
+  };
+  const OWN_ROLE = "Commander";
+  let ownAid = null;
+
   // Placeholder thresholds, from the crew member's own baseline.
   const LOW_MOOD = 2;              // mood_1to5 at or below this
   const SHORT_SLEEP_H = 6;         // or under 85% of their usual
@@ -44,8 +56,9 @@
       list = await A.watchCrew(cfg, {
         onVitals: (aid, v) => { const c = crew.get(aid); if (c) { c.latest = v; render(); } },
         onAlert: a => { const c = crew.get(a.astronaut_id); if (c) { c.alerts.set(a.id, a); render(); } },
-        onConn: (text, cls) => { $("conn").textContent = text; $("conn").className = `pill ${cls}`; },
+        onConn: (text, cls) => { $("crewConn").textContent = text; $("crewConn").className = `pill ${cls}`; },
       });
+      ownAid = (list.find(c => c.role === OWN_ROLE) || {}).id || null;
     } catch (err) {
       $("crewPanels").innerHTML = `<p class="err">Could not load crew: ${esc(err.message)}. Is the backend running? (Add ?mock to use fake data.)</p>`;
       return;
@@ -82,47 +95,57 @@
 
   function warningsFor(aid, c) {
     const name = c.info.name.replace(/^(Cmdr\.|Dr\.)\s*/, "").split(" ")[0];
+    const self = aid === ownAid;
+    const phys = kind => (self ? SELF_ADVICE.physical : advise(kind, name));
+    const mind = kind => (self ? SELF_ADVICE.psych : advise(kind, name));
     const physical = [], psych = [];
     for (const a of latestPerProfile(c.alerts)) {
       const w = { severity: a.severity, title: profileName(a.profile), when: a.started_at,
                   detail: `${REGION_NAMES[a.body_region] || a.body_region} · ${a.onboard_action}` };
-      if (A.isPsychological(a)) psych.push({ ...w, advice: advise(a.profile, name) });
-      else physical.push({ ...w, advice: advise(ADVICE[a.profile] ? a.profile : "physical", name) });
+      if (A.isPsychological(a)) psych.push({ ...w, advice: mind(a.profile) });
+      else physical.push({ ...w, advice: phys(ADVICE[a.profile] ? a.profile : "physical") });
     }
 
     const v = c.latest, base = v?.baseline || {};
     if (v && typeof v.mood_1to5 === "number" && v.mood_1to5 <= LOW_MOOD) {
       psych.push({ severity: v.mood_1to5 <= 1 ? "alert" : "watch", title: "Low mood",
-                   detail: `Mood ${v.mood_1to5}/5 (usual ${base.mood_1to5 ?? "?"}/5)`, advice: advise("mood", name) });
+                   detail: `Mood ${v.mood_1to5}/5 (usual ${base.mood_1to5 ?? "?"}/5)`, advice: mind("mood") });
     }
     if (v && typeof v.sleep_h_last_night === "number"
         && (v.sleep_h_last_night < SHORT_SLEEP_H || (base.sleep_h_last_night && v.sleep_h_last_night < base.sleep_h_last_night * SHORT_SLEEP_RATIO))) {
       psych.push({ severity: "watch", title: "Short sleep",
-                   detail: `${v.sleep_h_last_night} h last night (usual ${base.sleep_h_last_night ?? "?"} h)`, advice: advise("sleep", name) });
+                   detail: `${v.sleep_h_last_night} h last night (usual ${base.sleep_h_last_night ?? "?"} h)`, advice: mind("sleep") });
     }
     const card = c.circ && A.circadianCardText(c.circ.card);
     if (card) {
-      psych.push({ severity: "watch", title: "Irregular sleep timing", detail: card, advice: advise("circadian", name) });
+      psych.push({ severity: "watch", title: "Irregular sleep timing", detail: card, advice: mind("circadian") });
     }
-    return { name, physical, psych };
+    return { name, self, physical, psych };
   }
 
   // ---- rendering -------------------------------------------------------------
 
   function render() {
     if (!crew.size) return;
-    $("crewPanels").innerHTML = [...crew.entries()].map(([aid, c]) => panel(aid, c)).join("");
+    let total = 0;
+    $("crewPanels").innerHTML = [...crew.entries()].map(([aid, c]) => {
+      const w = warningsFor(aid, c);
+      total += w.physical.length + w.psych.length;
+      return panel(aid, c, w);
+    }).join("");
+    // Count on the menu tab, so the Commander notices from their own tabs too.
+    $("crewCount").textContent = total;
+    $("crewCount").hidden = !total;
   }
 
-  function panel(aid, c) {
-    const { name, physical, psych } = warningsFor(aid, c);
+  function panel(aid, c, { name, self, physical, psych }) {
     const all = physical.concat(psych);
     const worst = all.reduce((w, x) => (!w || SEVERITY_RANK[x.severity] > SEVERITY_RANK[w] ? x.severity : w), null);
     const v = c.latest;
     const stats = v ? `HR ${v.heart_rate_bpm} · mood ${v.mood_1to5}/5 · sleep ${v.sleep_h_last_night} h` : "No data yet";
     return `<article class="card cap-panel st-${worst || "nominal"}">
       <div class="cc-head">
-        <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} · ${esc(aid)} · ${esc(stats)}</div></div>
+        <div><strong>${esc(c.info.name)}</strong>${self ? ' <span class="you-tag">you</span>' : ""}<div class="muted small">${esc(c.info.role)} · ${esc(aid)} · ${esc(stats)}</div></div>
         <span class="st-pill">${esc(worst || "nominal")}</span>
       </div>
       <h3>Physical</h3>
