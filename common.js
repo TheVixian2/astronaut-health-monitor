@@ -7,7 +7,7 @@
     { key: "heart_rate_bpm", label: "Heart rate", unit: "bpm", region: "heart" },
     { key: "spo2_pct", label: "SpO₂", unit: "%", region: "lungs" },
     { key: "resp_rate_bpm", label: "Resp. rate", unit: "/min", region: "lungs" },
-    { key: "temp_c", label: "Temperature", unit: "°C", region: "skin" },
+    { key: "temp_c", label: "Temperature", unit: "°C", region: "skin", dp: 1 },
     { key: "sleep_h_last_night", label: "Sleep last night", unit: "h", region: "head" },
     { key: "mood_1to5", label: "Mood", unit: "/5", region: "head" },
     // Heart-rate variability as Apple Watch records it (SDNN, ms). From the

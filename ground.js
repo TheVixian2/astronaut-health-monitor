@@ -35,6 +35,9 @@
   // Test feed (test-feed.js): the `test` account, or ?test, shows one scripted
   // test subject (new data every 10 s, no light delay) instead of the crew.
   const TEST = !!(window.AHMTestFeed && window.AHMTestFeed.enabled);
+  // Presenter: a pattern for the whole mission and a period selector instead of
+  // the live, light-delayed streams (pattern.js, owner 2026-11-14).
+  const PATTERN = !TEST && !!(window.AHMPattern && window.AHMPattern.enabled);
 
   init();
 
@@ -58,6 +61,7 @@
 
     for (const info of list) crew.set(info.id, { info, latest: null, at: null, hr: [], baseHr: null, alerts: new Map(), circ: null });
     renderCrew();
+    if (PATTERN) { startPattern(); return; }
 
     let open = 0;
     for (const aid of crew.keys()) {
@@ -84,6 +88,24 @@
     pollTransit();
     setInterval(pollTransit, TRANSIT_POLL_MS);
     setInterval(tick, 1000);
+  }
+
+  function startPattern() {
+    document.body.classList.add("pattern");
+    setConn("pattern", "pill-on");
+    $("delayBanner").querySelector("strong").hidden = true;   // not a delayed live view here
+    $("delayText").hidden = true;
+    window.AHMPattern.control(document.querySelector("header.bar .status"), ({ from, to }) => {
+      for (const [aid, c] of crew) {
+        const pts = window.AHMPattern.series(aid, from, to, SPARK_POINTS);
+        const last = pts[pts.length - 1];
+        c.hr = pts.map(p => p.v.heart_rate_bpm);
+        c.latest = A.withScan(A.withStress(last.v), aid);
+        c.at = last.t;
+        c.baseHr = last.v.baseline.heart_rate_bpm;
+        renderCard(aid);
+      }
+    });
   }
 
   // ---- delayed data --------------------------------------------------------
@@ -264,6 +286,7 @@
 
   function ageText(c) {
     if (!c.at) return '<span class="muted">No data received yet</span>';
+    if (PATTERN) return `<span class="muted">As of <strong>${esc(window.AHMPattern.label(c.at))}</strong></span>`;
     const s = Math.max(0, Math.round((Date.now() - c.at) / 1000));
     const limit = (mission ? mission.one_way_delay_s : 0) + 10;
     return `<span class="${s > limit ? "stale" : "muted"}">As of ${esc(time(c.at))}, <strong>${dur(s)} old</strong></span>`;
