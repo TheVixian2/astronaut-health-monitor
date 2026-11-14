@@ -222,12 +222,16 @@
       return;
     }
     const env = ENV_NAMES[mission.environment] || mission.environment;
-    const real = REAL_DELAY[mission.environment];
-    const compressed = real && mission.one_way_delay_s < real.min_s;
-    $("missionReal").innerHTML = `<strong>${esc(env)}</strong> · ${real ? `${esc(real.label)} one-way` : `${dur(mission.one_way_delay_s)} one-way`}` +
+    // real_one_way_delay_s (GET /mission) is the true light time; fall back to
+    // the environment's typical range if the backend doesn't send it.
+    const realS = mission.real_one_way_delay_s;
+    const realLabel = realS != null ? dur(realS) : REAL_DELAY[mission.environment]?.label;
+    const compressed = realS != null ? realS > mission.one_way_delay_s
+      : mission.one_way_delay_s < (REAL_DELAY[mission.environment]?.min_s ?? 0);
+    $("missionReal").innerHTML = `<strong>${esc(env)}</strong> · ${esc(realLabel || dur(mission.one_way_delay_s))} one-way` +
       (compressed ? ` <span class="muted">(demo: ${dur(mission.one_way_delay_s)})</span>` : "");
     $("delayText").textContent = `Everything here left the spacecraft at least ${dur(mission.one_way_delay_s)} ago` +
-      (compressed ? ` — on a real ${env} mission that is ${real.label}.` : ".");
+      (compressed ? ` — on a real ${env} mission that is ${realLabel}.` : ".");
   }
 
   function tick() {

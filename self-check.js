@@ -270,9 +270,10 @@
   // ---- status --------------------------------------------------------------
 
   function renderMission() {
-    $("mission").innerHTML = mission
-      ? `${esc(A.ENV_NAMES[mission.environment] || mission.environment)} · ground is <strong>${dur(mission.one_way_delay_s)}</strong> away`
-      : "Mission: unknown";
+    if (!mission) { $("mission").textContent = "Mission: unknown"; return; }
+    const realS = mission.real_one_way_delay_s ?? mission.one_way_delay_s;
+    const demo = realS > mission.one_way_delay_s ? ` <span class="muted">(demo: ${dur(mission.one_way_delay_s)})</span>` : "";
+    $("mission").innerHTML = `${esc(A.ENV_NAMES[mission.environment] || mission.environment)} · ground is <strong>${dur(realS)}</strong> away${demo}`;
   }
 
   function renderAge() {
