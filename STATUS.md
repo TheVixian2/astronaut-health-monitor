@@ -248,8 +248,11 @@ Branch: `web`
   login stays `doctor`. **@dbm711:** please use "Crew Medical Officer" in the
   slides. Also on `web`: the explanation boxes are gone (Commander's "Crew
   members don't see these warnings", "Sample medication plan", Mission Control's
-  colour key), and every crew member on Crew wellbeing and Medications has an
-  **avatar**: the My health silhouette, male or female. **@Luca:** the `sex`
+  colour key), and every crew member on Crew wellbeing and Medications has a
+  **whole-body avatar** (the My health silhouette, male or female) with the
+  affected body parts lit up: warnings on Crew wellbeing, what each medicine is
+  for on Medications. The console stays in the dark theme at all hours now
+  (no automatic warm Pre-sleep colours). **@Luca:** the `sex`
   field on `/crew` (below) would set it; until then the web uses a demo default
   (Elena, Sara female; Mihai, Jonas male) or the My health switch.
 - **My health: HRV and a stress level, Male | Female body** (NotKaemy,
