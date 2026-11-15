@@ -409,7 +409,7 @@
     const field = FIELDS.find(f => f.key === chartField);
     $("chartTitle").textContent = `${field.label} (${field.unit})`;
     $("chartNote").textContent = field.key === "stress_0to100"
-      ? "The station computer's wellbeing score: sleep, HRV, activity, resting heart rate, time with crewmates and body clock (70 %) plus check-ins (30 %), each against your own mission days 7-14. 0 = your usual. 0-19 steady, 20-39 watch, 40-59 concern, 60+ urgent."
+      ? "The station computer's wellbeing score: sleep, HRV, activity, resting heart rate, time with crewmates and body clock (70 %) plus check-ins (30 %), each against your own mission days 7-14. Shown like a wearable stress score: 30 = your usual (the average on Garmin's HRV-based 0-100 scale), higher = further from your normal. Up to 43 steady, 44-57 watch, 58-71 concern, 72+ urgent."
       : field.key === "bone_density_g_cm2" || field.key === "muscle_mass_kg"
         ? `${field.key === "bone_density_g_cm2" ? "Whole-body bone mineral density" : "Lean tissue of your arms and legs"} from the weekly portable X-ray (DXA) scan, so the line only moves between scans.${latest && latest.simulated_scan ? " Simulated scans for now." : ""}`
       : field.key === "hrv_sdnn_ms"
