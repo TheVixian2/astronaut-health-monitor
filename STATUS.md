@@ -215,6 +215,12 @@ version; the older notes (SANS, fever, orthostatic, astronaut-first sharing) are
   optional step after the PHQ-2 and sends `reaction_test` with the check-in. `?rt_s=30` gives a
   30-second version for the live demo. Not tested in a browser yet: please try it, then merge it
   into `web` if it looks right.
+- **2026-11-15, please merge:** `backend` (more accurate history: mood follows check-ins, core
+  temperature climbs ~1 °C over 2.5 months as in Stahn 2017, activity shown as daily totals;
+  `tools/export_sample_csv.py`) and **`web-reaction-test`** for @NotKaemy (the Health bar is now a
+  **Wellbeing** bar from the backend's wellbeing check, still only after "Send to"; History has the
+  full section menu instead of a lone Back link; the Sample CSV button gives each astronaut their
+  own `sample-baseline-a1..a4.csv`). Reseed before the demo.
 - **Team decisions needed:**
   1. **Time with crewmates in the score.** Stefan asked for every input to feed the profile,
      so it carries 12 of 100 points now. Luca's habitat note said display-only (weak evidence).
