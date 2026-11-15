@@ -278,6 +278,7 @@
     if (chart) chart.destroy();
     const css = getComputedStyle(document.documentElement);
     const tok = name => css.getPropertyValue(name).trim();   // colours come from style.css tokens
+    const ax = field.axis;   // fixed scale for mood (1-5) and stress (0-100), else automatic
     chart = new window.Chart($("chart"), {
       type: "line",
       data: {
@@ -294,7 +295,8 @@
         plugins: { legend: { display: false } },
         scales: {
           x: { ticks: { color: tok("--muted"), maxTicksLimit: 6 }, grid: { color: tok("--line") } },
-          y: { ticks: { color: tok("--muted") }, grid: { color: tok("--line") }, grace: "10%" },
+          y: ax ? { min: ax.min, max: ax.max, ticks: { color: tok("--muted"), stepSize: ax.step }, grid: { color: tok("--line") } }
+            : { ticks: { color: tok("--muted") }, grid: { color: tok("--line") }, grace: "10%" },
         },
       },
     });
