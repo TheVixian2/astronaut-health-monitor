@@ -224,7 +224,7 @@
     await A.loadStress(cfg, aid, viewer);
     const v = c.latest ? A.withScan(A.withStress(A.withCycle(c.latest, aid), aid), aid) : null;
     A.setSentTo(aid, {
-      at: new Date().toISOString(), by: viewer, health: A.healthScore(v),
+      at: new Date().toISOString(), by: viewer, health: A.wellbeingBar(c.wb),
       warnings: w.physical.concat(w.psych).map(x => ({ severity: x.severity, title: x.title,
                                                        detail: x.crewText || x.detail, alertId: x.alertId || null })),
     });
