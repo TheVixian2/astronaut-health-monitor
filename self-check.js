@@ -364,6 +364,7 @@
   }
   function wireBaselineUpload() {
     if (!$("baselineFile")) return;
+    $("baselineSample").href = `demo-data/${encodeURIComponent(cfg.aid)}.csv`;   // this astronaut's demo file
     const msg = t => { $("baselineMsg").textContent = t; };
     $("baselineFile").addEventListener("change", async e => {
       const f = e.target.files[0];
@@ -886,7 +887,7 @@
       <div id="baselineBox" class="baseline-box small" hidden>
         <span>Usual values from: <strong id="baselineSrc">Demo data</strong></span>
         <label class="bl-btn">Upload CSV<input type="file" id="baselineFile" accept=".csv,text/csv" hidden></label>
-        <a class="bl-btn" href="sample-baseline.csv" download>Sample CSV</a>
+        <a class="bl-btn" id="baselineSample" href="demo-data/a1.csv" download title="Real wearable days from the LifeSnaps study (CC BY 4.0), gaps filled; see the file's header">Sample CSV</a>
         <button type="button" class="bl-btn" id="baselineReset" hidden>Back to demo data</button>
         <span id="baselineMsg" class="muted" role="status"></span>
       </div>
