@@ -526,11 +526,13 @@
       localStorage.setItem(SENT_KEY, JSON.stringify(all));
     } catch { /* private window: not kept */ }
   }
+  // Kept here only once the backend has it: a failed send (backend down, or an
+  // older backend without /shared-check) throws and leaves no "Last sent" behind.
   async function setSentTo(aid, data, cfg, viewer) {
-    keepSent(aid, data);
     if (cfg && !cfg.mock) {
       await putJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/shared-check?viewer=${encodeURIComponent(viewer)}`, data, false);
     }
+    keepSent(aid, data);
   }
   async function loadSentTo(cfg, aid, viewer) {
     if (cfg.mock) return sentTo(aid);
