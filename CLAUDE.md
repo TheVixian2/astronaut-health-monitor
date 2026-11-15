@@ -252,12 +252,21 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   psychological alerts (`PUT /astronauts/{id}/alerts/{alert_id}/release`,
   viewer = the Commander) and keeps their health now (`AHM.healthScore`) plus
   the card's warnings, without the Commander's advice, via `AHM.setSentTo`.
-  On their console the **health bar shows only what was sent** (neutral "—"
+  On their console the **health bar shows only what was sent** (**100 %**
   until the first send; it never follows live readings) and "From your
-  commander" lists the sent warnings next to released alerts. The Commander's
-  own bar stays live. The CMO can send too (wellbeing bar only). Stored by the
+  commander" lists the sent warnings next to released alerts. The CMO can send
+  too (wellbeing bar only). Stored by the
   backend (`PUT/GET /astronauts/{id}/shared-check`); this browser keeps a copy
   (`ahm-sent-to-crew`) only after the backend accepted it.
+  - **Live bars for the Commander and the CMO** (owner, 2026-11-15): their own
+    bar follows their own check (`GET /wellbeing?viewer=<self>`) every 10 s and
+    right after their own check-in (the backend recomputes then; otherwise about
+    once a minute), no send needed. It starts at 100 % and glides down, the %
+    counting along. Under it the live reasons and "down from X% yesterday"
+    (the daily trend); the CMO's My report is live too. While their newest check
+    waits for the commander (the deputy for the Commander's own) the backend
+    withholds it and the bar keeps the last value (commander first). Decided by
+    role from `/crew`, so self-check.html's picker does the same for Elena and Sara.
   - **"Sent ✓"** on the button for 2.5 s after a send succeeds
     (`AHM.markJustSent` / `justSent`; the pages re-render, so sendRow reads it).
   - **Why it changed** (owner, 2026-11-15): with every report, **right under

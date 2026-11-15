@@ -7,7 +7,8 @@
 // (captain.html), the Crew Medical Officer (doctor.html) and Ground. This code does
 // not even subscribe to `alert` events. The one way in: what the Commander
 // (or the Crew Medical Officer) sends with "Send to <name>", shown under the
-// wellbeing bar and on the My report tab (owner, 2026-11-15).
+// wellbeing bar and on the My report tab (owner, 2026-11-15). The Commander's
+// and the CMO's own bars are live instead (renderHealth).
 //
 // Used by three pages, each with an empty <main id="console">:
 // - self-check.html: any astronaut, picked with the #aid selector (?aid=).
@@ -28,6 +29,13 @@
   cfg.view = "crew";                 // the console is never the delayed view
   const ownRole = root.dataset.crewRole || null;   // set on captain.html / doctor.html
   if (ownRole) cfg.aid = root.dataset.aid || cfg.aid;
+  // The Commander's and the Crew Medical Officer's own wellbeing bars are live
+  // (owner, 2026-11-15): their own check, no "Send to" needed. Everyone else's
+  // bar moves only with a report sent to them. Set again in init() from /crew,
+  // so self-check.html's astronaut picker treats Elena and Sara the same way.
+  const LIVE_ROLES = ["Commander", "Crew Medical Officer"];
+  let liveBar = LIVE_ROLES.includes(ownRole);
+  let meRole = ownRole;
   const POLL = root.hasAttribute("data-poll") && !cfg.mock;
   // Presenter: a pattern for the whole mission and a period selector instead of
   // live data (pattern.js, owner 2026-11-14).
@@ -81,10 +89,14 @@
       const own = ownRole && crew.find(c => c.role === ownRole);
       if (own) cfg.aid = own.id;
       const me = crew.find(c => c.id === cfg.aid);
+      if (me) { meRole = me.role; liveBar = LIVE_ROLES.includes(ownRole) || LIVE_ROLES.includes(me.role); }
       $("name").textContent = me ? me.name : cfg.aid;
       $("role").textContent = me ? `${me.role} (${me.id})` : "";
       setSex(A.sexOf(me || { id: cfg.aid }), false);
     } catch { $("name").textContent = cfg.aid; }
+
+    renderHealth();                  // every bar starts full (100 %); the live check or a report moves it
+    if (liveBar) { loadOwnWellbeing(); setInterval(loadOwnWellbeing, LIVE_WB_MS); }   // also in the pattern view
 
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
     renderMission();
@@ -100,7 +112,6 @@
     if (!PATTERN) {
       refreshStress(); setInterval(refreshStress, STRESS_REFRESH_MS);
       loadReleased(); setInterval(loadReleased, RELEASED_REFRESH_MS);
-      loadOwnWellbeing(); setInterval(loadOwnWellbeing, RELEASED_REFRESH_MS);
       wireBaselineUpload();
     }
     if (!PATTERN) await prefill();
@@ -205,7 +216,7 @@
     // sameAt: the same send can come back as ".740Z" or ".740000Z".
     if (!PATTERN && lastSentAt !== undefined && sentAtNow !== lastSentAt && !sameAt(sentAtNow, lastSentAt)) refreshStress();
     lastSentAt = sentAtNow;
-    if (sentNow?.health) await loadSelfWb();   // their own wellbeing check: the reasons behind the bar
+    if (sentNow?.health && !liveBar) await loadSelfWb();   // their own wellbeing check: the reasons behind the bar
   }
   async function loadReleased() {
     try {
@@ -273,23 +284,27 @@
   const sameAt = (a, b) => a != null && b != null && Date.parse(a) === Date.parse(b);
   const shortWhen = t => new Date(t).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
+  // When a whole group has no data yet the backend scales the other group up to
+  // fill the 100 (behavioral.py), so scale the points the same way: the reasons
+  // then add up to the score, i.e. to what the bar lost.
+  function scaled(wb) {
+    const sigs = wb.signals || [];
+    const sum = sigs.reduce((t, s) => t + (s.points || 0), 0);
+    const k = sum > 0 && typeof wb.score === "number" ? wb.score / sum : 1;
+    return sigs.map(s => ({ ...s, off: Math.round((s.points || 0) * k) }));
+  }
+  // Who sees this console's flags first (commander first; the deputy for the Commander's own).
+  const firstTo = () => (meRole === "Commander" ? "the deputy" : "your commander");
+
   // The report on screen with its reasons, or null when none was sent.
   function reportOf() {
+    if (liveBar) return liveReportOf();
     const sent = ownRole === "Commander" ? null : A.sentTo(cfg.aid);
     if (!sent || !sent.health) return null;
     const h = sent.health;
     const wb = selfWb && selfWb.astronaut_id === cfg.aid ? selfWb : null;
     const withheld = !!(wb && wb.withheld);
-    let all = [];
-    if (wb && !withheld && h.wellbeing) {
-      // When a whole group has no data yet the backend scales the other group up
-      // to fill the 100 (behavioral.py), so scale the points the same way: the
-      // reasons then add up to the score, i.e. to what the bar lost.
-      const sigs = wb.signals || [];
-      const sum = sigs.reduce((t, s) => t + (s.points || 0), 0);
-      const k = sum > 0 && typeof wb.score === "number" ? wb.score / sum : 1;
-      all = sigs.map(s => ({ ...s, off: Math.round((s.points || 0) * k) }));
-    }
+    const all = wb && !withheld && h.wellbeing ? scaled(wb) : [];
     const why = all.filter(s => s.off >= 1).sort((a, b) => b.off - a.off);
     // How it moved since the last report this browser saw, value and reasons.
     const seenAll = readJSON(SEEN_KEY);
@@ -305,6 +320,22 @@
       : `${h.pct < prev ? "down" : "up"} from ${prev}%`;
     return { sent, h, wb, withheld, all, why, prev, prevWhy: seen.prevWhy, change };
   }
+  // The Commander and the CMO: their own check, live. "Since" is yesterday's
+  // value from the backend's daily trend.
+  function liveReportOf() {
+    const wb = ownWb && ownWb.astronaut_id === cfg.aid ? ownWb : null;
+    if (!wb) return null;                          // not loaded yet: the bar is at 100 %
+    const withheld = !!wb.withheld;
+    const h = A.wellbeingBar(wb) || lastLive || FULL_BAR;
+    const all = withheld ? [] : scaled(wb);
+    const why = all.filter(s => s.off >= 1).sort((a, b) => b.off - a.off);
+    const today = new Date().toISOString().slice(0, 10);
+    const past = ((wb.trend && wb.trend.timeline) || []).filter(d => d.day < today);
+    const prev = past.length ? Math.max(0, Math.min(100, Math.round(100 - past[past.length - 1].score))) : null;
+    const change = withheld ? (lastLive ? "the last value you saw" : "waiting for your newest check")
+      : prev == null ? "live" : prev === h.pct ? "the same as yesterday" : `${h.pct < prev ? "down" : "up"} from ${prev}% yesterday`;
+    return { live: true, sent: A.sentTo(cfg.aid), h, wb, withheld, all, why, prev, prevWhy: null, change };
+  }
 
   // The backend's detail often starts with the label ("Activity: 31 min/day"): once is enough.
   const detailOf = s => {
@@ -314,7 +345,7 @@
   // The reasons as a list: −N% label: what the station computer saw.
   function whyList(r, max, changes) {
     if (r.h.wellbeing == null && r.h.inRange != null) return `<p class="small">${r.h.inRange} of ${r.h.total} readings in your usual range.</p>`;
-    if (r.withheld) return '<p class="small muted">The reasons come once your commander has talked with you.</p>';
+    if (r.withheld) return `<p class="small muted">Your newest check is with ${firstTo()} first; the reasons come once they have talked with you.</p>`;
     if (!r.wb) return `<p class="small muted">${selfWbFailed ? "The reasons can't be loaded right now." : "Loading the reasons…"}</p>`;
     if (!r.why.length) return '<p class="small">Everything is close to your own usual.</p>';
     const list = max ? r.why.slice(0, max) : r.why;
@@ -344,30 +375,35 @@
     if (!r) { box.innerHTML = ""; return; }
     box.className = `wb-why alert sev-${esc(r.h.level)}`;
     const link = document.querySelector('[data-tab-link="report"]') ? ' · <a href="#report">Full report</a>' : "";
+    const foot = r.live ? `Your own check, live · updated ${esc(time(ownWbAt || Date.now()))}`
+      : `Sent by your ${sentBy(r.sent)} · ${esc(shortWhen(r.sent.at))}`;
     box.innerHTML = `<p class="verdict">Wellbeing ${r.h.pct}%, ${esc(r.change)}</p>${whyList(r, 3, false)}
-      <p class="muted small">Sent by your ${sentBy(r.sent)} · ${esc(shortWhen(r.sent.at))}${link}</p>`;
+      <p class="muted small">${foot}${link}</p>`;
   }
 
   // ---- My report: everything that came with the last report ----------------
   function renderReport() {
+    if (!document.querySelector('[data-tab-link="report"]')) return;   // no My report tab here (the Commander's page)
     const out = $("reportBody");
     const r = reportOf();
     const badge = $("reportNew");
-    if (badge) badge.hidden = !r || sameAt(readJSON(READ_KEY)[cfg.aid], r.sent.at);
+    if (badge) badge.hidden = !r || r.live || sameAt(readJSON(READ_KEY)[cfg.aid], r.sent.at);
     if (!r) {
       $("reportSub").textContent = "";
-      out.innerHTML = '<p class="muted">No report yet. When your commander or Crew Medical Officer sends you one, it shows here and your wellbeing bar moves.</p>';
+      out.innerHTML = liveBar ? '<p class="muted">Loading your wellbeing check…</p>'
+        : '<p class="muted">No report yet. When your commander or Crew Medical Officer sends you one, it shows here and your wellbeing bar moves.</p>';
       rpChartKey = "";
       dropReportChart();
       return;
     }
     if (document.body.dataset.tab === "report") markReportRead(r);
     const { h, wb, sent } = r;
-    $("reportSub").textContent = `from your ${sentBy(sent)} · ${shortWhen(sent.at)}`;
+    $("reportSub").textContent = r.live ? `your own check, live · updated ${time(ownWbAt || Date.now())}`
+      : `from your ${sentBy(sent)} · ${shortWhen(sent.at)}`;
     const lv = h.wellbeing ? WB_NAMES[h.wellbeing] || h.wellbeing : null;
     const conf = wb && wb.confidence
       ? `<p class="muted small">How sure: ${esc(wb.confidence)}, ${Math.round((wb.coverage || 0) * 100)}% of the usual data is in so far.</p>` : "";
-    const moved = wb && !wb.withheld && typeof wb.score === "number" && h.score != null && wb.score !== h.score
+    const moved = !r.live && wb && !wb.withheld && typeof wb.score === "number" && h.score != null && wb.score !== h.score
       ? `<p class="small rp-note">Since this report your check has moved to ${A.wellbeingBar(wb).pct}%. The next report will show it.</p>` : "";
     const close = r.all.filter(s => s.enough_data && s.off < 1);
     const nodata = (wb ? wb.signals || [] : []).filter(s => !s.enough_data);
@@ -375,7 +411,7 @@
     const warns = [
       ...releasedList.map(a => ({ severity: a.severity, title: a.crew_message || a.onboard_action,
                                   detail: a.insight && a.insight.recommended_action !== a.crew_message ? a.insight.recommended_action : null })),
-      ...(sent.warnings || []).filter(w => !w.alertId || !ids.has(w.alertId)),
+      ...((sent && sent.warnings) || []).filter(w => !w.alertId || !ids.has(w.alertId)),
     ];
     const sec = (title, body, cls = "") => `<section class="rp-sec ${cls}"><h3>${title}</h3>${body}</section>`;
     const trendTxt = t => !t ? "" : t.direction === "worsening" ? `Moving away from your usual, about ${Math.round(Math.abs(t.points_per_week))}% a week.`
@@ -409,7 +445,7 @@
     if (key === rpChartKey) return;
     rpChartKey = key;
     out.innerHTML = html;
-    if (showTrend) drawReportChart(wb.trend.timeline, sent.at);
+    if (showTrend) drawReportChart(wb.trend.timeline, r.live ? new Date().toISOString() : sent.at);
     else dropReportChart();
   }
   function dropReportChart() { if (rpChart) { rpChart.destroy(); rpChart = null; } }
@@ -447,6 +483,7 @@
     });
   }
   function markReportRead(r) {
+    if (r.live || !r.sent) return;               // a live check is never "new"
     const read = readJSON(READ_KEY);
     if (!sameAt(read[cfg.aid], r.sent.at)) { read[cfg.aid] = r.sent.at; writeJSON(READ_KEY, read); }
     if ($("reportNew")) $("reportNew").hidden = true;
@@ -463,42 +500,71 @@
   });
 
   // ---- health bar beside the body -------------------------------------------
-  // How close readings are to this astronaut's own usual, 0-100 % (common.js
-  // healthScore). Commander first (owner, 2026-11-15): a crew member's bar
-  // changes ONLY when the Commander presses "Send to <name>" on Crew wellbeing,
-  // and then shows what was sent; until then it is neutral ("—"). The
-  // Commander's own bar stays live: the Commander sees everything.
-  // Wellbeing, not physical readings (Stefan, 2026-11-15): the backend's wellbeing check. The
-  // Commander's own bar reads their own check (null while it is with the deputy first).
-  let ownWb = null;
+  // Wellbeing, not physical readings (Stefan, 2026-11-15): 100 - the backend's
+  // wellbeing score. Every bar starts full, 100 % (owner, 2026-11-15).
+  // - Crew members: the bar moves ONLY when the Commander or the CMO presses
+  //   "Send to <name>", and then shows what was sent (commander first).
+  // - The Commander and the Crew Medical Officer: live, their own check
+  //   (GET /wellbeing?viewer=<self>) every LIVE_WB_MS and right after their own
+  //   check-in (the backend recomputes then; otherwise about once a minute).
+  //   While their newest check waits for the commander (the deputy for the
+  //   Commander's own) the backend withholds it: the bar keeps the last value.
+  const LIVE_WB_MS = 10000;
+  const FULL_BAR = { pct: 100, level: "ok" };
+  let ownWb = null, ownWbAt = 0;
+  let lastLive = null;                   // the last live value shown
   async function loadOwnWellbeing() {
-    if (ownRole !== "Commander") return;
+    if (!liveBar) return;
     try {
       ownWb = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/wellbeing?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
-    } catch { ownWb = null; }
+      ownWbAt = Date.now();
+    } catch { /* offline: keep the last one */ }
     renderHealth();
+    renderReports();
   }
   function renderHealth() {
     const bar = $("healthBar");
-    const live = ownRole === "Commander";
-    const sent = live ? null : A.sentTo(cfg.aid);
-    const h = live ? A.wellbeingBar(ownWb) : sent && sent.health ? sent.health : null;
-    bar.hidden = false;
-    if (!h) {
-      bar.className = "health-bar hb-none";
-      bar.title = live ? "Waiting for your wellbeing check" : "Your commander or Crew Medical Officer hasn't sent you a check yet";
-      bar.querySelector(".hb-pct").textContent = "—";
-      bar.querySelector(".hb-fill").style.height = "100%";
-      bar.querySelector(".hb-track").removeAttribute("aria-valuenow");
-      return;
+    const sent = liveBar ? null : A.sentTo(cfg.aid);
+    let h;
+    if (liveBar) {
+      const now = A.wellbeingBar(ownWb);
+      if (now) lastLive = now;
+      h = lastLive || FULL_BAR;
+      bar.title = now ? `Your wellbeing check, live: ${now.wellbeing} (score ${now.score} of 100; 0 is just like your usual)`
+        : ownWb && ownWb.withheld ? `Your newest check is with ${firstTo()} first; this is the last value you saw`
+        : "100 % until your wellbeing check loads";
+    } else {
+      h = (sent && sent.health) || FULL_BAR;
+      bar.title = !(sent && sent.health) ? "100 % until your commander or Crew Medical Officer sends you a check"
+        : (h.wellbeing ? `Wellbeing check: ${h.wellbeing} (score ${h.score} of 100; 0 is just like your usual)`
+                       : `${h.inRange} of ${h.total} readings in your usual range`) +
+          `, sent by your ${sentBy(sent)} ${new Date(sent.at).toLocaleString()}`;
     }
+    bar.hidden = false;
     bar.className = `health-bar hb-${h.level}`;
-    bar.title = (h.wellbeing ? `Wellbeing check: ${h.wellbeing} (score ${h.score} of 100; 0 is just like your usual)`
-                             : `${h.inRange} of ${h.total} readings in your usual range`) +
-      (sent ? `, sent by your ${sentBy(sent)} ${new Date(sent.at).toLocaleString()}` : "");
-    bar.querySelector(".hb-pct").textContent = `${h.pct}%`;
-    bar.querySelector(".hb-fill").style.height = `${h.pct}%`;
     bar.querySelector(".hb-track").setAttribute("aria-valuenow", h.pct);
+    setBarPct(bar, h.pct);
+  }
+  // The fill glides (style.css transition); the % counts along with it.
+  let shownPct = null, pctNow = null, pctAnim = 0, pctDone = 0;
+  function setBarPct(bar, pct) {
+    if (pct === shownPct) return;        // renderHealth runs on every reading: let a running count finish
+    const label = bar.querySelector(".hb-pct");
+    bar.querySelector(".hb-fill").style.height = `${pct}%`;
+    const from = pctNow ?? shownPct;     // where the count is now, also mid-count
+    shownPct = pct;
+    cancelAnimationFrame(pctAnim);
+    clearTimeout(pctDone);
+    const show = v => { pctNow = v; label.textContent = `${v}%`; };
+    if (from == null || matchMedia("(prefers-reduced-motion: reduce)").matches) { show(pct); return; }
+    const t0 = performance.now(), MS = 900;
+    const step = t => {
+      const k = Math.min(1, (t - t0) / MS), e = 1 - Math.pow(1 - k, 3);
+      show(Math.round(from + (pct - from) * e));
+      if (k < 1) pctAnim = requestAnimationFrame(step);
+    };
+    pctAnim = requestAnimationFrame(step);
+    pctDone = setTimeout(() => { cancelAnimationFrame(pctAnim); show(pct); }, MS + 100);   // frames pause in background tabs
   }
 
   // ---- body figure: picks which vitals to focus on -------------------------
@@ -952,6 +1018,7 @@
     try {
       await A.postJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/checkin`, body, cfg.mock);
       out.textContent = "";
+      loadOwnWellbeing();              // the Commander's / CMO's live bar: the backend has recomputed already
       const at = new Date();
       try { localStorage.setItem(`ahm-checkin-done-${cfg.aid}`, at.toISOString()); } catch { /* shown for this visit only */ }
       showCheckinDone(at);
