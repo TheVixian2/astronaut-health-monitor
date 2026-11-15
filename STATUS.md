@@ -250,6 +250,11 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **`web` merged into `main`** (NotKaemy, 2026-11-15, 057c680): main's latest web work
+  (backend stress score, released warnings, health bar, reaction test) merged into
+  `web` first, one conflict resolved, all pages tested, then main fast-forwarded.
+  New in it: the My health chart has fixed scales for mood (5 4 3 2 1) and stress
+  (0-100, gridlines at the band edges).
 - **"Ship's doctor" is now "Crew Medical Officer"** in the web app (NotKaemy,
   2026-11-14; on `web`), the same name the backend already gives Sara (a3). The
   login stays `doctor`. **@dbm711:** please use "Crew Medical Officer" in the
