@@ -349,7 +349,19 @@ a.home:hover { text-decoration: underline; }
 }
 .tile:hover { background: var(--wash-2); }
 .tile.dim { opacity: .45; }
-.tile.charted { background: var(--panel); box-shadow: inset 0 3px 0 var(--mars), -1px 0 0 var(--line), 0 -1px 0 var(--line); }
+/* The charted reading's box takes its icon's colour (Stefan, 2026-11-14); Mars red if it has no icon. */
+.tile:has(.vi-heart) { --sel: var(--ic-heart); }
+.tile:has(.vi-spo2) { --sel: var(--ic-spo2); }
+.tile:has(.vi-resp) { --sel: var(--ic-resp); }
+.tile:has(.vi-temp) { --sel: var(--ic-temp); }
+.tile:has(.vi-sleep) { --sel: var(--ic-sleep); }
+.tile:has(.vi-mood) { --sel: var(--ic-mood); }
+.tile:has(.vi-hrv) { --sel: var(--ic-hrv); }
+.tile:has(.vi-stress) { --sel: var(--ic-stress); }
+.tile:has(.vi-bone) { --sel: var(--ic-bone); }
+.tile:has(.vi-muscle) { --sel: var(--ic-muscle); }
+.tile.charted { background: color-mix(in srgb, var(--sel, var(--mars)) 10%, var(--panel));
+  box-shadow: inset 0 0 0 2px var(--sel, var(--mars)), inset 0 4px 0 var(--sel, var(--mars)), -1px 0 0 var(--line), 0 -1px 0 var(--line); }
 .tile.off .t-delta { color: var(--alert-ink); font-weight: 700; }
 .t-label { color: var(--muted); font-size: var(--t-sm); font-weight: 500; }
 .t-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
@@ -788,3 +800,23 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 .ds-upcoming { color: var(--muted); font-weight: 400; }
 h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: var(--t-xs);
   font-weight: 700; text-align: center; background: var(--sev-alert); color: #1a1205; vertical-align: middle; }
+
+/* Health bar beside the body figure (self-check.js renderHealth): how close
+   today's readings are to the astronaut's own usual, filled from the bottom. */
+.body-row { display: flex; align-items: stretch; gap: 12px; flex: 1 1 0; min-height: 190px; }
+.body-row > svg { flex: 1 1 0; height: 100%; min-height: 0; }
+.health-bar { flex: none; width: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.health-bar[hidden] { display: none; }
+.hb-label { font-size: var(--t-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.hb-track { position: relative; flex: 1 1 auto; width: 14px; border-radius: 999px; background: var(--wash-2); border: 1px solid var(--line); overflow: hidden; }
+.hb-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 999px; background: var(--ok); transition: height .6s ease, background .3s; }
+.hb-pct { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.hb-watch .hb-fill { background: var(--sev-watch); }
+.hb-alert .hb-fill { background: var(--sev-alert); }
+.hb-critical .hb-fill { background: var(--sev-critical); }
+@media (prefers-reduced-motion: reduce) { .hb-fill { transition: none; } }
+/* Released warnings at the top of "Your vitals". */
+.released { margin: 0 0 12px; }
+.released h3 { font-size: var(--t-sm); margin: 0 0 6px; }
+.released .verdict { margin: 0 0 4px; }
+.released p { margin: 0; }

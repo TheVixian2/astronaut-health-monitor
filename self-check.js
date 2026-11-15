@@ -87,7 +87,12 @@
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
     renderMission();
 
-    // No "alert" listener or alert polling on purpose: data only.
+    // Warnings reach this console only once released (commander first): loadReleased().
+    if (!PATTERN) {
+      refreshStress(); setInterval(refreshStress, STRESS_REFRESH_MS);
+      loadReleased(); setInterval(loadReleased, RELEASED_REFRESH_MS);
+    }
+    if (!PATTERN) await prefill();
     if (PATTERN) startPattern();
     else if (POLL) startPolling();
     else {
@@ -105,8 +110,8 @@
   }
 
   // Derived values for a raw snapshot: the usual shifted for the cycle (when the
-  // astronaut has switched that on), stress from HRV, the X-ray scan.
-  const derive = raw => A.withScan(A.withStress(A.withCycle(raw, cfg.aid)), cfg.aid);
+  // astronaut has switched that on), stress (the backend's score), the X-ray scan.
+  const derive = raw => A.withScan(A.withStress(A.withCycle(raw, cfg.aid), PATTERN ? null : cfg.aid), cfg.aid);
 
   let period = null;                 // pattern mode: the period on show
   function showPeriod(p) {
@@ -151,6 +156,73 @@
     pushChart();
     renderAge();
     renderSleep(v);
+  }
+
+  // Instant start: tiles and chart from the last few minutes of stored history.
+  async function prefill() {
+    for (const raw of await A.recentVitals(cfg, cfg.aid, MAX_POINTS * 3)) history.push({ t: new Date(raw.timestamp), raw, v: derive(raw) });
+    if (!history.length) return;
+    latest = history[history.length - 1].v;
+    lastVitalsAt = history[history.length - 1].t;
+    renderTiles();
+    rebuildChart();
+    renderSleep(latest);
+    renderAge();
+  }
+
+  // ---- stress: the backend's wellbeing score (common.js loadStress) ---------
+  const STRESS_REFRESH_MS = 60000;
+  async function refreshStress() {
+    await A.loadStress(cfg, cfg.aid, cfg.aid);   // viewer = themselves: withheld while the commander has it
+    if (!history.length) return;
+    history.forEach(p => { p.v = derive(p.raw); });
+    latest = history[history.length - 1].v;
+    renderTiles();
+  }
+
+  // ---- released warnings ----------------------------------------------------
+  // Commander first: a psychological warning reaches the astronaut only after
+  // the commander (the deputy for the commander's own) releases it, or after
+  // 12 h. GET /alerts?viewer=<self> leaves out the unreleased ones.
+  const RELEASED_REFRESH_MS = 15000;
+  async function loadReleased() {
+    let list;
+    try { list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/alerts?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock); }
+    catch { return; }
+    const shown = list.filter(a => a.psychological && a.released_to_crew_at);
+    const box = $("released");
+    box.hidden = !shown.length;
+    box.innerHTML = shown.length ? `<h3>From your commander</h3><ul class="alerts">${shown.map(a => {
+      const by = a.released_by === "automatic" ? "Shared automatically after 12 h" : "Shared with you";
+      const next = a.insight && a.insight.recommended_action;
+      return `<li class="alert sev-${esc(a.severity)}">
+        <p class="verdict">${esc(a.crew_message || a.onboard_action)}</p>
+        ${next && next !== a.crew_message ? `<p class="small">${esc(next)}</p>` : ""}
+        <p class="muted small">${by} · ${new Date(a.released_to_crew_at).toLocaleString()}</p></li>`;
+    }).join("")}</ul>` : "";
+  }
+
+  // ---- health bar beside the body -------------------------------------------
+  // How close today's readings are to this astronaut's own usual, 0-100 %: each
+  // reading scores 100 in its usual range, 67 at watch, 33 at alert, 0 at
+  // critical (the same scales Mission Control colours by, common.js THRESHOLDS),
+  // then the average. Our own summary, not a clinical score.
+  const HEALTH_POINTS = { ok: 100, watch: 67, alert: 33, critical: 0 };
+  function renderHealth() {
+    const bar = $("healthBar");
+    const levels = FIELDS.map(f => A.thresholdLevel(f.key, latest[f.key], latest.baseline ? latest.baseline[f.key] : null,
+                                                    f.key === "stress_0to100" ? latest.stress_level : null))
+      .filter(Boolean).map(x => x.level);
+    if (!levels.length) { bar.hidden = true; return; }
+    const pct = Math.round(levels.reduce((s, l) => s + HEALTH_POINTS[l], 0) / levels.length);
+    const inRange = levels.filter(l => l === "ok").length;
+    const lv = pct >= 85 ? "ok" : pct >= 60 ? "watch" : pct >= 35 ? "alert" : "critical";
+    bar.hidden = false;
+    bar.className = `health-bar hb-${lv}`;
+    bar.title = `${inRange} of ${levels.length} readings in your usual range`;
+    bar.querySelector(".hb-pct").textContent = `${pct}%`;
+    bar.querySelector(".hb-fill").style.height = `${pct}%`;
+    bar.querySelector(".hb-track").setAttribute("aria-valuenow", pct);
   }
 
   // ---- body figure: picks which vitals to focus on -------------------------
@@ -240,6 +312,7 @@
 
   function renderTiles() {
     if (!latest) return;
+    renderHealth();
     $("tiles").innerHTML = FIELDS.map(f => {
       const now = latest[f.key], base = latest.baseline ? latest.baseline[f.key] : null;
       const inRegion = region === "whole_body" || f.region === region;
@@ -251,7 +324,7 @@
       // Stress is a 0-100 level, so its band reads better than a percentage.
       const show = x => (typeof x === "number" && f.dp != null ? x.toFixed(f.dp) : fmt(x));
       const reading = f.key === "stress_0to100"
-        ? (now == null ? "needs HRV" : `${A.stressBand(now)}, usual ${fmt(base)}`)
+        ? (now == null ? (latest.stress_withheld ? "not shown yet" : "no score yet") : `${A.stressBand(now, latest.stress_level)}, usual ${fmt(base)}`)
         : `${latest.cycle && A.CYCLE_SHIFT[f.key] ? "cycle usual" : "usual"} ${show(base)}<span class="t-delta">${delta}</span>`;
       const cls = ["tile", inRegion ? "" : "dim", f.key === chartField ? "charted" : ""].join(" ");
       return `<button type="button" class="${cls}" data-key="${f.key}" aria-pressed="${f.key === chartField}">
@@ -267,7 +340,7 @@
     const field = FIELDS.find(f => f.key === chartField);
     $("chartTitle").textContent = `${field.label} (${field.unit})`;
     $("chartNote").textContent = field.key === "stress_0to100"
-      ? "From your HRV vs your usual: lower HRV, higher level. Our scale (Apple Watch has none): 0-25 resting, 26-50 low, 51-75 medium, 76-100 high."
+      ? "The station computer's wellbeing score: sleep, HRV, activity, resting heart rate, time with crewmates and body clock (70 %) plus check-ins (30 %), each against your own mission days 7-14. 0 = your usual. 0-19 steady, 20-39 watch, 40-59 concern, 60+ urgent."
       : field.key === "bone_density_g_cm2" || field.key === "muscle_mass_kg"
         ? `${field.key === "bone_density_g_cm2" ? "Whole-body bone mineral density" : "Lean tissue of your arms and legs"} from the weekly portable X-ray (DXA) scan, so the line only moves between scans.${latest && latest.simulated_scan ? " Simulated scans for now." : ""}`
       : field.key === "hrv_sdnn_ms"
@@ -284,7 +357,7 @@
       data: {
         labels: history.map(p => tlabel(p.t)),
         datasets: [
-          { label: field.label, data: history.map(p => p.v[chartField]), borderColor: tok("--accent"),
+          { label: field.label, data: history.map(p => p.v[chartField]), borderColor: A.vitalColor(chartField),
             pointRadius: 0, borderWidth: 2, tension: 0.3 },
           { label: "Your baseline", data: history.map(p => p.v.baseline?.[chartField]), borderColor: tok("--muted"),
             borderDash: [5, 5], pointRadius: 0, borderWidth: 1.5 },
@@ -500,6 +573,8 @@
         <p class="ci-source muted small">${esc(q.phq2.source)}</p>`;
       $("checkin").insertBefore(step, nav);
     }
+    // NASA's 3-minute reaction test (PVT-B), optional, after the PHQ-2: reaction-test.js.
+    if (window.ReactionTest && q.reaction_test) $("checkin").insertBefore(window.ReactionTest.step(q.reaction_test), nav);
     ciShow(ciAt);
   })();
   ciShow(0);
@@ -518,6 +593,8 @@
     const li = f.querySelector('input[name="phq2_little_interest"]:checked');
     const fd = f.querySelector('input[name="phq2_feeling_down"]:checked');
     if (li && fd) body.phq2 = { little_interest: Number(li.value), feeling_down: Number(fd.value) };
+    const rt = f.querySelector('input[name="reaction_test"]');
+    if (rt && rt.value) { try { body.reaction_test = JSON.parse(rt.value); } catch { /* not sent */ } }
 
     const out = $("checkinResult");
     out.className = "ci-result muted";
@@ -617,6 +694,7 @@
         </div>
         <button type="button" class="cycle-btn" id="cycleBtn" aria-haspopup="dialog" hidden>Cycle</button>
       </div>
+      <div class="body-row">
       <svg id="body" viewBox="0 0 200 400" role="group" aria-label="Body regions">
         <!-- Front view of a person standing in the anatomical position, palms
              forward, so the astronaut's left is the viewer's right. One solid
@@ -668,6 +746,12 @@
         </g>
         </g>
       </svg>
+      <div class="health-bar" id="healthBar" hidden>
+        <span class="hb-label">Health</span>
+        <div class="hb-track" role="meter" aria-label="Health: readings vs your usual" aria-valuemin="0" aria-valuemax="100"><div class="hb-fill"></div></div>
+        <span class="hb-pct"></span>
+      </div>
+      </div>
       <div id="regionInfo" class="region-info"></div>
       <dialog id="cycleDlg" class="cycle-dlg" aria-labelledby="cycleTitle">
         <form method="dialog" id="cycleForm">
@@ -690,6 +774,7 @@
 
     <section class="card vitals-card" data-tab="health">
       <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
+      <div id="released" class="released" hidden></div>
       <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
       <div class="chart-wrap">
         <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small" id="chartNote">Last few minutes. Dashed line: your usual. Tap a reading to chart it.</span></div>
