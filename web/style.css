@@ -827,3 +827,9 @@ h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radiu
 .released .verdict { margin: 0 0 4px; }
 .released p { margin: 0; }
 .ci-tick { color: var(--ok-ink, currentColor); font-weight: 700; }
+/* Personal baseline from a CSV (preview branch csv-baseline) */
+.baseline-box { display: flex; flex-wrap: wrap; align-items: center; gap: .5em .8em; margin: 0 0 .6em; color: var(--muted); }
+.baseline-box[hidden] { display: none; }
+.baseline-box strong { color: var(--text-strong); }
+.bl-btn { cursor: pointer; padding: .15em .6em; border: 1px solid currentColor; border-radius: 4px;
+          background: none; color: inherit; font: inherit; text-decoration: none; }

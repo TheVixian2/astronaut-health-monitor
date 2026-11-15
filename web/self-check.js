@@ -91,6 +91,7 @@
     if (!PATTERN) {
       refreshStress(); setInterval(refreshStress, STRESS_REFRESH_MS);
       loadReleased(); setInterval(loadReleased, RELEASED_REFRESH_MS);
+      wireBaselineUpload();
     }
     if (!PATTERN) await prefill();
     if (PATTERN) startPattern();
@@ -342,9 +343,45 @@
 
   // ---- vitals tiles + chart ------------------------------------------------
 
+  // ---- personal baseline from a CSV (preview branch csv-baseline) -----------
+  function renderBaselineSrc() {
+    const box = $("baselineBox"), src = latest && latest.baseline_source;
+    if (!box || PATTERN || !src) return;
+    box.hidden = false;
+    $("baselineSrc").textContent = src.kind === "upload" ? `${src.name} (${src.rows} rows; ${src.fields.length} vitals)` : src.name;
+    $("baselineReset").hidden = src.kind !== "upload";
+  }
+  async function sendBaseline(body) {
+    if (cfg.mock) return window.Mock.baseline(cfg.aid, body);
+    const r = await fetch(`${cfg.base}/astronauts/${encodeURIComponent(cfg.aid)}/baseline`, body
+      ? { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+      : { method: "DELETE" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : `Not accepted (HTTP ${r.status}).`);
+    return j;
+  }
+  function wireBaselineUpload() {
+    if (!$("baselineFile")) return;
+    const msg = t => { $("baselineMsg").textContent = t; };
+    $("baselineFile").addEventListener("change", async e => {
+      const f = e.target.files[0];
+      e.target.value = "";
+      if (!f) return;
+      try {
+        const p = window.AHMBaselineUpload.parseBaselineCsv(await f.text(), f.size);
+        await sendBaseline({ name: f.name, rows: p.rows, values: p.values });
+        msg(`Read ${p.rows} rows: ${Object.values(p.columns).join(", ")}${p.unmatched.length ? `; ignored ${p.unmatched.join(", ")}` : ""}. Applies from the next reading.`);
+      } catch (err) { msg(err.message); }
+    });
+    $("baselineReset").addEventListener("click", async () => {
+      try { await sendBaseline(null); msg("Back to the demo data. Applies from the next reading."); } catch (err) { msg(err.message); }
+    });
+  }
+
   function renderTiles() {
     if (!latest) return;
     renderHealth();
+    renderBaselineSrc();
     $("tiles").innerHTML = FIELDS.map(f => {
       const now = latest[f.key], base = latest.baseline ? latest.baseline[f.key] : null;
       const inRegion = region === "whole_body" || f.region === region;
@@ -823,6 +860,13 @@
     <section class="card vitals-card" data-tab="health">
       <h2>Your vitals <span class="muted">vs. your own baseline</span></h2>
       <div id="released" class="released" hidden></div>
+      <div id="baselineBox" class="baseline-box small" hidden>
+        <span>Usual values from: <strong id="baselineSrc">Demo data</strong></span>
+        <label class="bl-btn">Upload CSV<input type="file" id="baselineFile" accept=".csv,text/csv" hidden></label>
+        <a class="bl-btn" href="sample-baseline.csv" download>Sample CSV</a>
+        <button type="button" class="bl-btn" id="baselineReset" hidden>Back to demo data</button>
+        <span id="baselineMsg" class="muted" role="status"></span>
+      </div>
       <div id="tiles" class="tiles"><p class="muted">Waiting for data…</p></div>
       <div class="chart-wrap">
         <div class="chart-head"><strong id="chartTitle">Heart rate</strong> <span class="muted small" id="chartNote">Last few minutes. Dashed line: your usual. Tap a reading to chart it.</span></div>
