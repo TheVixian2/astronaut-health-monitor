@@ -23,6 +23,7 @@ paths += [f"/crew/locations?viewer={v}" for v in VIEWERS]
 paths += [f"/crew/wellbeing?viewer={a}" for a in CREW]
 for a in CREW:
     paths.append(f"/astronauts/{a}/vitals")
+    paths += [f"/astronauts/{a}/wellbeing?viewer={v}" for v in (a, "ground")]   # Stress tile
     paths += [f"/astronauts/{a}/history?hours={h}&bucket_s={b}"
               for h, b in [(24, 3600), (168, 21600), (720, 86400)]]
     paths += [f"/astronauts/{a}/report?days=7&view={v}" for v in ("crew", "ground")]

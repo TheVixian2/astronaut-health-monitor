@@ -19,6 +19,13 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-15 — web changes by Luca's session, @NotKaemy please pull `main` into `web`:**
+  (1) **Stress** is now the backend's wellbeing score (`GET /astronauts/{id}/wellbeing`, common.js
+  `loadStress`), bands = backend levels; the HRV formula is only a fallback for the pattern/test feed.
+  (2) **Released warnings show on the astronaut's own console** ("From your commander", from
+  `GET /alerts?viewer=<self>`); unreleased ones stay hidden, so commander-first still holds.
+  (3) **Health bar** beside the body figure (self-check.js `renderHealth`). (4) **Instant start**:
+  console and Mission Control fill from `/history` before the stream (common.js `recentVitals`).
 - **2026-11-14 — AI disclosure (required by Space Apps).** `alert.insight` gains
   `source: "claude"|"on_board"`. Anything that shows Claude's text must label it
   **"AI-generated (Claude)"**. New source files get the one-line header
