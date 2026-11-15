@@ -9,12 +9,14 @@
     { key: "resp_rate_bpm", label: "Resp. rate", unit: "/min", region: "lungs" },
     { key: "temp_c", label: "Temperature", unit: "°C", region: "skin", dp: 1 },
     { key: "sleep_h_last_night", label: "Sleep last night", unit: "h", region: "head" },
-    { key: "mood_1to5", label: "Mood", unit: "/5", region: "head" },
+    // `axis`: a fixed chart scale for vitals with set bounds (owner, 2026-11-15):
+    // mood reads 5 4 3 2 1, stress never goes below 0 (steps at its bands).
+    { key: "mood_1to5", label: "Mood", unit: "/5", region: "head", axis: { min: 1, max: 5, step: 1 } },
     // Heart-rate variability as Apple Watch records it (SDNN, ms). From the
     // watch for a1, simulated for the others (backend).
     { key: "hrv_sdnn_ms", label: "HRV", unit: "ms", region: "heart" },
     // Derived here from HRV (withStress below), not sent by the backend.
-    { key: "stress_0to100", label: "Stress", unit: "/100", region: "head", derived: true },
+    { key: "stress_0to100", label: "Stress", unit: "/100", region: "head", derived: true, axis: { min: 0, max: 100, step: 25 } },
     // From the weekly portable X-ray (DXA) scan (owner, 2026-11-14): whole-body
     // bone mineral density, and lean tissue of the arms and legs (the scan's
     // stand-in for skeletal muscle). Both change slowly, so their change shows
