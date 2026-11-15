@@ -46,6 +46,9 @@ Conduct Science Experiments in Space?* (listed on the challenge's Resources tab)
 
 ## Non-NASA references (for the References field)
 
+Demo CSVs and the mood-model test: **LifeSnaps** dataset, Yfantidou et al., *Scientific Data* 2022,
+doi:10.1038/s41597-022-01764-x, data https://zenodo.org/records/7229547 (CC BY 4.0); built by
+`tools/build_demo_csvs.py`, experiment in `tools/lifesnaps_experiment.py`.
 PHQ-2: Kroenke, Spitzer & Williams, *Medical Care* 2003. HRV and depression: Kemp et
 al., *Biological Psychiatry* 2010. Mars-500 activity: Basner et al., *PNAS* 2013.
 ISS Live telemetry IDs: the open-source [ISS Mimic](https://github.com/ISS-Mimic/Mimic)

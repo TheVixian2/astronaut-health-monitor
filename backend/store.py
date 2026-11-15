@@ -269,6 +269,9 @@ def history(aid: str, since: str, bucket_s: int) -> list[dict]:
         point.update({f: r[3 * i] for i, f in enumerate(VITAL_FIELDS)})
         point["low"] = {f: r[3 * i + 1] for i, f in enumerate(VITAL_FIELDS)}
         point["high"] = {f: r[3 * i + 2] for i, f in enumerate(VITAL_FIELDS)}
+        if "active_min" in VITAL_FIELDS:   # a daily running total: show the total so far, no band
+            point["active_min"] = point["high"]["active_min"]
+            point["low"]["active_min"] = point["high"]["active_min"] = None
         out.append(point)
     return out
 

@@ -19,6 +19,20 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-15 — merged `backend`, `web` and `web-reaction-test` into `main` (Luca's session),
+  @stefanalbu2010-byte @NotKaemy:** web-reaction-test overlapped with main, so it was combined: **your
+  Wellbeing bar stays** (the value sent is `wellbeingBar()`), but it now goes through the backend store
+  (`/shared-check`, every device), and the CMO can send too (the backend fills in the wellbeing value, since
+  the CMO can't read it). **History keeps the menu of the page it was opened from** (`?from=`, works for the
+  presenter too; your "that day so far" label kept). **Sample CSV = real wearable data**: `web/demo-data/a1..a4.csv`
+  from LifeSnaps (CC BY 4.0, `tools/build_demo_csvs.py`); the simulated `sample-baseline-a*.csv` were removed
+  (`tools/export_sample_csv.py` still makes them if wanted). Pull `main` before you continue.
+- **2026-11-15 — "Send to <name>" is stored by the backend; CMO can send too; History keeps its menu** (Luca's
+  session, @NotKaemy @stefanalbu2010-byte): `PUT/GET /astronauts/{id}/shared-check` (spec: Vitals) replaces the
+  localStorage-only store, so the crew health bar shows the sent check on every device (common.js `setSentTo` /
+  `loadSentTo`; mock mode still keeps it in the browser). The Crew Medical Officer's Medications crew cards have
+  "Send to <name>" too (health % only, no warnings). History opened from a page keeps that page's menu
+  (`?from=`, set in common.js) and Back returns to it.
 - **2026-11-15 — CSV baseline + check-in done, on `main` (Luca's session), @NotKaemy please pull `main` into `web`**
   (it merges cleanly with your `cc27ec5`): (1) `PUT/DELETE /astronauts/{id}/baseline` (spec: Vitals),
   `baseline_source` on vitals; the console shows "Usual values from: Demo data …" with Upload CSV /

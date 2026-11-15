@@ -146,6 +146,15 @@ their own in-flight days 7-14, which already include the usual flight shifts.
 | Sanders et al. (npj Microgravity 2024), *Inspiration4 data access through NASA OSDR*: https://consensus.app/papers/details/w:b810f9a8-5cba-490f-90bd-e793459eb5df/ | How to download the Inspiration4 data from **NASA's Open Science Data Repository** (GLOpenAPI) | NASA open data |
 | Overbey et al. (Nature 2024), *The Space Omics and Medical Atlas (SOMA)*: https://consensus.app/papers/details/w:2349be28-69d2-4bba-a52f-0d1f8deeac4b/ | Open atlas of clinical and omics data: NASA Twins Study, JAXA, Inspiration4, Axiom, Polaris | Strong as a data source |
 
+## Real wearable data with mood labels (downloaded 2026-11-15)
+
+| Resource | What it gives us | Evidence |
+|---|---|---|
+| **LifeSnaps** (Yfantidou et al., Scientific Data 2022): https://zenodo.org/records/7229547 · paper https://doi.org/10.1038/s41597-022-01764-x | 71 people, Fitbit Sense for ~9 weeks: daily resting HR, HRV (RMSSD), sleep, activity, SpO2, breathing rate, stress score, plus mood check-ins 3x a day and weekly PANAS / STAI. CC BY 4.0. Download link for scripts: `https://zenodo.org/api/records/7229547/files/rais_anonymized.zip/content` (615 MB; the daily CSV inside is 2 MB) | Real data, earthbound civilians (not astronauts) |
+
+Used for: the 4 demo CSVs (`tools/build_demo_csvs.py`) and our test of whether XGBoost can predict mood
+from watch signals (`tools/lifesnaps_experiment.py`: it can't beat each person's own average).
+
 ## Competition note
 
 Lots of teams are on this same challenge, and several already use **NASA OSDR

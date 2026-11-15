@@ -91,6 +91,7 @@
     if (!PATTERN) {
       refreshStress(); setInterval(refreshStress, STRESS_REFRESH_MS);
       loadReleased(); setInterval(loadReleased, RELEASED_REFRESH_MS);
+      loadOwnWellbeing(); setInterval(loadOwnWellbeing, RELEASED_REFRESH_MS);
       wireBaselineUpload();
     }
     if (!PATTERN) await prefill();
@@ -192,6 +193,7 @@
       const list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/alerts?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
       releasedList = list.filter(a => a.psychological && a.released_to_crew_at);
     } catch { /* keep the last list */ }
+    if (ownRole !== "Commander") await A.loadSentTo(cfg, cfg.aid, cfg.aid);   // what the Commander / CMO sent
     renderReleased();
     renderHealth();
   }
@@ -209,10 +211,10 @@
         ${next && next !== a.crew_message ? `<p class="small">${esc(next)}</p>` : ""}
         <p class="muted small">${by} · ${when(a.released_to_crew_at)}</p></li>`;
     });
-    if (sent) {
+    if (sent && sent.warnings) {   // null: a health check only (the Crew Medical Officer's)
       const ids = new Set(releasedList.map(a => a.id));
-      const ws = (sent.warnings || []).filter(w => !w.alertId || !ids.has(w.alertId));
-      const foot = `<p class="muted small">Sent by your commander · ${when(sent.at)}</p>`;
+      const ws = sent.warnings.filter(w => !w.alertId || !ids.has(w.alertId));
+      const foot = `<p class="muted small">Sent by your ${sentBy(sent)} · ${when(sent.at)}</p>`;
       for (const w of ws) {
         items.push(`<li class="alert sev-${esc(w.severity)}"><p class="verdict">${esc(w.title)}</p>
           ${w.detail ? `<p class="small">${esc(w.detail)}</p>` : ""}${foot}</li>`);
@@ -223,6 +225,7 @@
     box.hidden = !items.length;
     box.innerHTML = items.length ? `<h3>From your commander</h3><ul class="alerts">${items.join("")}</ul>` : "";
   }
+  const sentBy = x => (x.by_role === "Crew Medical Officer" ? "Crew Medical Officer" : "commander");
   // A send from the Commander's page in another tab or pane of this browser.
   window.addEventListener("storage", e => {
     if (e.key !== A.SENT_KEY) return;
@@ -236,23 +239,34 @@
   // changes ONLY when the Commander presses "Send to <name>" on Crew wellbeing,
   // and then shows what was sent; until then it is neutral ("—"). The
   // Commander's own bar stays live: the Commander sees everything.
+  // Wellbeing, not physical readings (Stefan, 2026-11-15): the backend's wellbeing check. The
+  // Commander's own bar reads their own check (null while it is with the deputy first).
+  let ownWb = null;
+  async function loadOwnWellbeing() {
+    if (ownRole !== "Commander") return;
+    try {
+      ownWb = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/wellbeing?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
+    } catch { ownWb = null; }
+    renderHealth();
+  }
   function renderHealth() {
     const bar = $("healthBar");
     const live = ownRole === "Commander";
     const sent = live ? null : A.sentTo(cfg.aid);
-    const h = live ? A.healthScore(latest) : sent && sent.health;
+    const h = live ? A.wellbeingBar(ownWb) : sent && sent.health ? sent.health : null;
     bar.hidden = false;
     if (!h) {
       bar.className = "health-bar hb-none";
-      bar.title = live ? "Waiting for readings" : "Your commander hasn't sent you a health check yet";
+      bar.title = live ? "Waiting for your wellbeing check" : "Your commander or Crew Medical Officer hasn't sent you a check yet";
       bar.querySelector(".hb-pct").textContent = "—";
       bar.querySelector(".hb-fill").style.height = "100%";
       bar.querySelector(".hb-track").removeAttribute("aria-valuenow");
       return;
     }
     bar.className = `health-bar hb-${h.level}`;
-    bar.title = `${h.inRange} of ${h.total} readings in your usual range` +
-      (sent ? `, sent by your commander ${new Date(sent.at).toLocaleString()}` : "");
+    bar.title = (h.wellbeing ? `Wellbeing check: ${h.wellbeing} (score ${h.score} of 100; 0 is just like your usual)`
+                             : `${h.inRange} of ${h.total} readings in your usual range`) +
+      (sent ? `, sent by your ${sentBy(sent)} ${new Date(sent.at).toLocaleString()}` : "");
     bar.querySelector(".hb-pct").textContent = `${h.pct}%`;
     bar.querySelector(".hb-fill").style.height = `${h.pct}%`;
     bar.querySelector(".hb-track").setAttribute("aria-valuenow", h.pct);
@@ -362,6 +376,7 @@
   }
   function wireBaselineUpload() {
     if (!$("baselineFile")) return;
+    $("baselineSample").href = `demo-data/${encodeURIComponent(cfg.aid)}.csv`;   // this astronaut's demo file
     const msg = t => { $("baselineMsg").textContent = t; };
     $("baselineFile").addEventListener("change", async e => {
       const f = e.target.files[0];
@@ -853,8 +868,8 @@
         </g>
       </svg>
       <div class="health-bar" id="healthBar" hidden>
-        <span class="hb-label">Health</span>
-        <div class="hb-track" role="meter" aria-label="Health: readings vs your usual" aria-valuemin="0" aria-valuemax="100"><div class="hb-fill"></div></div>
+        <span class="hb-label">Wellbeing</span>
+        <div class="hb-track" role="meter" aria-label="Wellbeing: how close to your usual" aria-valuemin="0" aria-valuemax="100"><div class="hb-fill"></div></div>
         <span class="hb-pct"></span>
       </div>
       </div>
@@ -884,7 +899,7 @@
       <div id="baselineBox" class="baseline-box small" hidden>
         <span>Usual values from: <strong id="baselineSrc">Demo data</strong></span>
         <label class="bl-btn">Upload CSV<input type="file" id="baselineFile" accept=".csv,text/csv" hidden></label>
-        <a class="bl-btn" href="sample-baseline.csv" download>Sample CSV</a>
+        <a class="bl-btn" id="baselineSample" href="demo-data/a1.csv" download title="Real wearable days from the LifeSnaps study (CC BY 4.0), gaps filled; see the file's header">Sample CSV</a>
         <button type="button" class="bl-btn" id="baselineReset" hidden>Back to demo data</button>
         <span id="baselineMsg" class="muted" role="status"></span>
       </div>

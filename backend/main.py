@@ -107,6 +107,32 @@ class BaselineSource(BaseModel):
     fields: list[str] = []
 
 
+class SharedHealth(BaseModel):
+    pct: int = Field(ge=0, le=100)
+    level: Literal["ok", "watch", "alert", "critical"]
+    wellbeing: Optional[behavioral.Level] = None   # the wellbeing bar (web common.js wellbeingBar)
+    score: Optional[int] = None
+    inRange: Optional[int] = None                  # or: readings in their usual range (healthScore)
+    total: Optional[int] = None
+
+
+class SharedWarning(BaseModel):
+    severity: str = Field(max_length=20)
+    title: str = Field(max_length=200)
+    detail: Optional[str] = Field(default=None, max_length=2000)
+    alertId: Optional[str] = Field(default=None, max_length=80)
+
+
+class SharedCheck(BaseModel):
+    """PROVISIONAL: what the Commander or the Crew Medical Officer sent to a crew member's console
+    ("Send to <name>"): their health % at that moment and, from the Commander, the card's warnings."""
+    at: datetime
+    by: str = ""                      # set by the backend from `viewer`
+    by_role: str = ""                 # "Commander" / "Crew Medical Officer"
+    health: Optional[SharedHealth] = None
+    warnings: Optional[list[SharedWarning]] = Field(default=None, max_length=30)   # null: health only
+
+
 class BaselineUpload(BaseModel):
     """PROVISIONAL (preview): medians the web app computed from an uploaded CSV."""
     name: str = Field(max_length=120)
@@ -646,6 +672,9 @@ async def refresh_from_store() -> None:
         apply_baseline(s)
         newest = d["checkins"][-1][0] if d["checkins"] else ""
         s.checkins = d["checkins"] + [c for c in s.checkins if c[0] > newest]  # keep any not yet read back
+        last_mood = next((p["mood_1to5"] for _, p in reversed(s.checkins) if p.get("mood_1to5") is not None), None)
+        if last_mood is not None and "mood_1to5" not in s.manual:
+            s.manual["mood_1to5"] = last_mood   # the latest check-in, also after a restart
         s.history = behavioral.History(days=d["days"], checkins=s.checkins, mission_start=mission_start.date())
     await asyncio.to_thread(compute_profiles, t)
 
@@ -1128,6 +1157,47 @@ async def get_alerts(aid: str, viewer: Optional[str] = None) -> list[Alert]:
     if viewer == aid:
         alerts = [a for a in alerts if not (a.psychological and a.released_to_crew_at is None)]
     return list(reversed(alerts))
+
+
+# --- Shared health check ("Send to <name>") --------------------------------------
+# A crew member's health bar shows only what the Commander (the deputy for the
+# Commander's own) or the Crew Medical Officer sent; Mission Control sees the live
+# data anyway. Kept in meta so every device shows the same thing.
+shared_checks: dict[str, dict] = {}
+
+
+def _shared_check(aid: str) -> Optional[dict]:
+    if aid not in shared_checks:
+        raw = store.meta_get(f"shared_check:{aid}")
+        shared_checks[aid] = json.loads(raw) if raw else None
+    return shared_checks[aid]
+
+
+@app.put("/astronauts/{aid}/shared-check")
+async def put_shared_check(aid: str, viewer: str, body: SharedCheck) -> SharedCheck:
+    s = get_state(aid)
+    if viewer not in (routed_to(s.id), CMO_ID) or viewer == s.id:
+        raise HTTPException(403, "Only the commander (the deputy for the commander's own) or the "
+                                 "Crew Medical Officer can send a health check.")
+    body.by = viewer
+    body.by_role = crew[viewer].role
+    if body.health is None and s.profile is not None:   # the CMO's send: the server fills in the wellbeing bar
+        lv = s.profile.level
+        body.health = SharedHealth(pct=max(0, min(100, 100 - s.profile.score)), wellbeing=lv, score=s.profile.score,
+                                   level={"steady": "ok", "watch": "watch", "concern": "alert", "urgent": "critical"}[lv])
+    data = json.loads(body.model_dump_json())
+    shared_checks[aid] = data
+    await asyncio.to_thread(store.meta_set, f"shared_check:{aid}", json.dumps(data))
+    return body
+
+
+@app.get("/astronauts/{aid}/shared-check")
+async def get_shared_check(aid: str, viewer: str) -> Optional[SharedCheck]:
+    s = get_state(aid)
+    if viewer not in (s.id, routed_to(s.id), CMO_ID, "ground"):
+        raise HTTPException(403, "Only the astronaut, the commander, the Crew Medical Officer or Mission Control.")
+    d = await asyncio.to_thread(_shared_check, aid)
+    return SharedCheck(**d) if d else None
 
 
 @app.put("/astronauts/{aid}/alerts/{alert_id}/release")

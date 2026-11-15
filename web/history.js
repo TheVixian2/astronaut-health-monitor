@@ -29,8 +29,32 @@
   const state = { aid: cfg.aid, range: "day", field: FIELDS[0], rows: [], baseline: null, crew: [] };
   let chart, sleepChart;
 
-  const back = { crew: "self-check.html", captain: "captain.html", doctor: "doctor.html", ground: "ground.html" }[role] || "index.html";
-  $("back").href = A.linkWithSettings(back);
+  // The menu of the page History was opened from (?from=, set by common.js), so
+  // the other tabs stay one click away and Back returns to that astronaut's page.
+  const OWN = [["My health", "#health"], ["Check-in", "#checkin"], ["Sleep & light", "#sleep"]];
+  const MENUS = {
+    "self-check": { tag: "On board", area: "onboard", tabs: OWN, after: [] },
+    captain: { tag: "Commander", area: "onboard", tabs: OWN, after: [["Crew wellbeing", "#crew"], ["Habitat", "#habitat"]] },
+    doctor: { tag: "Crew Medical Officer", area: "onboard", tabs: OWN, after: [["Medications", "#meds"]] },
+    ground: { tag: "Ground", area: "ground", tabs: [["Crew overview", ""]], after: [["Raw stream (debug)", "stream-check.html"]] },
+  };
+  const ROLE_PAGE = { crew: "self-check", captain: "captain", doctor: "doctor", ground: "ground" };
+  const from = new URLSearchParams(location.search).get("from");
+  const page = MENUS[from] ? from : ROLE_PAGE[role] || null;
+  function renderMenu() {
+    const m = MENUS[page];
+    if (!m) { $("back").href = A.linkWithSettings("index.html"); return; }
+    // The astronaut console follows whoever is picked below; the others are role pages.
+    const link = target => target.endsWith(".html") ? A.linkWithSettings(target)
+      : A.linkWithSettings(`${page}.html`, page === "self-check" ? { aid: state.aid } : {}) + target;
+    const a = ([label, t]) => `<a href="${link(t)}">${A.esc(label)}</a>`;
+    $("histNav").className = `appnav area-${m.area}`;
+    $("histTag").textContent = m.tag;
+    $("histMenu").innerHTML = `<a id="back" href="${link(m.tabs[0][1])}">← Back</a>` + m.tabs.map(a).join("") +
+      `<a href="${location.pathname.split("/").pop() + location.search}" aria-current="page">History</a>` +
+      `<a href="${A.linkWithSettings("sources.html")}">Data sources</a>` + m.after.map(a).join("");
+  }
+  renderMenu();
 
   function timeLabel(iso) {
     const d = new Date(iso);
@@ -66,7 +90,7 @@
       datasets: [
         { label: "High", data: hi, borderWidth: 0, pointRadius: 0, backgroundColor: alpha(A.vitalColor(f.key), 0.18), fill: "+1" },
         { label: "Low", data: lo, borderWidth: 0, pointRadius: 0, fill: false },
-        { label: "Average", data: avg, borderColor: A.vitalColor(f.key), borderWidth: 2, pointRadius: rows.length > 60 ? 0 : 2, tension: 0.3, fill: false },
+        { label: f.key === "active_min" ? "Active minutes (that day so far)" : "Average", data: avg, borderColor: A.vitalColor(f.key), borderWidth: 2, pointRadius: rows.length > 60 ? 0 : 2, tension: 0.3, fill: false },
         { label: "Your normal", data: rows.map(() => base), borderColor: tok("--muted"), borderDash: [5, 5], borderWidth: 1, pointRadius: 0, fill: false },
       ],
     };
@@ -170,7 +194,7 @@
     } else {
       $("pick").innerHTML = state.crew.map(m =>
         `<option value="${A.esc(m.id)}"${m.id === state.aid ? " selected" : ""}>${A.esc(m.name)}</option>`).join("");
-      $("pick").onchange = e => { state.aid = e.target.value; loadAll(); };
+      $("pick").onchange = e => { state.aid = e.target.value; renderMenu(); loadAll(); };
     }
     loadAll();
   })();

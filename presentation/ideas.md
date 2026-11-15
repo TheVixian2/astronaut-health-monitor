@@ -412,3 +412,15 @@ are now **commander first, then released** (Luca's decision, see STATUS).
   model.
 - **Demo (~30 s):** Commander page → a2 at *watch*, worsening → a2's check-in with PHQ-2 = 3
   → *concern* → the commander's notice → **Release** → a2 sees it with suggestions.
+
+## We tested "AI predicts mood from the watch" on real data (Luca's session, 2026-11-15)
+
+Judges suggested training an AI model on the data. We did, on **LifeSnaps** (71 real people, Fitbit Sense,
+~9 weeks, mood logged 3x a day; Yfantidou et al., Scientific Data 2022, CC BY 4.0). XGBoost on resting HR,
+HRV, sleep and activity (each vs the person's own normal), tested on days it never saw:
+- daily mood error 1.13 (general model) / 1.22 (personal) vs **1.11 for just using their own average**;
+- 7-day mood error 0.54 / 0.57 vs 0.54; spotting a low-mood week: AUC 0.61 (0.5 = chance);
+- sleep is the only signal with a real link (r ~0.2 weekly).
+**Pitch line:** "We trained a model on 21 real people's wearables: watch signals alone can't tell how someone
+feels. That's why Dr. Galactic pairs them with a validated questionnaire, each astronaut's own baseline,
+and a human (the commander) who decides." Reproduce: `tools/lifesnaps_experiment.py`.

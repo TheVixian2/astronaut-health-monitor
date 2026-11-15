@@ -89,6 +89,15 @@ threshold.**
 `sleep_h_last_night` is derived from the on-board lighting log unless a check-in
 overrides it.
 
+### Shared health check ("Send to <name>") — **PROVISIONAL**
+
+`PUT /astronauts/{id}/shared-check?viewer=` `{at, health: {pct, level, inRange, total} | null,
+warnings: [{severity, title, detail, alertId}] | null}` → the stored check with `by` and `by_role`
+filled in. Only the commander (the deputy for the commander's own) or the Crew Medical Officer may
+send (403 otherwise). `GET` the same path with `viewer` = the astronaut, the commander, the CMO or
+`ground` returns it, or `null` before anything was sent. Kept in `meta` (`shared_check:<id>`).
+A crew member's health bar shows only this; Mission Control sees the live data anyway.
+
 ### Personal baseline from a CSV — **PROVISIONAL**
 
 `PUT /astronauts/{id}/baseline` `{name, rows, values: {field: median}}` → `{kind, name, rows, fields}`.

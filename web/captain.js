@@ -82,6 +82,8 @@
       const wb = await A.getJSON(cfg.base, `/crew/wellbeing?viewer=${encodeURIComponent(ownAid || "a1")}`, cfg.mock);
       for (const m of wb.members) { const c = crew.get(m.astronaut_id); if (c) c.wb = m; }
     } catch { /* mock mode or backend down: panels show without the level */ }
+    // What was last sent to each crew member (by this Commander or the Crew Medical Officer).
+    await Promise.all([...crew.keys()].filter(aid => aid !== ownAid).map(aid => A.loadSentTo(cfg, aid, ownAid || "a1")));
     render();
   }
 
@@ -223,11 +225,13 @@
         .catch(() => { /* already released, or not this Commander's to release */ })));
     await A.loadStress(cfg, aid, viewer);
     const v = c.latest ? A.withScan(A.withStress(A.withCycle(c.latest, aid), aid), aid) : null;
-    A.setSentTo(aid, {
-      at: new Date().toISOString(), by: viewer, health: A.healthScore(v),
-      warnings: w.physical.concat(w.psych).map(x => ({ severity: x.severity, title: x.title,
-                                                       detail: x.crewText || x.detail, alertId: x.alertId || null })),
-    });
+    try {
+      await A.setSentTo(aid, {
+        at: new Date().toISOString(), by: viewer, by_role: "Commander", health: A.wellbeingBar(c.wb),
+        warnings: w.physical.concat(w.psych).map(x => ({ severity: x.severity, title: x.title,
+                                                         detail: x.crewText || x.detail, alertId: x.alertId || null })),
+      }, cfg, viewer);
+    } catch { btn.textContent = "Not sent, try again"; btn.disabled = false; return; }
     render();
   }
 
