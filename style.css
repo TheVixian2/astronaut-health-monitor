@@ -815,6 +815,12 @@ h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radiu
 .hb-alert .hb-fill { background: var(--sev-alert); }
 .hb-critical .hb-fill { background: var(--sev-critical); }
 @media (prefers-reduced-motion: reduce) { .hb-fill { transition: none; } }
+/* Nothing sent by the Commander yet: a neutral, full bar and "—". */
+.hb-none .hb-fill { background: var(--line-strong); }
+.hb-none .hb-pct { color: var(--muted); }
+.alert.sev-ok { border-color: var(--ok); }
+/* Crew wellbeing: "Send to <name>" at the foot of each crew member's card. */
+.cp-send { display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 4px; }
 /* Released warnings at the top of "Your vitals". */
 .released { margin: 0 0 12px; }
 .released h3 { font-size: var(--t-sm); margin: 0 0 6px; }
