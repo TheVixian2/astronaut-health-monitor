@@ -88,6 +88,12 @@
     renderMission();
 
     // Warnings reach this console only once released (commander first): loadReleased().
+    // What the Commander / CMO sent: also in the presenter's pattern view, so a send made
+    // in another browser or on another device always reaches this bar.
+    if (ownRole !== "Commander") {
+      const sentLoop = async () => { await A.loadSentTo(cfg, cfg.aid, cfg.aid); renderReleased(); renderHealth(); };
+      sentLoop(); setInterval(sentLoop, RELEASED_REFRESH_MS);
+    }
     if (!PATTERN) {
       refreshStress(); setInterval(refreshStress, STRESS_REFRESH_MS);
       loadReleased(); setInterval(loadReleased, RELEASED_REFRESH_MS);
@@ -193,7 +199,6 @@
       const list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/alerts?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
       releasedList = list.filter(a => a.psychological && a.released_to_crew_at);
     } catch { /* keep the last list */ }
-    if (ownRole !== "Commander") await A.loadSentTo(cfg, cfg.aid, cfg.aid);   // what the Commander / CMO sent
     renderReleased();
     renderHealth();
   }

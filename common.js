@@ -527,10 +527,19 @@
     } catch { /* private window: not kept */ }
   }
   async function setSentTo(aid, data, cfg, viewer) {
-    keepSent(aid, data);
     if (cfg && !cfg.mock) {
-      await putJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/shared-check?viewer=${encodeURIComponent(viewer)}`, data, false);
+      // The backend fills in the wellbeing value when none is sent (the CMO's send, or the
+      // Commander's before the crew check loaded): keep ITS copy, never a hollow one.
+      const saved = await putJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/shared-check?viewer=${encodeURIComponent(viewer)}`, data, false);
+      keepSent(aid, saved && saved.at ? saved : data);
+      return;
     }
+    // Mock mode (public site): no backend to fill it in, so read the recorded wellbeing check here.
+    if (cfg && cfg.mock && !data.health) {
+      try { data = { ...data, health: wellbeingBar(await getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/wellbeing?viewer=ground`, true)) }; }
+      catch { /* no recorded check: stays empty */ }
+    }
+    keepSent(aid, data);
   }
   async function loadSentTo(cfg, aid, viewer) {
     if (cfg.mock) return sentTo(aid);
