@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Login gate and roles for every page. Load it in <head>, before anything else,
 // so a signed-out visitor is redirected before the page draws.
 //
@@ -14,6 +15,9 @@
     doctor:  { password: "mars2026", role: "doctor",  home: "doctor.html",     label: "Crew Medical Officer" },
     ground:  { password: "mars2026", role: "ground",  home: "ground.html",     label: "Mission Control" },
     demo:    { password: "mars2026", role: "demo",    home: "index.html",      label: "Presenter (all views)" },
+    // Test feed (owner, 2026-11-14): Mission Control with a scripted test
+    // subject instead of the crew, new data every 10 s (test-feed.js).
+    test:    { password: "mars2026", role: "test",    home: "ground.html",     label: "Test feed" },
   };
 
   // Which roles may open which page. "demo" (the presenter) may open all of them.
@@ -23,24 +27,31 @@
     "self-check.html": ["crew", "demo"],
     "captain.html": ["captain", "demo"],
     "doctor.html": ["doctor", "demo"],
-    "ground.html": ["ground", "demo"],
+    "ground.html": ["ground", "demo", "test"],
     "stream-check.html": ["ground", "demo"],
     "history.html": ["crew", "captain", "doctor", "ground", "demo"],
-    "sources.html": ["crew", "captain", "doctor", "ground", "demo"],
+    "sources.html": ["crew", "captain", "doctor", "ground", "demo", "test"],
   };
 
   const KEY = "ahm-session";
-  const TTL_MS = 12 * 3600 * 1000;   // stay signed in for 12 h
+  const TTL_MS = 12 * 3600 * 1000;   // at most 12 h, even in a tab left open
 
-  // localStorage so the session covers every tab and both panes of demo.html.
-  // Falls back to sessionStorage; if neither works the gate lets everyone in as
+  // Every new visit starts at the login page (owner, 2026-11-14), so the
+  // session lives in sessionStorage: it lasts for this tab, both panes of
+  // demo.html and pages opened from it, and ends when the tab is closed.
+  // Falls back to localStorage; if neither works the gate lets everyone in as
   // the presenter rather than trapping them in a redirect loop.
   const store = (() => {
-    for (const s of [() => window.localStorage, () => window.sessionStorage]) {
+    for (const s of [() => window.sessionStorage, () => window.localStorage]) {
       try { const st = s(); st.setItem("ahm-probe", "1"); st.removeItem("ahm-probe"); return st; } catch { /* next */ }
     }
     return null;
   })();
+
+  // The public GitHub Pages demo must open without a login (Space Apps rule).
+  // It still starts at the login page, which there offers "Continue as
+  // presenter" with no password (guest() below).
+  const HOSTED = location.hostname.endsWith("github.io");
 
   function session() {
     if (!store) return { user: "demo", ...ACCOUNTS.demo, at: Date.now() };
@@ -61,6 +72,9 @@
     return { user: name, ...acc, password: undefined };
   }
 
+  // The no-password way in on the public demo: signs in as the presenter.
+  function guest() { return login("demo", ACCOUNTS.demo.password); }
+
   function logout() {
     if (store) store.removeItem(KEY);
     location.href = "login.html";
@@ -77,12 +91,46 @@
     return /^[a-z][a-z-]*\.html([?#].*)?$/.test(next || "") ? next : null;
   }
 
-  window.AHMAuth = { session, login, logout, canOpen, safeNext, ACCOUNTS };
+  window.AHMAuth = { session, login, guest, logout, canOpen, safeNext, ACCOUNTS, HOSTED };
 
   // Hide the app menus when a page is shown inside demo.html.
   if (window.top !== window.self) document.documentElement.classList.add("embedded");
 
   const page = location.pathname.split("/").pop() || "index.html";
+
+  // ---- bigger interface on big windows (owner's call, 2026-11-14) ----------
+  // Pages are laid out for 1280 x 720. On a bigger window the whole page is
+  // zoomed by the same factor (capped at 1.75) so it fills the window; the
+  // effective layout never drops below 1280 x 720, so breakpoints and the
+  // full-height tabs behave as they do there. Zoom also scales vh, so
+  // style.css divides window heights by --z. Not on the presenter page or
+  // demo.html, which size themselves. Runs here, in <head>, to avoid a jump.
+  if (page !== "index.html" && page !== "demo.html") {
+    const applyZoom = () => {
+      const z = Math.round(Math.max(1, Math.min(innerWidth / 1280, innerHeight / 720, 1.75)) * 100) / 100;
+      document.documentElement.style.zoom = z === 1 ? "" : String(z);
+      document.documentElement.style.setProperty("--z", String(z));
+      window.AHM_ZOOM = z;
+      // Charts: the canvas is pinned to its box in style.css, so only the text
+      // needs the zoom (Chart.js draws in the zoomed pixels it measures).
+      if (window.Chart) {
+        window.Chart.defaults.font.family = '"Archivo", system-ui, sans-serif';
+        window.Chart.defaults.font.size = Math.round(12 * z);
+      }
+    };
+    applyZoom();
+    addEventListener("resize", applyZoom);
+    addEventListener("DOMContentLoaded", applyZoom);   // Chart.js may load after this script
+  }
+
+  // ---- colour scheme (style.css, html[data-light]) ----------------------------
+  // Always the dark theme (owner, 2026-11-14). Only ?light=pre_sleep (or off)
+  // shows the warm set, for a demo, on any page.
+  {
+    const light = new URLSearchParams(location.search).get("light");
+    if (light) document.documentElement.dataset.light = light;
+  }
+
   if (page === "login.html") return;
   const s = session();
   if (!s) {

@@ -1,17 +1,23 @@
 <!doctype html>
+<!-- Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI". -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>On board · Dr. Galactic</title>
   <script src="auth.js"></script>
+  <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Loaded without blocking: a slow or missing network (offline on board) must never hold up the page's scripts. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="selfcheck">
   <!-- Astronaut console menu. DATA ONLY: no alerts, verdicts or advice here
-       (warnings go to the Commander, the ship's doctor and Ground). Hidden inside demo.html. -->
+       (warnings go to the Commander, the Crew Medical Officer and Ground). Hidden inside demo.html. -->
   <nav class="appnav area-onboard" aria-label="On board">
     <a class="brand" data-href="index.html" href="index.html" title="Choose area">Dr. Galactic</a>
     <span class="area-tag">On board</span>
@@ -22,7 +28,7 @@
       <a data-href="history.html" href="history.html">History</a>
       <a data-href="sources.html" href="sources.html">Data sources</a>
     </div>
-    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+    <div class="user small"><span data-user></span><span data-demo-only> <a data-href="index.html" href="index.html">All views</a></span> <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
   <header class="bar">
@@ -32,9 +38,10 @@
     </div>
     <div class="status" aria-live="polite">
       <span id="conn" class="pill pill-wait">connecting…</span>
-      <span><strong>Live</strong> · not delayed</span>
+      <span><strong>Live</strong>, no delay</span>
+      <span id="lightNote" class="light-note" hidden>Pre-sleep light: screen dimmed</span>
       <span id="mission"></span>
-      <span>Data age: <strong id="age">—</strong></span>
+      <span>Updated <strong id="age">—</strong></span>
       <label class="muted small">Astronaut
         <select id="aid"><option>a1</option><option>a2</option><option>a3</option><option>a4</option></select>
       </label>
@@ -48,8 +55,12 @@
 
   <footer class="foot muted small">Your own data, against your own baseline. If something feels wrong, tell the Crew Medical Officer.</footer>
 
+  <script src="mock-snapshot.js"></script>
   <script src="mock.js"></script>
+  <script src="baseline-upload.js"></script>
   <script src="common.js"></script>
+  <script src="pattern.js"></script>
+  <script src="reaction-test.js"></script>
   <script src="self-check.js"></script>
 </body>
 </html>

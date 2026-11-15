@@ -69,7 +69,7 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
     `#checkin`, `#sleep`); sections carry `data-tab`.
   - **Commander** (`captain.html` / `captain.js`): *My health · Check-in ·
     Sleep & light · Crew wellbeing* (`#crew`, with a warning count).
-  - **Ship's doctor** (`doctor.html` / `doctor.js`): *My health · Check-in ·
+  - **Crew Medical Officer** (`doctor.html` / `doctor.js`): *My health · Check-in ·
     Sleep & light · Medications* (`#meds`, with a count).
   - The Commander and the doctor are crew too (decided by NotKaemy
     2026-11-14): their first three tabs are **their own data**, the same
@@ -94,10 +94,10 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   their sleep/lighting log. It does **not** subscribe to `alert` events and
   shows no banner, verdict, advice, insight, warning colours, or the
   circadian `card` / `recommendation` / `evidence` texts. Warnings go only to
-  the Commander, the ship's doctor and Ground. Don't add any back without the
+  the Commander, the Crew Medical Officer and Ground. Don't add any back without the
   owner's say-so. (This replaces the earlier "Commander first, then release
   to the crew" mechanism.)
-- **Ship's doctor** — today's doses from the **sample** plan in `meds.js`
+- **Crew Medical Officer** — today's doses from the **sample** plan in `meds.js`
   (`schedule`, station time UTC): due now (−15/+30 min), overdue, upcoming,
   "Mark given" (kept in `localStorage`). Live alerts from the last hour add
   "Consider: …" suggestions from `meds.js` `onAlert`, always the CMO's
@@ -145,11 +145,122 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - `demo.html` — Commander and Ground side by side (two iframes) for the
   pitch. The Commander pane polls (no SSE) and Ground holds 4 SSE streams,
   under the browser's ~6 per host. Tested against the real backend.
+- **Every visit starts at the login page** (owner, 2026-11-14): the session is
+  in sessionStorage, so it lasts for one tab (and demo.html's panes and pages
+  opened from it). On GitHub Pages the login page offers **"Continue as
+  presenter"** with no password, which keeps the Space Apps "no login" rule.
+- **Threshold scales on Mission Control** (owner, 2026-11-14): every crew card
+  lists all vitals with a green-to-red bar and a marker. `AHM.thresholdLevel`
+  (`common.js`, `THRESHOLDS`) measures distance from the astronaut's OWN usual
+  (never a population range); watch / alert / critical steps are placeholders.
+- **No explanation boxes** (owner, 2026-11-14): the Commander's "Crew members
+  don't see these warnings" note, the Medications "Sample medication plan" note
+  and Mission Control's green-to-red key were removed on request. Don't add
+  boxes that explain the page back without asking. The decision-support footer
+  on `doctor.html` stays; the sample plan is still marked in `meds.js`.
+- **Cycle-aware usual** (owner, 2026-11-14): personal baselines already cover
+  differences between bodies, but not the menstrual cycle (luteal phase: about
+  +0.3-0.5 °C, a few bpm, HRV a little lower). Opt-in from the astronaut's own
+  console (Cycle button by the body switch, shown with the female figure or when
+  on): first day of the last period + cycle length. `AHM.withCycle` then shifts
+  the usual for temperature (+0.35 °C), heart rate (+4 %) and HRV (-8 %) in the
+  luteal phase; stress follows. Only the own console names the cycle ("cycle
+  usual", "Cycle day N"); Mission Control just uses the adjusted usual. Saved in
+  localStorage `ahm-cycle` per astronaut (would belong with the astronaut's
+  private data on the backend). The demo pattern follows the cycle when it is on.
+- **Presenter sees a pattern, not live data** (owner, 2026-11-14): signed in as
+  `demo`, the console, Commander, doctor and Mission Control pages load a
+  deterministic pattern for the whole mission (`pattern.js`: station day,
+  nightly sleep and daily mood, weekly X-ray scans, a2's strain in the second
+  half, a4's hard days around day 31) and show a **period selector** (span +
+  "ends at" slider) in the header instead of the live status. Readings are the
+  moment the period ends; charts show the period (bucket averages on long
+  spans). Not inside `demo.html` (the live light-delay demo stays live), not
+  with `?live`. Crew wellbeing, meds, habitat and alerts are unchanged.
+- **Test feed** (owner, 2026-11-14): the `test` account (or `ground.html?test`)
+  shows one scripted test subject (`test-feed.js`), new data every 10 s: one
+  vital wrong (past critical), then good, through every vital in turn. Browser
+  only, no backend; the step comes from the clock so all tabs agree.
+- **The 6-connection limit is shared by every tab** (bug found 2026-11-14:
+  a Mission Control tab + a demo tab left open starved every new page, stuck
+  on "connecting…" until the backend was restarted). `AHM.openStream` returns
+  a `PausingEventSource` (`common.js`): a stream closes once its tab has been
+  hidden for 15 s and reopens when the tab is shown. Keep every new stream on
+  `openStream`; never `new EventSource` directly.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
+- **Check-in is one question at a time** (Back / Next, "Skip" when
+  unanswered, Submit on the last): mood → sleep hours (± half-hour buttons) →
+  symptoms → the two PHQ-2 items (wording from `GET /checkin/questions`;
+  skipped if that fails, and sent only when both are answered). **No
+  "share with ground" box: check-ins are always sent with
+  `share_with_ground: true`** (NotKaemy, 2026-11-14 — note the spec calls this
+  the astronaut's control; flagged to Luca in STATUS). Form is `novalidate`:
+  a field on a hidden step would otherwise block Submit silently.
+- **Bigger interface on big windows:** `auth.js` zooms every page (except
+  `index.html` / `demo.html`) by `min(width/1280, height/720)`, between 1 and
+  1.75, and sets `--z`. CSS zoom also scales `vh`, so write window heights as
+  `calc(100dvh / var(--z, 1))`. Chart.js gets a matching pixel ratio. My
+  health, Check-in and Sleep & light stretch to the window's height.
 - **Vital icons:** every vital has a flat icon (`AHM.vitalIcon(key)` in
   `common.js`, `VITAL_ICONS`): heart + pulse, blood drop, lungs, thermometer,
-  moon, smiley. Colours are the `--ic-*` tokens in `style.css` (`.vi-*`).
-  Shown on the My health tiles; reuse it wherever a vital is labelled.
+  moon, smiley, pulse trace (HRV), gauge (stress). Colours are the `--ic-*`
+  tokens in `style.css` (`.vi-*`). Shown on the My health tiles; reuse it
+  wherever a vital is labelled.
+- **HRV and stress** (owner, 2026-11-14): ten readings, five per row. HRV is
+  `hrv_sdnn_ms` from the vitals (SDNN, as Apple Watch records it). **Stress
+  (0-100) is derived in the web** (`AHM.withStress` in `common.js`), not sent by
+  the backend: HRV at the astronaut's usual = 30, each 10 % below adds 16;
+  bands 0-25 resting, 26-50 low, 51-75 medium, 76-100 high. Apple Watch keeps
+  no stress score, so the scale is ours and the chart note says so. Fields with
+  `derived: true` are skipped where raw backend fields are listed
+  (`stream-check.js`). If the backend ever sends a stress score, show that.
+- **Body shape** (owner, 2026-11-14): a Male | Female slider on the body card
+  swaps the silhouette (`setSex` in `self-check.js`; shapes in `common.js`
+  `AHM.BODY_SHAPES`, generated so both share their points and morph). Sex is
+  not in the crew data, so `AHM.sexOf(member)` takes: the slider choice
+  (localStorage per astronaut, `ahm-body-sex`), else a `sex` field on
+  `GET /crew` if the backend adds one, else the demo default `DEFAULT_SEX`
+  (a1 Elena, a3 Sara female; a2 Mihai, a4 Jonas male).
+- **Crew avatars are whole-body figures with the affected parts lit up**
+  (owner, 2026-11-14; "whole body avatars on which the affected body parts get
+  highlighted", not head-and-shoulders). `AHM.bodyFigure(member, hits)`: the
+  My health silhouette and organs, male or female by `sexOf`; `hits` maps a
+  part (head, heart, lungs, skin = arms and legs, torso, whole_body = outline)
+  to watch / alert / critical, or info (blue: on treatment, nothing due).
+  `AHM.addHit` keeps the most urgent level per part.
+  - Commander's Crew wellbeing: a figure on the left of every card. Alerts
+    light their `body_region`; low mood, short sleep, irregular sleep timing
+    and a wellbeing check above steady light the head.
+  - Medications: a row of the four crew above the lists, each with what their
+    medicines are for (`region` / `area` per entry in `meds.js`): overdue
+    orange, due now yellow, later today blue, given goes back to normal; alert
+    suggestions light the alert's body part. The lists themselves show names.
+- **The Commander sends; only then does the crew member's console change**
+  (owner, 2026-11-15). Every crew member's card on Crew wellbeing (not the
+  Commander's own) has **"Send to <name>"**: it releases their unreleased
+  psychological alerts (`PUT /astronauts/{id}/alerts/{alert_id}/release`,
+  viewer = the Commander) and keeps their health now (`AHM.healthScore`) plus
+  the card's warnings, without the Commander's advice, via `AHM.setSentTo`.
+  On their console the **health bar shows only what was sent** (neutral "—"
+  until the first send; it never follows live readings) and "From your
+  commander" lists the sent warnings next to released alerts. The Commander's
+  own bar stays live. PROVISIONAL: the sent snapshot is in localStorage
+  (`ahm-sent-to-crew`), so it reaches other tabs / demo panes in the same
+  browser (storage event), not other devices, until the backend stores it.
+- **Chart scales:** `FIELDS[].axis` fixes the y-axis for bounded vitals:
+  mood 1-5 (reads 5 4 3 2 1), stress 0-100 (never negative).
+- **Bone density and muscle mass** (owner, 2026-11-14: the crew has a
+  portable X-ray machine; replaced "skeletal mass" the same day). From a
+  weekly DXA scan: `bone_density_g_cm2` (whole-body bone mineral density,
+  3 decimals as DXA reports it) and `muscle_mass_kg` (lean tissue of arms and
+  legs, the scan's stand-in for skeletal muscle). Region "skin" (limbs);
+  change shown to 1 decimal (`dp` / `deltaDp` on the field). **PROVISIONAL
+  bridge:** the backend sends neither yet, so `AHM.withScan` fills in
+  simulated scans per field (`SIM_SCAN`: usual from the days 7-14 scan; bone
+  ~0.35 %/month lower since, LeBlanc et al. 2000; muscle ~0.4 %/month, a
+  placeholder rate) and the chart note says "Simulated scans for now". A field
+  the backend sends wins. Simulating in the web breaks the "simulated
+  server-side" rule on purpose until then.
 - `common.js` — shared helpers (`window.AHM`): field list, profile names,
   verdict rule, stream/fetch wrappers that switch to the mock. Put the verdict
   logic here only.
@@ -175,11 +286,24 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
 - **Colour palette** (team decision, 2026-11-14): Light Silver `#C0C6D4`, Mars
   Orange Red `#D62828`, Dark Mars Red `#8F1F0F`, Black `#0B0B0B`, Blue
   `#1B3A8A`. They live as tokens at the top of `style.css`; use the tokens,
-  never raw hex, in new CSS and JS (the chart reads them with
-  `getComputedStyle`). On board = Mars red, Ground = blue. Thin lines and link
-  text use `--accent`, a lighter tint of the blue, because `#1B3A8A` is too
-  dark to read on black. Status colours (ok green, watch yellow, alert orange)
-  stay outside the palette because they carry meaning.
+  never raw hex, in new CSS and JS (charts read them with
+  `getComputedStyle`). On board = Mars red, Ground = blue. Status colours (ok
+  green, watch yellow, alert orange) stay outside the palette because they
+  carry meaning; use `--*-ink` for them as text, the plain ones for fills.
+- **Design system** (frontend-design pass, NotKaemy 2026-11-14; full notes at
+  the top of `style.css`): a dark ship console. **Black is the page**
+  (the owner switched back from the silver day look the same day; that set is
+  in git at 09b4f03), silver is the type, panels are black lifted one step
+  (`--panel`, 6 px radius). **Type is Archivo** (Google Fonts, one family at three
+  widths): 125 % heavy for the wordmark and page titles, 75 % semibold
+  tabular for readouts (vitals, counts, big stats), normal for the rest.
+  Sentence case everywhere: no ALL-CAPS labels, no "A · B · C" strings, no
+  "→" on links. The six vitals are **one instrument strip** (cells divided by
+  rules, charted one marked with a Mars-red top bar), not six cards.
+  **Always this dark theme** (owner, 2026-11-14): the console used to switch to
+  a warm, blue-free set when the module's lighting went to Pre-sleep or off;
+  that automatic switch is gone (the owner saw it as the colours changing).
+  The warm set still exists for a demo: add `?light=pre_sleep` to any URL.
 - The long Claude explanation (`insight.why` / `trend` / `recommended_action`)
   is shown **here only** — the watch gets just the one-line `onboard_action`.
 - `insight` can be `null`; render the alert without it rather than waiting.

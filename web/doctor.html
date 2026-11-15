@@ -1,20 +1,26 @@
 <!doctype html>
+<!-- Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI". -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ship's doctor · Dr. Galactic</title>
+  <title>Crew Medical Officer · Dr. Galactic</title>
   <script src="auth.js"></script>
+  <!-- Archivo: one family at three widths (design system in style.css). Falls back to system-ui offline. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Loaded without blocking: a slow or missing network (offline on board) must never hold up the page's scripts. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js via CDN (web/CLAUDE.md). The page still works if it fails to load. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="doctor selfcheck">
-  <!-- The ship's doctor's profile: their own data (same data-only console as
+  <!-- The Crew Medical Officer's profile: their own data (same data-only console as
        the crew) plus the Medications tab for the whole crew. Hidden inside demo.html. -->
-  <nav class="appnav area-onboard" aria-label="Ship's doctor">
+  <nav class="appnav area-onboard" aria-label="Crew Medical Officer">
     <a class="brand" data-href="index.html" href="index.html" title="Home">Dr. Galactic</a>
-    <span class="area-tag">Ship's doctor</span>
+    <span class="area-tag">Crew Medical Officer</span>
     <div class="menu">
       <a href="#health" data-tab-link="health">My health</a>
       <a href="#checkin" data-tab-link="checkin">Check-in</a>
@@ -23,19 +29,20 @@
       <a data-href="sources.html" href="sources.html">Data sources</a>
       <a href="#meds" data-tab-link="meds">Medications <span id="medsCount" class="count" hidden></span></a>
     </div>
-    <div class="user small"><span data-user></span><span data-demo-only> · <a data-href="index.html" href="index.html">All views</a></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+    <div class="user small"><span data-user></span><span data-demo-only> <a data-href="index.html" href="index.html">All views</a></span> <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
   <header class="bar">
     <div>
-      <h1>Ship's doctor</h1>
+      <h1>Crew Medical Officer</h1>
       <div class="who"><strong id="name">…</strong> <span class="muted" id="role"></span></div>
     </div>
     <div class="status" aria-live="polite">
       <span id="conn" class="pill pill-wait">connecting…</span>
-      <span><strong>Live</strong> · on board</span>
+      <span><strong>Live</strong> on board</span>
+      <span id="lightNote" class="light-note" hidden>Pre-sleep light: screen dimmed</span>
       <span id="mission"></span>
-      <span>Your data: <strong id="age">—</strong></span>
+      <span>Your data updated <strong id="age">—</strong></span>
     </div>
   </header>
 
@@ -45,14 +52,11 @@
   <section class="meds-tab" data-tab="meds">
     <div class="tab-head">
       <h2>Medications</h2>
-      <span class="muted">Doses to give out to the crew today · station time (UTC) <strong id="clock">--:--</strong></span>
+      <span class="muted">Doses for the crew today. Station time <strong id="clock">--:--</strong> UTC</span>
       <span id="medsConn" class="pill pill-wait">connecting…</span>
     </div>
 
-    <div class="sample-note small">
-      <strong>Sample medication plan.</strong> Illustrative demo data, not medical guidance.
-      "Given" marks are kept in this browser only.
-    </div>
+    <div id="medCrew" class="med-crew" aria-label="Crew"></div>
 
     <div class="doc-grid">
       <section class="card">
@@ -74,8 +78,12 @@
   <footer class="foot muted small">Your own tabs show your data against your own baseline.
     Medications are decision support only: every dose is the Crew Medical Officer's decision.</footer>
 
+  <script src="mock-snapshot.js"></script>
   <script src="mock.js"></script>
+  <script src="baseline-upload.js"></script>
   <script src="common.js"></script>
+  <script src="pattern.js"></script>
+  <script src="reaction-test.js"></script>
   <script src="self-check.js"></script>
   <script src="meds.js"></script>
   <script src="doctor.js"></script>

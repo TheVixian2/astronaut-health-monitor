@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 import Foundation
 
 /// An alert as the backend reports it.

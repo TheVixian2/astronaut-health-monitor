@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Debug page: connect to /astronauts/{id}/stream over SSE and show exactly
 // what arrives. Alerts are upserted by id (the backend re-sends an alert with
 // the same id once its insight is ready).
@@ -57,7 +58,7 @@
   function onVitals(v) {
     log(`vitals ${JSON.stringify(v)}`);
     lastVitalsAt = new Date(v.timestamp);
-    $("vitals").tBodies[0].innerHTML = FIELDS.map(({ key, label, unit }) => {
+    $("vitals").tBodies[0].innerHTML = FIELDS.filter(f => !f.derived).map(({ key, label, unit }) => {
       const now = v[key], base = v.baseline ? v.baseline[key] : null;
       const pct = deltaPct(now, base);
       const delta = pct == null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
@@ -80,7 +81,8 @@
     if (!alerts.size) { ul.innerHTML = '<li class="muted">No alerts yet.</li>'; return; }
     ul.innerHTML = [...alerts.values()].reverse().map(a => {
       const ins = a.insight
-        ? `<dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd><dt>Trend</dt><dd>${esc(a.insight.trend)}</dd>` +
+        ? `<p class="muted small">${a.insight.source === "claude" ? "AI-generated (Claude)" : "On board"}</p>` +
+          `<dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd><dt>Trend</dt><dd>${esc(a.insight.trend)}</dd>` +
           `<dt>Suggested</dt><dd>${esc(a.insight.recommended_action)}</dd></dl>`
         : '<p class="muted small">Explanation pending…</p>';
       return `<li class="alert sev-${esc(a.severity)}">

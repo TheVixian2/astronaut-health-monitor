@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Astronaut Health Monitor backend. The contract is docs/api-spec.md.
 
 Heart rate for a1 comes from the watch (POST /ingest). Every other vital, and all
@@ -98,10 +99,26 @@ class Baseline(BaseModel):
 Quality = Literal["ok", "suspect", "implausible"]
 
 
+class BaselineSource(BaseModel):
+    """PROVISIONAL (preview): where the usual values come from."""
+    kind: Literal["demo", "upload"]
+    name: str
+    rows: Optional[int] = None
+    fields: list[str] = []
+
+
+class BaselineUpload(BaseModel):
+    """PROVISIONAL (preview): medians the web app computed from an uploaded CSV."""
+    name: str = Field(max_length=120)
+    rows: int = Field(ge=7)
+    values: dict[str, float]
+
+
 class Vitals(Baseline):
     timestamp: datetime
     source: Source
     baseline: Baseline
+    baseline_source: Optional[BaselineSource] = None  # PROVISIONAL (preview)
     quality: Quality = "ok"  # PROVISIONAL: sensor check of this reading (quality.py)
 
 
@@ -109,6 +126,7 @@ class Insight(BaseModel):
     why: str
     trend: str
     recommended_action: str
+    source: Literal["claude", "on_board"] = "on_board"  # claude: AI-generated, labelled so on screen
 
 
 class Confirmation(BaseModel):  # PROVISIONAL
@@ -433,6 +451,8 @@ class AstronautState:
         self.name, self.role, cfg = engine.CREW[aid]
         self.configured = Baseline(**cfg)
         self.baseline = self.configured
+        self.sim_baseline = self.configured  # what the simulated body walks around; never the upload
+        self.upload: Optional[dict] = None   # PROVISIONAL (preview): {name, rows, values} from a CSV
         self.baseline_stored = False  # True once days 7-14 come from the database
         self.values = {k: float(v) for k, v in cfg.items()}
         self.values["sleep_h_last_night"] = circadian.last_sleep_h(aid)
@@ -462,7 +482,7 @@ class AstronautState:
         return self.real_hr is not None and loop.time() - self.real_hr[1] >= REAL_HR_FRESH_S
 
     def target(self, field: str) -> float:
-        base = getattr(self.baseline, field) * engine.drift(self.id, mission_day(now())).get(field, 1.0)
+        base = getattr(self.sim_baseline, field) * engine.drift(self.id, mission_day(now())).get(field, 1.0)
         mult = engine.SCENARIO_MULT.get(self.scenario, {}).get(field, 1.0)
         return base * mult
 
@@ -482,12 +502,12 @@ class AstronautState:
         self.values["spo2_pct"] = min(self.values["spo2_pct"], 100.0)
         # Last night's sleep comes from the on-board lighting log unless the check-in says otherwise.
         self.values["sleep_h_last_night"] = self.sleep_nights()[-1]
-        mood = engine.SCENARIO_SLEEP_MOOD if self.scenario == "sleep_debt" else self.baseline.mood_1to5
+        mood = engine.SCENARIO_SLEEP_MOOD if self.scenario == "sleep_debt" else self.sim_baseline.mood_1to5
         self.values["mood_1to5"] = self.manual.get("mood_1to5", mood)
         # Active minutes today: builds up over the waking day toward this astronaut's usual total.
         t = now()
         awake = max(0.0, min(1.0, (t.hour * 60 + t.minute - 360) / (16.5 * 60)))
-        total = self.baseline.active_min * engine.drift(self.id, mission_day(t)).get("active_min", 1.0)
+        total = self.sim_baseline.active_min * engine.drift(self.id, mission_day(t)).get("active_min", 1.0)
         self.values["active_min"] = round(total * awake, 1)
 
     def snapshot(self) -> Vitals:
@@ -501,12 +521,19 @@ class AstronautState:
             hrv = self.watch_extra[0] if self.watch_extra[0] is not None else hrv
             active = self.watch_extra[1] if self.watch_extra[1] is not None else active
         return Vitals(
-            timestamp=now(), source=source, baseline=self.baseline,
+            timestamp=now(), source=source, baseline=self.baseline, baseline_source=self.baseline_source(),
             heart_rate_bpm=round(hr), spo2_pct=round(v["spo2_pct"]),
             temp_c=round(v["temp_c"], 1), resp_rate_bpm=round(v["resp_rate_bpm"]),
             sleep_h_last_night=round(v["sleep_h_last_night"], 1),
             mood_1to5=max(1, min(5, round(v["mood_1to5"]))), hrv_sdnn_ms=round(hrv),
             active_min=round(active, 1), quality=self.quality)
+
+    def baseline_source(self) -> BaselineSource:
+        if self.upload:
+            return BaselineSource(kind="upload", name=self.upload["name"], rows=self.upload["rows"],
+                                  fields=list(self.upload["values"]))
+        return BaselineSource(kind="demo", name="Demo data: simulated stream, mission days 7-14"
+                              if self.baseline_stored else "Demo data: configured values")
 
     def context(self, t: datetime) -> engine.Context:
         return engine.Context(sleep_last_nights=self.sleep_nights(),
@@ -588,9 +615,19 @@ def _load_store_view(t: datetime) -> dict:
         for d, (crew_h, quarters_h) in social[aid].items():
             dd = days.setdefault(d, behavioral.DayData())
             dd.crew_h, dd.quarters_h = crew_h, quarters_h
+        upload = store.meta_get(f"baseline_upload:{aid}")
         view[aid] = dict(baseline=store.baseline(aid, w0, w1), days=days,
-                         checkins=store.checkins_between(aid, start_iso))
+                         checkins=store.checkins_between(aid, start_iso),
+                         upload=json.loads(upload) if upload else None)
     return view
+
+
+def apply_baseline(s: AstronautState) -> None:
+    """The usual values everything is compared with: stored (or configured), with an upload on top."""
+    base = s.sim_baseline.model_dump()
+    if s.upload:
+        base.update(s.upload["values"])
+    s.baseline = Baseline(**_round_baseline(base))
 
 
 async def refresh_from_store() -> None:
@@ -604,7 +641,9 @@ async def refresh_from_store() -> None:
         acts = [x.active for day, x in d["days"].items() if b0 <= day <= b1 and x.active is not None]
         if acts:
             base["active_min"] = round(statistics.fmean(acts))  # a usual whole day, not a mid-day counter
-        s.baseline = Baseline(**base)
+        s.sim_baseline = Baseline(**base)
+        s.upload = d["upload"]
+        apply_baseline(s)
         newest = d["checkins"][-1][0] if d["checkins"] else ""
         s.checkins = d["checkins"] + [c for c in s.checkins if c[0] > newest]  # keep any not yet read back
         last_mood = next((p["mood_1to5"] for _, p in reversed(s.checkins) if p.get("mood_1to5") is not None), None)
@@ -815,7 +854,7 @@ async def attach_insight(s: AstronautState, alert: Alert, v: dict, ctx: engine.C
         result = await insight_service.generate_insight(
             alert.profile, v, b, onboard_action=alert.onboard_action,
             act_within_s=alert.act_within_s, one_way_delay_s=mission.real_one_way_delay_s, fallback=fallback)
-    alert.insight = Insight(**result.model_dump())
+    alert.insight = Insight(**result.model_dump(), source="on_board" if result is fallback else "claude")
     store.set_insight(alert.model_dump(mode="json"))
     publish_alert(s, alert)
 
@@ -1178,6 +1217,38 @@ async def record_checkin(s: AstronautState, body: CheckinRequest) -> None:
     evaluate_wellbeing(now())
 
 
+# PROVISIONAL (preview branch csv-baseline): a personal baseline from a CSV of past
+# readings. The web app parses the file and sends the median of each column; the
+# simulated stream keeps running as demo data. Only the "usual" values change; the
+# wellbeing score keeps its own daily baseline (mission days 7-14).
+UPLOAD_RANGE = {**quality.PLAUSIBLE, "sleep_h_last_night": (0, 16), "mood_1to5": (1, 5)}
+
+
+@app.put("/astronauts/{aid}/baseline")
+async def put_baseline(aid: str, body: BaselineUpload) -> BaselineSource:
+    s = get_state(aid)
+    bad = [f for f in body.values if f not in UPLOAD_RANGE]
+    out = [f"{f}={v:g}" for f, v in body.values.items() if f in UPLOAD_RANGE
+           and not UPLOAD_RANGE[f][0] <= v <= UPLOAD_RANGE[f][1]]
+    if not body.values or bad or out:
+        raise HTTPException(422, "Baseline not accepted. " + (f"Unknown fields: {', '.join(bad)}. " if bad else "")
+                            + (f"Outside what a body can do: {', '.join(out)}." if out else "")
+                            + ("No values." if not body.values else ""))
+    s.upload = body.model_dump()
+    await asyncio.to_thread(store.meta_set, f"baseline_upload:{aid}", json.dumps(s.upload))
+    apply_baseline(s)
+    return s.baseline_source()
+
+
+@app.delete("/astronauts/{aid}/baseline")
+async def delete_baseline(aid: str) -> BaselineSource:
+    s = get_state(aid)
+    s.upload = None
+    await asyncio.to_thread(store.meta_set, f"baseline_upload:{aid}", "")
+    apply_baseline(s)
+    return s.baseline_source()
+
+
 @app.post("/astronauts/{aid}/checkin", status_code=202)
 async def checkin(aid: str, body: CheckinRequest) -> Accepted:
     await record_checkin(get_state(aid), body)
@@ -1193,7 +1264,7 @@ async def debug_scenario(body: ScenarioRequest) -> Accepted:
         s.manual.clear()
         s.muted.clear()
         # Snap vitals back to baseline so leftover drift can't raise a stray alert after a demo run.
-        s.values.update({f: float(getattr(s.baseline, f)) for f in WALK_STEP})
+        s.values.update({f: float(getattr(s.sim_baseline, f)) for f in WALK_STEP})
         s.sensors.prev = {}
         for profile in list(s.active):
             clear_alert(s, profile)

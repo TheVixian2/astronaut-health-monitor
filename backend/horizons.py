@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Live Earth-Mars light time from NASA JPL Horizons.
 
 Asks Horizons for Mars (body 499) as seen from Earth's centre (500@399) with

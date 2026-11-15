@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Claude insight service: explains a newly matched condition to the astronaut.
 
 Called only when a condition NEWLY matches (the condition engine gates it).

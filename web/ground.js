@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 // Ground view: Mission Control. Whole crew at once, every stream opened with
 // view=ground, so everything arrives one light-time late (the backend delays it).
 //
@@ -31,14 +32,27 @@
   const transit = new Map();        // alert id -> alert, raised on board, not yet received
   const sources = [];
 
+  // Test feed (test-feed.js): the `test` account, or ?test, shows one scripted
+  // test subject (new data every 10 s, no light delay) instead of the crew.
+  const TEST = !!(window.AHMTestFeed && window.AHMTestFeed.enabled);
+  // Presenter: a pattern for the whole mission and a period selector instead of
+  // the live, light-delayed streams (pattern.js, owner 2026-11-14).
+  const PATTERN = !TEST && !!(window.AHMPattern && window.AHMPattern.enabled);
+
   init();
 
   async function init() {
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
     renderMission();
+    if (TEST) {
+      // Data only: no boxes explaining what the test data represent (owner, 2026-11-14).
+      document.body.classList.add("test-feed");
+      $("pageSub").textContent = "Test feed";
+      $("delayBanner").style.display = "none";
+    }
 
     let list;
-    try { list = await A.getJSON(cfg.base, "/crew", cfg.mock); }
+    try { list = TEST ? window.AHMTestFeed.crew : await A.getJSON(cfg.base, "/crew", cfg.mock); }
     catch (err) {
       $("crew").innerHTML = `<p class="err">Could not load crew: ${esc(err.message)}. Is the backend running? (Add ?mock to use fake data.)</p>`;
       setConn("disconnected", "pill-off");
@@ -47,10 +61,27 @@
 
     for (const info of list) crew.set(info.id, { info, latest: null, at: null, hr: [], baseHr: null, alerts: new Map(), circ: null });
     renderCrew();
+    if (PATTERN) { startPattern(); return; }
+
+    // Stress tile: the backend's wellbeing score (common.js loadStress), refreshed every minute.
+    if (!TEST) {
+      const refreshStress = () => { for (const aid of crew.keys()) A.loadStress(cfg, aid, "ground"); };
+      refreshStress();
+      setInterval(refreshStress, 60000);
+    }
+
+    // Instant start: the last couple of minutes each card would already have
+    // received, i.e. stored history up to one light-time ago.
+    if (!TEST) {
+      const upTo = Date.now() - (mission ? mission.one_way_delay_s * 1000 : 0);
+      await Promise.all([...crew.keys()].map(async aid => {
+        for (const v of await A.recentVitals(cfg, aid, SPARK_POINTS * 3, upTo)) onVitals(aid, v);
+      }));
+    }
 
     let open = 0;
     for (const aid of crew.keys()) {
-      const { source } = A.openStream({ ...cfg, aid, view: "ground" });
+      const source = TEST ? new window.AHMTestFeed.EventSource() : A.openStream({ ...cfg, aid, view: "ground" }).source;
       sources.push(source);
       source.onopen = () => { open++; updateConn(); };
       source.onerror = () => updateConn();
@@ -65,6 +96,7 @@
       else setConn(`${live}/${sources.length} streams`, "pill-wait");
     }
 
+    if (TEST) { setInterval(tick, 1000); return; }   // no circadian or transit for the test subject
     pollCircadian();
     setInterval(pollCircadian, CIRC_POLL_MS);
 
@@ -74,11 +106,29 @@
     setInterval(tick, 1000);
   }
 
+  function startPattern() {
+    document.body.classList.add("pattern");
+    setConn("pattern", "pill-on");
+    $("delayBanner").style.display = "none";   // not a delayed live view here
+    window.AHMPattern.control(document.querySelector("header.bar .status"), ({ from, to }) => {
+      for (const [aid, c] of crew) {
+        const pts = window.AHMPattern.series(aid, from, to, SPARK_POINTS);
+        const last = pts[pts.length - 1];
+        c.hr = pts.map(p => p.v.heart_rate_bpm);
+        c.latest = A.withScan(A.withStress(A.withCycle(last.v, aid)), aid);
+        c.at = last.t;
+        c.baseHr = last.v.baseline.heart_rate_bpm;
+        renderCard(aid);
+      }
+    });
+  }
+
   // ---- delayed data --------------------------------------------------------
 
   function onVitals(aid, v) {
     const c = crew.get(aid);
     if (!c) return;
+    v = A.withScan(A.withStress(A.withCycle(v, aid), aid), aid);   // cycle-adjusted usual (if on); stress; simulated scan
     c.latest = v;
     c.at = new Date(v.timestamp);
     c.baseHr = v.baseline ? v.baseline.heart_rate_bpm : null;
@@ -116,9 +166,9 @@
     if (!c.circ) return "";
     if (c.circ.state === "private") return '<div class="small muted cc-circ">Sleep &amp; light: not shared by the astronaut</div>';
     const d = c.circ.data, s = d.summary || {}, L = d.lighting || {};
-    const light = L.mode ? ` · lighting: ${esc(A.LIGHTING_NAMES[L.mode] || L.mode)}${L.cct_k ? ` ${L.cct_k} K` : ""}` : "";
+    const light = L.mode ? `, lighting ${esc(A.LIGHTING_NAMES[L.mode] || L.mode)}${L.cct_k ? ` ${L.cct_k} K` : ""}` : "";
     if (s.status === "watch") {
-      return `<div class="small cc-circ watch">Sleep &amp; light: bedtime varied ${hoursLikePython(s.bedtime_spread_min)} h · ` +
+      return `<div class="small cc-circ watch">Sleep &amp; light: bedtime varied ${hoursLikePython(s.bedtime_spread_min)} h, ` +
              `bright light before sleep ${s.nights_bright_before_sleep}/${s.nights} nights${light}</div>`;
     }
     return `<div class="small muted cc-circ">Sleep &amp; light: nothing stands out${light}</div>`;
@@ -168,10 +218,10 @@
       const left = Math.max(0, (Date.parse(a.started_at) + delayMs - Date.now()) / 1000);
       const name = crew.get(a.astronaut_id)?.info.name || a.astronaut_id;
       return `<li class="sev-${esc(a.severity)}">
-        <span class="count">incoming — ${clock(left)}</span>
+        <span class="count">arrives in ${clock(left)}</span>
         <span class="sev">${esc(a.severity)}</span>
         <strong>${esc(profileName(a.profile))}</strong>
-        <span class="muted">${esc(name)} · raised on board ${esc(time(a.started_at))}</span></li>`;
+        <span class="muted">${esc(name)}, raised on board ${esc(time(a.started_at))}</span></li>`;
     }).join("");
   }
 
@@ -188,10 +238,32 @@
     for (const aid of crew.keys()) renderCard(aid);
   }
 
-  const CARD_FIELDS = [
-    ["heart_rate_bpm", "HR", "bpm"], ["spo2_pct", "SpO₂", "%"],
-    ["temp_c", "Temp", "°C"], ["resp_rate_bpm", "Resp", "/min"],
-  ];
+  // Every vital with its green-to-red threshold scale (owner, 2026-11-14):
+  // green near the astronaut's own usual, then yellow / orange / red at the
+  // watch / alert / critical steps in AHM.thresholdLevel (placeholders).
+  const LEVEL_NAMES = { ok: "near usual", watch: "watch", alert: "alert", critical: "critical" };
+  function thresholdRow(f, v) {
+    const now = v ? v[f.key] : null, base = v?.baseline?.[f.key];
+    const t = A.thresholdLevel(f.key, now, base, f.key === "stress_0to100" ? v?.stress_level : null);
+    const show = x => (typeof x === "number" && f.dp != null ? x.toFixed(f.dp) : fmt(x));
+    const pc = x => `${(x * 100).toFixed(1)}%`;
+    let change = "";
+    if (t) {
+      const sign = t.signed > 0 ? "+" : t.signed < 0 ? "−" : "±";
+      change = t.by === "score" ? A.stressBand(now, v?.stress_level)
+        : t.by === "pct" ? `${sign}${Math.abs(t.signed).toFixed(f.deltaDp || 0)}%`
+        : `${sign}${Math.abs(t.signed).toFixed(f.key === "temp_c" ? 1 : 0)}`;
+    }
+    const scale = t
+      ? `<span class="th-scale" style="--b1:${pc(t.steps[0])};--b2:${pc(t.steps[1])};--b3:${pc(t.steps[2])}"
+           role="img" aria-label="${esc(f.label)}: ${LEVEL_NAMES[t.level]}"><span class="th-mark" style="left:${pc(t.pos)}"></span></span>`
+      : '<span class="th-scale th-empty" aria-hidden="true"></span>';
+    return `<div class="th-row th-${t ? t.level : "none"}" title="${esc(f.label)}: ${t ? LEVEL_NAMES[t.level] : "no reading"}${base != null ? `, usual ${esc(show(base))} ${esc(f.unit)}` : ""}">
+      <span class="th-label">${esc(f.label)}</span>
+      <span class="th-val">${show(now)}<span class="t-unit"> ${esc(f.unit)}</span></span>
+      ${scale}
+      <span class="th-dev">${esc(change)}</span></div>`;
+  }
 
   function renderCard(aid) {
     const c = crew.get(aid);
@@ -199,26 +271,18 @@
     if (!c || !el) return;
     const status = crewStatus(c);
     const v = c.latest;
-    const rows = CARD_FIELDS.map(([k, label, unit]) => {
-      const now = v ? v[k] : null, base = v?.baseline?.[k];
-      const pct = deltaPct(now, base);
-      const off = pct != null && Math.abs(pct) >= 10;
-      const d = pct == null ? "" : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
-      return `<div class="cv"><span class="muted small">${label}</span>
-        <span class="cv-val">${fmt(now)}<span class="t-unit"> ${unit}</span></span>
-        <span class="small ${off ? "cv-off" : "muted"}">${d}</span></div>`;
-    }).join("");
+    const rows = A.FIELDS.map(f => thresholdRow(f, v)).join("");
     const latestAlert = [...c.alerts.values()].pop();
     el.className = `card crew-card st-${status}`;
     el.innerHTML = `
       <div class="cc-head">
-        <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} · ${esc(aid)}</div></div>
+        <div><strong>${esc(c.info.name)}</strong><div class="muted small">${esc(c.info.role)} (${esc(aid)})</div></div>
         <span class="st-pill">${esc(status)}</span>
       </div>
-      <div class="cvs">${rows}</div>
+      <div class="th-list">${rows}</div>
       ${spark(c.hr, c.baseHr)}
       <div class="small cc-age" data-aid="${esc(aid)}">${ageText(c)}</div>
-      ${latestAlert ? `<div class="small cc-alert sev-${esc(latestAlert.severity)}"><span class="dot"></span>${esc(profileName(latestAlert.profile))} · ${esc(REGION_NAMES[latestAlert.body_region] || latestAlert.body_region)}</div>` : ""}
+      ${latestAlert ? `<div class="small cc-alert sev-${esc(latestAlert.severity)}"><span class="dot"></span>${esc(profileName(latestAlert.profile))}, ${esc(REGION_NAMES[latestAlert.body_region] || latestAlert.body_region)}</div>` : ""}
       ${circLine(c)}`;
   }
 
@@ -237,9 +301,10 @@
 
   function ageText(c) {
     if (!c.at) return '<span class="muted">No data received yet</span>';
+    if (PATTERN) return `<span class="muted">As of <strong>${esc(window.AHMPattern.label(c.at))}</strong></span>`;
     const s = Math.max(0, Math.round((Date.now() - c.at) / 1000));
     const limit = (mission ? mission.one_way_delay_s : 0) + 10;
-    return `<span class="${s > limit ? "stale" : "muted"}">As of ${esc(time(c.at))} · <strong>${dur(s)} old</strong></span>`;
+    return `<span class="${s > limit ? "stale" : "muted"}">As of ${esc(time(c.at))}, <strong>${dur(s)} old</strong></span>`;
   }
 
   function renderAlerts() {
@@ -252,15 +317,15 @@
       const crewSaw = v.onboard === true ? "Crew was told: act on board now"
         : v.onboard === false ? "Crew was told: ground will advise" : `Act within ${dur(a.act_within_s)}`;
       const ins = a.insight
-        ? `<details><summary>Insight</summary><dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd>
+        ? `<details><summary>Insight · ${a.insight.source === "claude" ? "AI-generated (Claude)" : "On board"}</summary><dl><dt>Why</dt><dd>${esc(a.insight.why)}</dd>
            <dt>Trend</dt><dd>${esc(a.insight.trend)}</dd><dt>Suggested</dt><dd>${esc(a.insight.recommended_action)}</dd></dl></details>`
         : '<p class="muted small">Insight not received yet.</p>';
       return `<li class="alert sev-${esc(a.severity)}">
         <div class="head"><span class="sev">${esc(a.severity)}</span>
           <strong>${esc(profileName(a.profile))}</strong>
-          <span class="muted small">${esc(name)} · ${esc(REGION_NAMES[a.body_region] || a.body_region)}</span></div>
+          <span class="muted small">${esc(name)}, ${esc(REGION_NAMES[a.body_region] || a.body_region)}</span></div>
         <div class="verdict">${esc(crewSaw)}</div>
-        <div class="small muted">Raised on board ${esc(time(a.started_at))}${delay != null ? ` · reached ground ${dur(delay)} later` : ""} · act-within window ${dur(a.act_within_s)}</div>
+        <div class="small muted">Raised on board ${esc(time(a.started_at))}${delay != null ? `, reached ground ${dur(delay)} later` : ""}. Act within ${dur(a.act_within_s)}</div>
         <div>On-board action: ${esc(a.onboard_action)}</div>${A.nasaRefs(a)}${ins}</li>`;
     }).join("");
   }
@@ -268,7 +333,7 @@
   function renderMission() {
     if (!mission) {
       $("missionReal").textContent = "Mission: unknown";
-      $("delayText").textContent = "Delay unknown — could not load GET /mission.";
+      $("delayText").textContent = "Delay unknown: the mission settings did not load. Is the backend running?";
       return;
     }
     const env = ENV_NAMES[mission.environment] || mission.environment;
@@ -278,10 +343,10 @@
     const realLabel = realS != null ? dur(realS) : REAL_DELAY[mission.environment]?.label;
     const compressed = realS != null ? realS > mission.one_way_delay_s
       : mission.one_way_delay_s < (REAL_DELAY[mission.environment]?.min_s ?? 0);
-    $("missionReal").innerHTML = `<strong>${esc(env)}</strong> · ${esc(realLabel || dur(mission.one_way_delay_s))} one-way` +
+    $("missionReal").innerHTML = `<strong>${esc(env)}</strong>, ${esc(realLabel || dur(mission.one_way_delay_s))} one way` +
       (compressed ? ` <span class="muted">(demo: ${dur(mission.one_way_delay_s)})</span>` : "");
     $("delayText").textContent = `Everything here left the spacecraft at least ${dur(mission.one_way_delay_s)} ago` +
-      (compressed ? ` — on a real ${env} mission that is ${realLabel}.` : ".");
+      (compressed ? `. On a real ${env} mission that is ${realLabel}.` : ".");
   }
 
   function tick() {

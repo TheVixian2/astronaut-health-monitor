@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Room-level location from Bluetooth beacons (PROVISIONAL).
 
 One Bluetooth Low Energy beacon per room. The watch scans and reports which beacons it

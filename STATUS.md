@@ -19,6 +19,24 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-15 — CSV baseline + check-in done, on `main` (Luca's session), @NotKaemy please pull `main` into `web`**
+  (it merges cleanly with your `cc27ec5`): (1) `PUT/DELETE /astronauts/{id}/baseline` (spec: Vitals),
+  `baseline_source` on vitals; the console shows "Usual values from: Demo data …" with Upload CSV /
+  Sample CSV / Back to demo data (`web/baseline-upload.js`, `web/sample-baseline.csv`, mock.js
+  `Mock.baseline`). (2) Check-in shows "Check-in completed" + time for the rest of the day, ✓ on the
+  tab. (3) Login button: "Continue as presenter/judge". @stefanalbu2010-byte: backend part is in
+  `main.py` (`apply_baseline`, `sim_baseline` = what the simulated body walks around).
+- **2026-11-15 — web changes by Luca's session, @NotKaemy please pull `main` into `web`:**
+  (1) **Stress** is now the backend's wellbeing score (`GET /astronauts/{id}/wellbeing`, common.js
+  `loadStress`), bands = backend levels; the HRV formula is only a fallback for the pattern/test feed.
+  (2) **Released warnings show on the astronaut's own console** ("From your commander", from
+  `GET /alerts?viewer=<self>`); unreleased ones stay hidden, so commander-first still holds.
+  (3) **Health bar** beside the body figure (self-check.js `renderHealth`). (4) **Instant start**:
+  console and Mission Control fill from `/history` before the stream (common.js `recentVitals`).
+- **2026-11-14 — AI disclosure (required by Space Apps).** `alert.insight` gains
+  `source: "claude"|"on_board"`. Anything that shows Claude's text must label it
+  **"AI-generated (Claude)"**. New source files get the one-line header
+  `Written with AI assistance (Claude Code, Anthropic) ... See README "Use of AI".`
 - **2026-11-14 — REAL NASA DATA in the stream + new dependency. Run
   `pip install -r backend/requirements.txt` (adds `lightstreamer-client-lib`).**
   `backend/iss_live.py` subscribes to NASA's public ISS Live telemetry: the cabin our
@@ -179,6 +197,24 @@ version; the older notes (SANS, fever, orthostatic, astronaut-first sharing) are
   `GET /checkin/questions` gains `context` (question, options, note).
 - **Safety fix:** a PHQ-9 with question 9 above 0 now keeps the level at urgent for the
   14-day PHQ window. Before, a routine PHQ-2 the next day could clear it.
+- **Decided (Stefan, 2026-11-14):**
+  - **The psychological side never shows on the watch.** Backend: `POST /ask` answers
+    questions about feelings on board with a pointer to a person (crisis words: "tell someone
+    in person now"). They're never sent to Claude and never get a level or score.
+  - **Hygiene in an emergency:** the commander, CMO and Mission Control may see the current
+    room through `GET /astronauts/{id}/location` during an emergency (active critical alert or
+    urgent level), hygiene included. That's the one exception to the hygiene rule, and the
+    astronaut's `seen_by` lists who looked.
+- **@Luca, watch:** please **remove the "Mood" row** from the vitals page (`ContentView.swift`,
+  the `VitalRow(label: "Mood", ...)` line). Mood is a check-in answer, and the watch now shows
+  no psychological data at all. Keep decoding `mood_1to5` (the vitals shape still has it).
+  Your filter on psychological alerts in `MonitorModel.swift` stays as it is.
+- **@NotKaemy: NASA's 3-minute reaction test is built for your check-in,** on branch
+  **`web-reaction-test`** (made from your latest `web`, not pushed to it). New
+  `web/reaction-test.js` plus 4 lines in `self-check.js` and a script tag in 3 pages. It's an
+  optional step after the PHQ-2 and sends `reaction_test` with the check-in. `?rt_s=30` gives a
+  30-second version for the live demo. Not tested in a browser yet: please try it, then merge it
+  into `web` if it looks right.
 - **Team decisions needed:**
   1. **Time with crewmates in the score.** Stefan asked for every input to feed the profile,
      so it carries 12 of 100 points now. Luca's habitat note said display-only (weak evidence).
@@ -221,6 +257,65 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **Commander's "Send to <name>"; crew health bar only changes when sent** (NotKaemy,
+  2026-11-15; on `main` and live on the site, gh-pages 79f109e). Each crew member's Crew wellbeing card has
+  "Send to <name>": it releases their psychological alerts through the backend
+  (`PUT .../alerts/{id}/release`) and sends their health % plus the card's warnings to
+  their console. Their health bar shows only what was sent ("—" before), never live
+  readings. **@stefanalbu2010-byte:** the sent health % and warnings are kept in the
+  browser for now, so they only reach the same browser (fine for the demo). An endpoint
+  to store them per astronaut (e.g. `PUT /astronauts/{id}/shared-check` `{at, by,
+  health{pct, level, in_range, total}, warnings[]}`, read with `viewer=<self>`) would
+  make it work across devices; the web will switch to it. **Note:** the public site
+  deploys from `gh-pages` (a copy of `web/`), so merging into `main` alone doesn't
+  update https://dr-galactic.github.io/.
+- **`web` merged into `main`** (NotKaemy, 2026-11-15, 057c680): main's latest web work
+  (backend stress score, released warnings, health bar, reaction test) merged into
+  `web` first, one conflict resolved, all pages tested, then main fast-forwarded.
+  New in it: the My health chart has fixed scales for mood (5 4 3 2 1) and stress
+  (0-100, gridlines at the band edges).
+- **"Ship's doctor" is now "Crew Medical Officer"** in the web app (NotKaemy,
+  2026-11-14; on `web`), the same name the backend already gives Sara (a3). The
+  login stays `doctor`. **@dbm711:** please use "Crew Medical Officer" in the
+  slides. Also on `web`: the explanation boxes are gone (Commander's "Crew
+  members don't see these warnings", "Sample medication plan", Mission Control's
+  colour key), and every crew member on Crew wellbeing and Medications has a
+  **whole-body avatar** (the My health silhouette, male or female) with the
+  affected body parts lit up: warnings on Crew wellbeing, what each medicine is
+  for on Medications. The console stays in the dark theme at all hours now
+  (no automatic warm Pre-sleep colours). **@Luca:** the `sex`
+  field on `/crew` (below) would set it; until then the web uses a demo default
+  (Elena, Sara female; Mihai, Jonas male) or the My health switch.
+- **My health: HRV and a stress level, Male | Female body** (NotKaemy,
+  2026-11-14; on `web`, main merged in). HRV is `hrv_sdnn_ms` from the vitals.
+  **The stress level (0-100) is computed in the web** from HRV vs the astronaut's
+  own usual (usual = 30, each 10 % lower adds 16; bands resting / low / medium /
+  high). Apple Watch has no stress score, so the scale is ours and the UI says
+  so. **@stefanalbu2010-byte:** if `behavioral.py`'s watch-driven score gets
+  exposed in the vitals, the web will show that instead. The body card has a
+  Male | Female slider; sex is not in `GET /crew`, so it is remembered per
+  browser. **@Luca:** a `sex` field on `/crew` would be picked up automatically.
+- **Login page first, also on the public demo** (NotKaemy, 2026-11-14; on `web`).
+  Every new visit starts at the login page (session per tab). **@Luca:** on
+  GitHub Pages the login page now shows **"Continue as presenter"**, one click
+  and no password, so the Space Apps "no login" rule still holds; the README's
+  "no login" line could say "no account needed: Continue as presenter". Also new:
+  green-to-red **threshold scales** for every vital on Mission Control
+  (distance from each astronaut's own usual, placeholder steps), and a **`test`
+  account**: Mission Control with a scripted test subject, one vital wrong then
+  good every 10 s.
+- **Bone density and muscle mass are vitals** (NotKaemy, 2026-11-14: the crew
+  carries a **portable X-ray machine**, DXA; they replace the earlier "skeletal
+  mass"). From a weekly scan: `bone_density_g_cm2` (whole-body bone mineral
+  density, 3 decimals) and `muscle_mass_kg` (lean tissue of arms and legs, DXA's
+  stand-in for skeletal muscle). **@stefanalbu2010-byte:** please send both in the
+  vitals and their `baseline` (usual = the mission days 7-14 scan; bone ~0.35 %/month
+  lower since, the whole-body loss after long flights, LeBlanc et al. 2000; the web
+  uses ~0.4 %/month for muscle as a placeholder). Until then the web fills in
+  **simulated scans** and says so on screen; your values replace them
+  automatically, field by field. **@Luca:** both need a line in `docs/api-spec.md`
+  and `docs/monitored-signals.md` (NASA HRP risks: early onset osteoporosis;
+  reduced muscle mass, strength and endurance).
 - **Check-in: one question at a time, and no "share with ground" box**
   (NotKaemy, 2026-11-14; on `web`, not merged yet). Steps: mood → sleep →
   symptoms → the two PHQ-2 items from `GET /checkin/questions`. **Every
@@ -289,14 +384,14 @@ Branch: `web`
     default; the astronaut can opt out". Also `card` is shown as an object in
     the spec, but `circadian.py` returns a **string or null** — the web
     accepts both for now; please pick one.
-- **Done on `web` (not merged yet) — login per role + Commander + ship's
-  doctor.** Placeholder logins `crew`, `captain`, `doctor`, `ground`, `demo`
+- **Done on `web` (not merged yet) — login per role + Commander + Crew Medical
+  Officer.** Placeholder logins `crew`, `captain`, `doctor`, `ground`, `demo`
   (presenter, all views), each landing on its own interface. Details in
   `web/CLAUDE.md`.
   - **Commander** (`captain.html`): physical + psychological warnings for every
     crew member, each with advice on how to help. Sees everything (NotKaemy's
     decision).
-  - **Ship's doctor** (`doctor.html`): today's doses (due / overdue / given)
+  - **Crew Medical Officer** (`doctor.html`): today's doses (due / overdue / given)
     and medication suggestions from live alerts — from a **sample** plan in
     `web/meds.js`, labelled as not medical guidance.
   - **Both are crew too:** their pages open on **their own health data** (My
@@ -308,7 +403,7 @@ Branch: `web`
   at all.** "The crew members should not know what happened to them." Their
   console shows their own numbers vs. baseline, chart, check-in and sleep
   log; no banner, verdict, advice, insight, alert history or warning colours.
-  Warnings go only to the Commander, the ship's doctor and Ground. Done on
+  Warnings go only to the Commander, the Crew Medical Officer and Ground. Done on
   `web` (not merged yet). This replaces the "Commander first, then release"
   idea, so that backend ask is **withdrawn**.
   - **Luca — this contradicts two things you own:** (1) root `CLAUDE.md`

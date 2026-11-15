@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Crew simulator and demo seeding for the backend.
 
 Run with the backend's virtual environment, from the repo root:

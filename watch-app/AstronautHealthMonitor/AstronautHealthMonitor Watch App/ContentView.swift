@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 import Charts
 import SwiftUI
 
@@ -428,7 +429,7 @@ struct AskPage: View {
                     .onSubmit { Task { await send() } }
                 if busy { ProgressView().frame(maxWidth: .infinity) }
                 if let a = answer {
-                    Text(a.source == "claude" ? "CLAUDE" : a.source == "on_board" ? "ON BOARD (no Claude)" : "OFFLINE")
+                    Text(a.source == "claude" ? "AI-GENERATED (CLAUDE)" : a.source == "on_board" ? "ON BOARD (no AI)" : "OFFLINE")
                         .font(.system(size: 9)).foregroundStyle(a.source == "claude" ? .teal : .secondary)
                     Text(a.answer).font(.footnote)
                 }
@@ -462,7 +463,7 @@ struct WhyButton: View {
         VStack(alignment: .leading, spacing: 4) {
             if let a = answer {
                 Text(a.answer).font(.caption2)
-                Text(a.source == "claude" ? "Claude" : "On-board summary").font(.system(size: 9)).foregroundStyle(.secondary)
+                Text(a.source == "claude" ? "AI-generated (Claude)" : "On-board summary").font(.system(size: 9)).foregroundStyle(.secondary)
             } else {
                 Button(busy ? "Asking…" : "Why?") {
                     busy = true

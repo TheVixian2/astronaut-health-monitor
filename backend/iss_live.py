@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Live cabin environment from NASA's ISS Live telemetry (real data, PROVISIONAL).
 
 NASA publishes ISS telemetry through a public Lightstreamer server (push.lightstreamer.com,

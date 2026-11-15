@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Sensor data quality: sensors don't work 100% of the time.
 
 Every sample gets a quality flag before it can feed the baseline, a chart or a report:

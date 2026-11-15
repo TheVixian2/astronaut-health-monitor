@@ -1,3 +1,4 @@
+// Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 import Foundation
 
 /// Heart rate as a random walk around a resting baseline, with mean reversion

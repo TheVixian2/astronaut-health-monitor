@@ -3,6 +3,12 @@
 NASA Space Apps Challenge 2026 — *Create Health Monitoring Software for
 Astronauts on Space Missions*.
 
+**Live demo (no login, no install):** https://dr-galactic.github.io/
+— the web app with simulated live streams and data recorded from a real backend run
+(`tools/snapshot_mock.py`). Run it locally for the full live system.
+Update it after changing `/web`:
+`git push origin $(git subtree split --prefix web main):refs/heads/gh-pages --force`
+
 **Dr. Galactic** watches the **behavioral (mental) health** of a crew of four on
 a long Mars mission. It compares each astronaut's signals (heart rate, sleep,
 mood, a validated two-question depression screen, a reaction-time test) to
@@ -48,7 +54,7 @@ Then paste this one line, swapping `backend` for your lane
 (`backend` = stefanalbu2010-byte, `web` = NotKaemy, `watch` = Luca):
 
 ```sh
-git clone https://github.com/TheVixian2/astronaut-health-monitor.git && cd astronaut-health-monitor && git checkout backend && claude
+git clone https://github.com/dr-galactic/dr-galactic.github.io.git && cd dr-galactic.github.io && git checkout backend && claude
 ```
 
 That clones, puts you on your branch, and starts Claude Code in the repo. Then
@@ -96,6 +102,32 @@ Simulator**. Requires Xcode 16+. The Simulator reaches the backend over
 
 Optionally, `tools/simulate_crew.py` drives the other three crew members and can
 seed baseline history (`--seed-baseline`) for an instant demo.
+
+## Use of AI (Super Intelligence, SI)
+
+Disclosed as the NASA Space Apps submission guide requires for code and data.
+
+- **The idea and the design decisions are the team's.** The focus on behavioral
+  health, commander-first release, the hygiene privacy rule (Mission Control
+  sees who, the commander sees hours only) and "proven signals only" were decided
+  by the team. AI did not come up with the solution.
+- **Code: written with AI assistance.** The team used **Claude Code**
+  (Anthropic; models Claude Opus 5 and Opus 5.5) to write and edit the backend,
+  web app and watch app, from our instructions, and we reviewed and ran the
+  result. Commits made through Claude Code carry a `Co-Authored-By: Claude`
+  line, and every source file has a header comment saying it was written with AI assistance.
+- **Research and docs.** Claude helped search for and summarize studies and NASA
+  sources and draft the docs in `docs/`. Each cited source was checked against the
+  original paper or NASA page; they are listed with links in `docs/nasa-data.md` and on the Data sources page.
+- **AI inside the app (runtime).** The backend calls Claude (`claude-sonnet-5-5`
+  by default, `backend/insight_service.py`) for two things only: the plain-language
+  explanation of an alert raised from physical readings, and the watch's *Ask*
+  and *Why?* answers. It only ever sends physical readings; **psychological data is never sent to a
+  cloud model**. Every Claude answer is labelled **"AI-generated (Claude)"** on
+  screen. Without an API key, during a communications blackout, or if Claude is
+  unreachable, the app uses fixed on-board text instead, labelled "On board".
+- **No AI-generated images, video or audio** are in the app or repo. Screenshots
+  are of the running app.
 
 ## Docs
 

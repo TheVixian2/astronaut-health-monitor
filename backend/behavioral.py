@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
 """Psychological profile: every input, weighted, against each astronaut's own normal (PROVISIONAL).
 
 Focus of the project since 2026-11-14. Addresses two NASA HRP risks: "Adverse Cognitive or
