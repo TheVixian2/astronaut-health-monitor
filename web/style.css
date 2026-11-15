@@ -632,6 +632,11 @@ body.selfcheck.pattern:not([data-tab="health"]) .period { display: none; }
 .p-foot { margin-top: auto; padding-top: .86em; border-top: 1px solid var(--line);
   display: flex; justify-content: space-between; align-items: center; gap: .57em; }
 .p-open { font-weight: 700; color: var(--tint-fg); }
+/* The account to sign in with: a chip like the tabs above it, normal-width
+   type (not the narrow `code` style), with room between label and name. */
+.p-acct { display: inline-flex; align-items: center; gap: .6em; font-size: .87em; }
+.p-acct-name { padding: .2em .85em; border-radius: 999px; border: 1px solid var(--line-strong);
+  background: var(--wash); color: var(--text-strong); font-weight: 600; font-stretch: 100%; letter-spacing: .02em; }
 
 /* Fit mode (screens at least 721 x 521): the page fills the window exactly,
    no scrolling. The script in index.html sets --fit to the largest font size
