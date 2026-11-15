@@ -820,15 +820,13 @@ h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radiu
 .health-bar[hidden] { display: none; }
 .hb-label { font-size: var(--t-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .hb-track { position: relative; flex: 1 1 auto; width: 14px; border-radius: 999px; background: var(--wash-2); border: 1px solid var(--line); overflow: hidden; }
-.hb-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 999px; background: var(--ok); transition: height .6s ease, background .3s; }
+/* Ease-out over .9 s, the same as the % counting beside it (self-check.js setBarPct). */
+.hb-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 999px; background: var(--ok); transition: height .9s cubic-bezier(.33, 1, .68, 1), background .3s; }
 .hb-pct { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); }
 .hb-watch .hb-fill { background: var(--sev-watch); }
 .hb-alert .hb-fill { background: var(--sev-alert); }
 .hb-critical .hb-fill { background: var(--sev-critical); }
 @media (prefers-reduced-motion: reduce) { .hb-fill { transition: none; } }
-/* Nothing sent by the Commander yet: a neutral, full bar and "—". */
-.hb-none .hb-fill { background: var(--line-strong); }
-.hb-none .hb-pct { color: var(--muted); }
 .alert.sev-ok { border-color: var(--ok); }
 /* Crew wellbeing: "Send to <name>" at the foot of each crew member's card. */
 .cp-send { display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 4px; }
