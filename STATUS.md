@@ -19,6 +19,13 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-15 — web changes by Luca's session, @NotKaemy please pull `main` into `web`:**
+  (1) **Stress** is now the backend's wellbeing score (`GET /astronauts/{id}/wellbeing`, common.js
+  `loadStress`), bands = backend levels; the HRV formula is only a fallback for the pattern/test feed.
+  (2) **Released warnings show on the astronaut's own console** ("From your commander", from
+  `GET /alerts?viewer=<self>`); unreleased ones stay hidden, so commander-first still holds.
+  (3) **Health bar** beside the body figure (self-check.js `renderHealth`). (4) **Instant start**:
+  console and Mission Control fill from `/history` before the stream (common.js `recentVitals`).
 - **2026-11-14 — AI disclosure (required by Space Apps).** `alert.insight` gains
   `source: "claude"|"on_board"`. Anything that shows Claude's text must label it
   **"AI-generated (Claude)"**. New source files get the one-line header
@@ -243,6 +250,18 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **"Ship's doctor" is now "Crew Medical Officer"** in the web app (NotKaemy,
+  2026-11-14; on `web`), the same name the backend already gives Sara (a3). The
+  login stays `doctor`. **@dbm711:** please use "Crew Medical Officer" in the
+  slides. Also on `web`: the explanation boxes are gone (Commander's "Crew
+  members don't see these warnings", "Sample medication plan", Mission Control's
+  colour key), and every crew member on Crew wellbeing and Medications has a
+  **whole-body avatar** (the My health silhouette, male or female) with the
+  affected body parts lit up: warnings on Crew wellbeing, what each medicine is
+  for on Medications. The console stays in the dark theme at all hours now
+  (no automatic warm Pre-sleep colours). **@Luca:** the `sex`
+  field on `/crew` (below) would set it; until then the web uses a demo default
+  (Elena, Sara female; Mihai, Jonas male) or the My health switch.
 - **My health: HRV and a stress level, Male | Female body** (NotKaemy,
   2026-11-14; on `web`, main merged in). HRV is `hrv_sdnn_ms` from the vitals.
   **The stress level (0-100) is computed in the web** from HRV vs the astronaut's
@@ -252,6 +271,15 @@ Branch: `web`
   exposed in the vitals, the web will show that instead. The body card has a
   Male | Female slider; sex is not in `GET /crew`, so it is remembered per
   browser. **@Luca:** a `sex` field on `/crew` would be picked up automatically.
+- **Login page first, also on the public demo** (NotKaemy, 2026-11-14; on `web`).
+  Every new visit starts at the login page (session per tab). **@Luca:** on
+  GitHub Pages the login page now shows **"Continue as presenter"**, one click
+  and no password, so the Space Apps "no login" rule still holds; the README's
+  "no login" line could say "no account needed: Continue as presenter". Also new:
+  green-to-red **threshold scales** for every vital on Mission Control
+  (distance from each astronaut's own usual, placeholder steps), and a **`test`
+  account**: Mission Control with a scripted test subject, one vital wrong then
+  good every 10 s.
 - **Bone density and muscle mass are vitals** (NotKaemy, 2026-11-14: the crew
   carries a **portable X-ray machine**, DXA; they replace the earlier "skeletal
   mass"). From a weekly scan: `bone_density_g_cm2` (whole-body bone mineral
@@ -332,14 +360,14 @@ Branch: `web`
     default; the astronaut can opt out". Also `card` is shown as an object in
     the spec, but `circadian.py` returns a **string or null** — the web
     accepts both for now; please pick one.
-- **Done on `web` (not merged yet) — login per role + Commander + ship's
-  doctor.** Placeholder logins `crew`, `captain`, `doctor`, `ground`, `demo`
+- **Done on `web` (not merged yet) — login per role + Commander + Crew Medical
+  Officer.** Placeholder logins `crew`, `captain`, `doctor`, `ground`, `demo`
   (presenter, all views), each landing on its own interface. Details in
   `web/CLAUDE.md`.
   - **Commander** (`captain.html`): physical + psychological warnings for every
     crew member, each with advice on how to help. Sees everything (NotKaemy's
     decision).
-  - **Ship's doctor** (`doctor.html`): today's doses (due / overdue / given)
+  - **Crew Medical Officer** (`doctor.html`): today's doses (due / overdue / given)
     and medication suggestions from live alerts — from a **sample** plan in
     `web/meds.js`, labelled as not medical guidance.
   - **Both are crew too:** their pages open on **their own health data** (My
@@ -351,7 +379,7 @@ Branch: `web`
   at all.** "The crew members should not know what happened to them." Their
   console shows their own numbers vs. baseline, chart, check-in and sleep
   log; no banner, verdict, advice, insight, alert history or warning colours.
-  Warnings go only to the Commander, the ship's doctor and Ground. Done on
+  Warnings go only to the Commander, the Crew Medical Officer and Ground. Done on
   `web` (not merged yet). This replaces the "Commander first, then release"
   idea, so that backend ask is **withdrawn**.
   - **Luca — this contradicts two things you own:** (1) root `CLAUDE.md`

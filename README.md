@@ -3,7 +3,7 @@
 NASA Space Apps Challenge 2026 — *Create Health Monitoring Software for
 Astronauts on Space Missions*.
 
-**Live demo (no login, no install):** https://thevixian2.github.io/astronaut-health-monitor/
+**Live demo (no login, no install):** https://dr-galactic.github.io/
 — the web app with simulated live streams and data recorded from a real backend run
 (`tools/snapshot_mock.py`). Run it locally for the full live system.
 Update it after changing `/web`:
@@ -54,7 +54,7 @@ Then paste this one line, swapping `backend` for your lane
 (`backend` = stefanalbu2010-byte, `web` = NotKaemy, `watch` = Luca):
 
 ```sh
-git clone https://github.com/TheVixian2/astronaut-health-monitor.git && cd astronaut-health-monitor && git checkout backend && claude
+git clone https://github.com/dr-galactic/dr-galactic.github.io.git && cd dr-galactic.github.io && git checkout backend && claude
 ```
 
 That clones, puts you on your branch, and starts Claude Code in the repo. Then

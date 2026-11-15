@@ -338,11 +338,11 @@ to tighten, not final claims.**
 - **Keep SANS, circadian and blackout as supporting features.** One line each: they show
   the same baseline engine works for the body too.
 - **Say it:** decision support, never a diagnosis; PHQ-2 is a screen, not a diagnosis.
-## 2026-11-14 — Commander and ship's doctor roles (web, NotKaemy)
+## 2026-11-14 — Commander and Crew Medical Officer roles (web, NotKaemy)
 
 - **New on-board roles, each with its own login and screen:** the Commander
   sees every crew member's physical and psychological warnings with advice on
-  how to help; the ship's doctor sees which medications are due or overdue
+  how to help; the Crew Medical Officer sees which medications are due or overdue
   for whom, plus suggestions when an alert fires (always "your decision").
 - **Strong demo beat: psychological warnings reach the Commander first.** The
   crew member's console doesn't show them until the Commander presses
@@ -364,14 +364,14 @@ to tighten, not final claims.**
 
 - **Change: crew members see no warnings at all.** Their console is just their
   own data against their own baseline. Warnings go to the Commander, the
-  ship's doctor and Ground. The "Commander first, then Tell them now" idea in
+  Crew Medical Officer and Ground. The "Commander first, then Tell them now" idea in
   the section above is replaced: there is nothing to release.
 - **Demo update for `demo-script.md` step 3:** the left pane of `demo.html` is
   now the **Commander's** screen. It shows the alert instantly, with advice on
   how to help, while Ground shows "incoming — 00:18". The line still works:
   "On board they knew in a second. On Mars, ground would know in 22 minutes."
 - **Framing for the pitch:** "The crew member sees their numbers, not a
-  diagnosis. The commander and the ship's doctor decide what to say and do."
+  diagnosis. The commander and the Crew Medical Officer decide what to say and do."
 - **Expect this question from a judge:** "What if the crew member is alone
   when something urgent happens (e.g. orthostatic intolerance during
   exercise)?" Today the answer is: the Commander and doctor are alerted at
