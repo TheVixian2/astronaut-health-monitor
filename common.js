@@ -526,6 +526,8 @@
       localStorage.setItem(SENT_KEY, JSON.stringify(all));
     } catch { /* private window: not kept */ }
   }
+  // Kept here only once the backend has it: a failed send (backend down, or an
+  // older backend without /shared-check) throws and leaves no "Last sent" behind.
   async function setSentTo(aid, data, cfg, viewer) {
     if (cfg && !cfg.mock) {
       // The backend fills in the wellbeing value when none is sent (the CMO's send, or the
