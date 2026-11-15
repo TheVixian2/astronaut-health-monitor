@@ -529,6 +529,12 @@
   // Kept here only once the backend has it: a failed send (backend down, or an
   // older backend without /shared-check) throws and leaves no "Last sent" behind.
   async function setSentTo(aid, data, cfg, viewer) {
+    if (cfg && cfg.mock) {   // as the backend does: a health-only send keeps the Commander's last warnings
+      const prev = sentTo(aid);
+      if (data.warnings) data = { ...data, warnings_at: data.at, warnings_by_role: data.by_role };
+      else if (prev && prev.warnings) data = { ...data, warnings: prev.warnings,
+        warnings_at: prev.warnings_at || prev.at, warnings_by_role: prev.warnings_by_role || prev.by_role };
+    }
     if (cfg && !cfg.mock) {
       // The backend fills in the wellbeing value when none is sent (the CMO's send, or the
       // Commander's before the crew check loaded): keep ITS copy, never a hollow one.

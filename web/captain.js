@@ -206,7 +206,7 @@
   function sendRow(aid, name) {
     const sent = A.sentTo(aid), flash = A.justSent(aid);
     return `<div class="cp-send"><button type="button" data-send="${esc(aid)}"${flash ? ' class="is-sent" disabled' : ""}>${flash ? "Sent ✓" : `Send to ${esc(name)}`}</button>
-      <span class="muted small">${sent ? `Sent at ${esc(time(sent.at))}` : "Not sent yet"}</span></div>`;
+      <span class="muted small">${sent ? `Sent at ${esc(time(sent.warnings_at || sent.at))}` : "Not sent yet"}</span></div>`;
   }
   $("crewPanels").addEventListener("click", e => {
     const b = e.target.closest("[data-send]");

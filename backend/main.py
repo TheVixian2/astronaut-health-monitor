@@ -131,6 +131,9 @@ class SharedCheck(BaseModel):
     by_role: str = ""                 # "Commander" / "Crew Medical Officer"
     health: Optional[SharedHealth] = None
     warnings: Optional[list[SharedWarning]] = Field(default=None, max_length=30)   # null: health only
+    # A health-only send (the CMO's) keeps the Commander's last warnings: who sent those, and when.
+    warnings_at: Optional[datetime] = None
+    warnings_by_role: Optional[str] = None
 
 
 class BaselineUpload(BaseModel):
@@ -1186,6 +1189,13 @@ async def put_shared_check(aid: str, viewer: str, body: SharedCheck) -> SharedCh
         lv = s.profile.level
         body.health = SharedHealth(pct=max(0, min(100, 100 - s.profile.score)), wellbeing=lv, score=s.profile.score,
                                    level={"steady": "ok", "watch": "watch", "concern": "alert", "urgent": "critical"}[lv])
+    prev = await asyncio.to_thread(_shared_check, aid)
+    if body.warnings is not None:
+        body.warnings_at, body.warnings_by_role = body.at, body.by_role
+    elif prev and prev.get("warnings") is not None:   # health only: don't wipe what the Commander sent
+        body.warnings = [SharedWarning(**w) for w in prev["warnings"]]
+        body.warnings_at = prev.get("warnings_at") or prev["at"]
+        body.warnings_by_role = prev.get("warnings_by_role") or prev["by_role"]
     data = json.loads(body.model_dump_json())
     shared_checks[aid] = data
     await asyncio.to_thread(store.meta_set, f"shared_check:{aid}", json.dumps(data))

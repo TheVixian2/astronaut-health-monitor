@@ -109,7 +109,7 @@
   function startPattern() {
     document.body.classList.add("pattern");
     setConn("pattern", "pill-on");
-    $("delayBanner").style.display = "none";   // not a delayed live view here
+    // The banner stays (QA M3): the home card opens this view, and the delay is the point of the page.
     window.AHMPattern.control(document.querySelector("header.bar .status"), ({ from, to }) => {
       for (const [aid, c] of crew) {
         const pts = window.AHMPattern.series(aid, from, to, SPARK_POINTS);

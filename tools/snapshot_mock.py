@@ -18,7 +18,7 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000"
 CREW = ["a1", "a2", "a3", "a4"]
 VIEWERS = ["a1", "ground"]  # Commander page and Mission Control page
 
-paths = ["/habitat", "/environment"]
+paths = ["/habitat", "/environment", "/checkin/questions"]
 paths += [f"/crew/locations?viewer={v}" for v in VIEWERS]
 paths += [f"/crew/wellbeing?viewer={a}" for a in CREW]
 for a in CREW:
