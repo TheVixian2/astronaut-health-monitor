@@ -1,0 +1,17 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
+# DEMO DATA, simulated: Cmdr. Elena Ionescu (Commander), mission days 7-20, one row per day, as a watch export might look. Made by tools/export_sample_csv.py from the seeded crew.
+date,resting_heart_rate,hrv_sdnn,spo2,temperature_c,resp_rate,sleep_hours,mood,active_minutes
+2026-10-11,48,58,98,36.6,12,7.8,3,44
+2026-10-12,48,63,98,36.6,12,7.2,4,46
+2026-10-13,52,63,98,36.6,12,7.5,4,61
+2026-10-14,52,73,98,36.6,12,7.9,4,59
+2026-10-15,51,65,98,36.6,12,7.8,4,37
+2026-10-16,52,61,98,36.6,12,7.6,4,38
+2026-10-17,48,57,98,36.6,12,6.9,4,53
+2026-10-18,49,68,98,36.7,12,7.9,3,38
+2026-10-19,50,66,98,36.7,12,7.3,3,30
+2026-10-20,49,59,98,36.7,12,6.4,4,53
+2026-10-21,52,61,98,36.7,12,6.5,4,60
+2026-10-22,48,48,98,36.7,12,7.2,4,43
+2026-10-23,50,56,98,36.7,12,7.6,4,37
+2026-10-24,52,75,98,36.7,12,7.1,4,52
