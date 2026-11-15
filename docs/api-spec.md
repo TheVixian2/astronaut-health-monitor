@@ -209,7 +209,10 @@ sees.** It is a deliberate design position, not a toggle for convenience — see
 
 - **Commander first (live):** the commander (`viewer=a1`) always sees every crew
   member's `level` and `areas` (masked signals, never PHQ-2 answers);
-  `GET /crew/wellbeing` members carry `visible_because: commander_first` and `areas`.
+  `GET /crew/wellbeing` members carry `visible_because: commander_first` and `areas`,
+  plus `tendencies: [string]`: behaviour changes vs their own usual in plain words
+  (sleep, activity, time with crew / alone, bedtime regularity; ≥ 1 SD; never mood or
+  questionnaire answers), e.g. "Sleeping 1.2 h less than usual (5.9 h a night)".
   Mission Control still needs sharing or the urgent level.
 - `GET /astronauts/{id}/history?hours=&bucket_s=` → each point also has `low{}` and
   `high{}` per field; `bucket_s=3600` = hour by hour.

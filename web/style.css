@@ -745,6 +745,8 @@ body.presenter.fit .landing-note { margin: .75em 0 0; font-size: .87em; }
 .cp-areas { color: var(--text-strong); font-weight: 600; }
 .cp-note { margin: -4px 0 8px; font-size: var(--t-xs); color: var(--muted); }
 .cp-wb + .cp-none, .cp-note + .cp-none { margin-top: 0; }
+.cp-tend { margin: -2px 0 8px; padding-left: 18px; font-size: var(--t-sm); color: var(--text-strong); }
+.cp-tend li { margin: 2px 0; }
 @media (max-width: 480px) { .cp-sec { grid-template-columns: minmax(0, 1fr); } }
 .cap-panel.st-watch { border-top-color: var(--sev-watch); }
 .cap-panel.st-alert { border-top-color: var(--sev-alert); }
