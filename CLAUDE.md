@@ -257,14 +257,30 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   (`ahm-sent-to-crew`) only after the backend accepted it.
   - **"Sent ✓"** on the button for 2.5 s after a send succeeds
     (`AHM.markJustSent` / `justSent`; the pages re-render, so sendRow reads it).
-  - **Why it changed** (owner, 2026-11-15): with every report the crew member's
-    "From your commander" box starts with "Wellbeing 33%, down from 80%" and the
-    backend's reasons from their own `GET /wellbeing?viewer=<self>`: each signal
-    with the % it takes off the bar (bar = 100 − score; points scaled like the
+  - **Why it changed** (owner, 2026-11-15): with every report, **right under
+    the wellbeing bar** on My health (`#wbWhy`, renderWhy): "Wellbeing 33%, down
+    from 80%", the top 3 reasons and a link to My report. The reasons are the
+    backend's, from their own `GET /wellbeing?viewer=<self>`: each signal with
+    the % it takes off the bar (bar = 100 − score; points scaled like the
     backend does when a whole group has no data, so they add up to the drop).
     While a flag still waits for the commander the backend withholds them, and
-    the box says the reasons come once the commander has talked with them. The
-    previous value is remembered per browser (`ahm-sent-seen`).
+    it says the reasons come once the commander has talked with them.
+  - **My report tab** (`#report`, renderReport; owner, 2026-11-15) on the crew
+    console and the CMO's page, not the Commander's (their bar is live): the
+    whole last report. Value and level, change since the last report, how sure
+    (confidence, coverage), every reason with its detail and evidence (tagged
+    "new" / "was −N%" against the previous report; reasons that went away show
+    0%), a 14-day chart up to the report's day (`trend.timeline`, 100 − score),
+    the warnings shared with them, "What might help" (`suggestions`), signals
+    still close to usual and those without enough data. A "New" badge on the
+    menu until opened (`ahm-report-read`). Previous value and reasons are kept
+    per browser (`ahm-sent-seen`). Send times are compared by moment
+    (`sameAt`): the backend writes `.740000Z` where the browser wrote `.740Z`.
+- **History and Data sources show the full menu, no Back link** (owner,
+  2026-11-15): `AHM.pageMenu` (common.js) fills their nav with every tab of the
+  page they were opened from (`?from=`, added to their links by common.js), or
+  of the signed-in role; the page itself is marked current. Add a tab to a role
+  page → add it to `PAGE_MENUS` too.
 - **Chart scales:** `FIELDS[].axis` fixes the y-axis for bounded vitals:
   mood 1-5 (reads 5 4 3 2 1), stress 0-100 (never negative).
 - **Bone density and muscle mass** (owner, 2026-11-14: the crew has a

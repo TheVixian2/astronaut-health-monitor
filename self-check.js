@@ -5,7 +5,9 @@
 // their own numbers against their own baseline, never alerts, verdicts,
 // advice or "something is wrong" wording. Warnings go to the Commander
 // (captain.html), the Crew Medical Officer (doctor.html) and Ground. This code does
-// not even subscribe to `alert` events.
+// not even subscribe to `alert` events. The one way in: what the Commander
+// (or the Crew Medical Officer) sends with "Send to <name>", shown under the
+// wellbeing bar and on the My report tab (owner, 2026-11-15).
 //
 // Used by three pages, each with an empty <main id="console">:
 // - self-check.html: any astronaut, picked with the #aid selector (?aid=).
@@ -86,6 +88,7 @@
 
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
     renderMission();
+    renderReports();                 // what this browser already has; loadReleased() fetches the rest
 
     // Warnings reach this console only once released (commander first): loadReleased().
     if (!PATTERN) {
@@ -93,7 +96,7 @@
       loadReleased(); setInterval(loadReleased, RELEASED_REFRESH_MS);
       loadOwnWellbeing(); setInterval(loadOwnWellbeing, RELEASED_REFRESH_MS);
       wireBaselineUpload();
-    }
+    } else loadReport();
     if (!PATTERN) await prefill();
     if (PATTERN) startPattern();
     else if (POLL) startPolling();
@@ -198,15 +201,12 @@
     const sentNow = ownRole === "Commander" ? null : A.sentTo(cfg.aid);
     const sentAtNow = sentNow ? sentNow.at : null;
     // A new report may have released their flag: refresh stress now, not within the minute.
-    if (lastSentAt !== undefined && sentAtNow !== lastSentAt) refreshStress();
+    if (lastSentAt !== undefined && sentAtNow !== lastSentAt && !sameAt(sentAtNow, lastSentAt)) refreshStress();
     lastSentAt = sentAtNow;
-    if (sentNow?.health) {
-      // Their own wellbeing check: the reasons behind the bar (healthItem).
-      try { selfWb = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/wellbeing?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock); }
-      catch { /* keep the last one */ }
-    }
+    if (sentNow?.health) await loadSelfWb();
     renderReleased();
     renderHealth();
+    renderReports();
   }
   // Released alerts, plus what the Commander sent with "Send to <name>"
   // (common.js sentTo; owner, 2026-11-15). Not on the Commander's own console:
@@ -232,62 +232,235 @@
       }
       if (!items.length && !sent.health) items.push(`<li class="alert sev-ok"><p class="verdict">Nothing to act on</p>${foot}</li>`);
     }
-    if (sent && sent.health) items.unshift(healthItem(sent, when));
+    // The wellbeing value and its reasons sit under the bar (renderWhy) and on My report.
     const box = $("released");
     box.hidden = !items.length;
     box.innerHTML = items.length ? `<h3>From your commander</h3><ul class="alerts">${items.join("")}</ul>` : "";
   }
   const sentBy = x => (x.by_role === "Crew Medical Officer" ? "Crew Medical Officer" : "commander");
 
-  // ---- why the bar changed (owner, 2026-11-15) ------------------------------
-  // With every report sent: the new value, how it moved since the last one, and
-  // the backend's own reasons. The bar is 100 - their wellbeing score, so each
-  // signal's points are the % it takes off the bar. From the astronaut's own
-  // view: while a flag still waits for the commander the backend withholds the
-  // reasons (commander first), and this says so instead.
-  let selfWb = null;
-  const SEEN_KEY = "ahm-sent-seen";      // aid -> { at, pct, prev }: the value before this report
-  function healthChange(sent) {
-    let all = {};
-    try { all = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}"); } catch { /* none */ }
-    const seen = all[cfg.aid];
-    if (!seen || seen.at !== sent.at) {
-      all[cfg.aid] = { at: sent.at, pct: sent.health.pct, prev: seen ? seen.pct : null };
-      try { localStorage.setItem(SEEN_KEY, JSON.stringify(all)); } catch { /* shown, not kept */ }
-    }
-    return all[cfg.aid].prev;
+  // ---- why the bar changed, and My report (owner, 2026-11-15) ---------------
+  // Every report sent with "Send to <name>" moves the bar. Under the bar: the new
+  // value, how it moved since the last report and the main reasons (renderWhy).
+  // The My report tab has all of it (renderReport). The bar is 100 - their
+  // wellbeing score, so each signal's points are the % it takes off the bar.
+  // From their own view: while a flag still waits for the commander the backend
+  // withholds the reasons (commander first), and both say so instead.
+  let selfWb = null, selfWbFailed = false;
+  let rpChart = null, rpChartKey = "";
+  // Their own wellbeing check: the reasons behind the bar.
+  async function loadSelfWb() {
+    try {
+      selfWb = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/wellbeing?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
+      selfWbFailed = false;
+    } catch { selfWbFailed = !selfWb; /* keep the last one */ }
   }
-  function healthItem(sent, when) {
-    const h = sent.health, prev = healthChange(sent);
-    const change = prev == null ? "your first report" : prev === h.pct ? "the same as last time"
-      : `${h.pct < prev ? "down" : "up"} from ${prev}%`;
-    let body = "";
-    if (h.wellbeing == null && h.inRange != null) {
-      body = `<p class="small">${h.inRange} of ${h.total} readings in your usual range.</p>`;
-    } else if (selfWb && selfWb.withheld) {
-      body = '<p class="small muted">The reasons come once your commander has talked with you.</p>';
-    } else if (selfWb) {
+  // The presenter's whole-mission view has no loadReleased(): the last report
+  // and its reasons only.
+  async function loadReport() {
+    if (ownRole === "Commander") return;
+    await A.loadSentTo(cfg, cfg.aid, cfg.aid);
+    if (A.sentTo(cfg.aid)?.health) await loadSelfWb();
+    renderHealth();
+    renderReports();
+  }
+  const SEEN_KEY = "ahm-sent-seen";      // aid -> { at, pct, prev, why, prevWhy }: the report before this one
+  const READ_KEY = "ahm-report-read";    // aid -> the report last opened on My report
+  const WB_NAMES = { steady: "Steady", watch: "Watch", concern: "Concern", urgent: "Urgent" };
+  const readJSON = k => { try { return JSON.parse(localStorage.getItem(k) || "{}"); } catch { return {}; } };
+  const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* shown, not kept */ } };
+  // The same send can come back as "...09.740Z" (this browser) or "...09.740000Z"
+  // (the backend): compare the moment, not the text.
+  const sameAt = (a, b) => a != null && b != null && Date.parse(a) === Date.parse(b);
+  const shortWhen = t => new Date(t).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  // The report on screen with its reasons, or null when none was sent.
+  function reportOf() {
+    const sent = ownRole === "Commander" ? null : A.sentTo(cfg.aid);
+    if (!sent || !sent.health) return null;
+    const h = sent.health;
+    const wb = selfWb && selfWb.astronaut_id === cfg.aid ? selfWb : null;
+    const withheld = !!(wb && wb.withheld);
+    let all = [];
+    if (wb && !withheld && h.wellbeing) {
       // When a whole group has no data yet the backend scales the other group up
       // to fill the 100 (behavioral.py), so scale the points the same way: the
       // reasons then add up to the score, i.e. to what the bar lost.
-      const sigs = selfWb.signals || [];
+      const sigs = wb.signals || [];
       const sum = sigs.reduce((t, s) => t + (s.points || 0), 0);
-      const k = sum > 0 && typeof selfWb.score === "number" ? selfWb.score / sum : 1;
-      const why = sigs.map(s => ({ ...s, off: Math.round((s.points || 0) * k) })).filter(s => s.off >= 1)
-        .sort((a, b) => b.off - a.off).slice(0, 5);
-      body = why.length
-        ? `<p class="small why-head">Why</p><ul class="why">${why.map(s =>
-            `<li><span class="why-pts">−${s.off}%</span><span><strong>${esc(s.label)}</strong>: ${esc(s.detail)}</span></li>`).join("")}</ul>`
-        : '<p class="small">Everything is close to your own usual.</p>';
+      const k = sum > 0 && typeof wb.score === "number" ? wb.score / sum : 1;
+      all = sigs.map(s => ({ ...s, off: Math.round((s.points || 0) * k) }));
     }
-    return `<li class="alert sev-${esc(h.level)}"><p class="verdict">Wellbeing ${h.pct}%, ${change}</p>${body}
-      <p class="muted small">Sent by your ${sentBy(sent)} · ${when(sent.at)}</p></li>`;
+    const why = all.filter(s => s.off >= 1).sort((a, b) => b.off - a.off);
+    // How it moved since the last report this browser saw, value and reasons.
+    const seenAll = readJSON(SEEN_KEY);
+    let seen = seenAll[cfg.aid];
+    if (!seen || !sameAt(seen.at, sent.at)) {
+      seen = { at: sent.at, pct: h.pct, prev: seen ? seen.pct : null, prevWhy: seen ? seen.why || null : null };
+    }
+    if (!seen.why && wb && !withheld) seen.why = Object.fromEntries(why.map(s => [s.name, s.off]));
+    seenAll[cfg.aid] = seen;
+    writeJSON(SEEN_KEY, seenAll);
+    const prev = seen.prev;
+    const change = prev == null ? "your first report" : prev === h.pct ? "the same as last time"
+      : `${h.pct < prev ? "down" : "up"} from ${prev}%`;
+    return { sent, h, wb, withheld, all, why, prev, prevWhy: seen.prevWhy, change };
   }
+
+  // The backend's detail often starts with the label ("Activity: 31 min/day"): once is enough.
+  const detailOf = s => {
+    const d = String(s.detail || "");
+    return d.startsWith(`${s.label}:`) ? d.slice(s.label.length + 1).trim() : d;
+  };
+  // The reasons as a list: −N% label: what the station computer saw.
+  function whyList(r, max, changes) {
+    if (r.h.wellbeing == null && r.h.inRange != null) return `<p class="small">${r.h.inRange} of ${r.h.total} readings in your usual range.</p>`;
+    if (r.withheld) return '<p class="small muted">The reasons come once your commander has talked with you.</p>';
+    if (!r.wb) return `<p class="small muted">${selfWbFailed ? "The reasons can't be loaded right now." : "Loading the reasons…"}</p>`;
+    if (!r.why.length) return '<p class="small">Everything is close to your own usual.</p>';
+    const list = max ? r.why.slice(0, max) : r.why;
+    const tag = s => {
+      if (!changes || !r.prevWhy) return "";
+      const was = r.prevWhy[s.name];
+      return was == null ? ' <span class="why-new">new</span>'
+        : was !== s.off ? ` <span class="muted">(was −${was}%)</span>` : "";
+    };
+    const rows = list.map(s => `<li><span class="why-pts">−${s.off}%</span><span><strong>${esc(s.label)}</strong>${tag(s)}: ${esc(detailOf(s))}${
+      changes && s.evidence ? `<span class="why-ev muted">${esc(s.evidence)}</span>` : ""}</span></li>`);
+    const gone = changes && r.prevWhy ? Object.keys(r.prevWhy).filter(n => !r.why.some(s => s.name === n)) : [];
+    for (const n of gone) {
+      const s = r.all.find(x => x.name === n);
+      rows.push(`<li class="why-gone"><span class="why-pts">0%</span><span><strong>${esc(s ? s.label : n)}</strong>
+        <span class="muted">(was −${r.prevWhy[n]}%)</span>: back to your usual.</span></li>`);
+    }
+    const more = max && r.why.length > max ? `<p class="muted small">${r.why.length - max} more on My report.</p>` : "";
+    return `<ul class="why">${rows.join("")}</ul>${more}`;
+  }
+
+  // Under the bar on My health: the value, the change and the top reasons.
+  function renderWhy() {
+    const box = $("wbWhy");
+    const r = reportOf();
+    box.hidden = !r;
+    if (!r) { box.innerHTML = ""; return; }
+    box.className = `wb-why alert sev-${esc(r.h.level)}`;
+    const link = document.querySelector('[data-tab-link="report"]') ? ' · <a href="#report">Full report</a>' : "";
+    box.innerHTML = `<p class="verdict">Wellbeing ${r.h.pct}%, ${esc(r.change)}</p>${whyList(r, 3, false)}
+      <p class="muted small">Sent by your ${sentBy(r.sent)} · ${esc(shortWhen(r.sent.at))}${link}</p>`;
+  }
+
+  // ---- My report: everything that came with the last report ----------------
+  function renderReport() {
+    const out = $("reportBody");
+    const r = reportOf();
+    const badge = $("reportNew");
+    if (badge) badge.hidden = !r || sameAt(readJSON(READ_KEY)[cfg.aid], r.sent.at);
+    if (!r) {
+      $("reportSub").textContent = "";
+      out.innerHTML = '<p class="muted">No report yet. When your commander or Crew Medical Officer sends you one, it shows here and your wellbeing bar moves.</p>';
+      rpChartKey = "";
+      dropReportChart();
+      return;
+    }
+    if (document.body.dataset.tab === "report") markReportRead(r);
+    const { h, wb, sent } = r;
+    $("reportSub").textContent = `from your ${sentBy(sent)} · ${shortWhen(sent.at)}`;
+    const lv = h.wellbeing ? WB_NAMES[h.wellbeing] || h.wellbeing : null;
+    const conf = wb && wb.confidence
+      ? `<p class="muted small">How sure: ${esc(wb.confidence)}, ${Math.round((wb.coverage || 0) * 100)}% of the usual data is in so far.</p>` : "";
+    const moved = wb && !wb.withheld && typeof wb.score === "number" && h.score != null && wb.score !== h.score
+      ? `<p class="small rp-note">Since this report your check has moved to ${A.wellbeingBar(wb).pct}%. The next report will show it.</p>` : "";
+    const close = r.all.filter(s => s.enough_data && s.off < 1);
+    const nodata = (wb ? wb.signals || [] : []).filter(s => !s.enough_data);
+    const ids = new Set(releasedList.map(a => a.id));
+    const warns = [
+      ...releasedList.map(a => ({ severity: a.severity, title: a.crew_message || a.onboard_action,
+                                  detail: a.insight && a.insight.recommended_action !== a.crew_message ? a.insight.recommended_action : null })),
+      ...(sent.warnings || []).filter(w => !w.alertId || !ids.has(w.alertId)),
+    ];
+    const sec = (title, body, cls = "") => `<section class="rp-sec ${cls}"><h3>${title}</h3>${body}</section>`;
+    const trendTxt = t => !t ? "" : t.direction === "worsening" ? `Moving away from your usual, about ${Math.round(Math.abs(t.points_per_week))}% a week.`
+      : t.direction === "improving" ? `Coming back towards your usual, about ${Math.round(Math.abs(t.points_per_week))}% a week.`
+      : t.direction === "stable" ? "Holding steady over the last week." : "";
+    const showTrend = wb && !wb.withheld && wb.trend && (wb.trend.timeline || []).length > 1;
+    const html = `
+      <div class="rp-top alert sev-${esc(h.level)}">
+        <div class="rp-score"><span class="rp-pct">${h.pct}%</span><span class="rp-lv">${lv ? esc(lv) : "Wellbeing"}</span></div>
+        <div class="rp-meta">
+          <p class="verdict">Wellbeing ${h.pct}%, ${esc(r.change)}</p>
+          <p class="muted small">100% is just like your own usual (your mission days 7-14).${wb && wb.mission_day ? ` Mission day ${wb.mission_day}.` : ""}</p>
+          ${conf}
+        </div>
+      </div>
+      ${moved}
+      <div class="rp-grid">
+        ${sec("Why it changed", whyList(r, 0, true), "rp-wide")}
+        ${showTrend ? sec("Last two weeks", `<p class="muted small">${esc(trendTxt(wb.trend))} Each point is one day.</p>
+          <div class="rp-chart"><canvas id="rpChart" aria-label="Your wellbeing day by day"></canvas></div>`, "rp-wide") : ""}
+        ${warns.length ? sec("Shared with you", `<ul class="alerts">${warns.map(w => `<li class="alert sev-${esc(w.severity)}">
+          <p class="verdict">${esc(w.title)}</p>${w.detail ? `<p class="small">${esc(w.detail)}</p>` : ""}</li>`).join("")}</ul>`) : ""}
+        ${wb && wb.suggestions && wb.suggestions.length ? sec("What might help", `<ul class="rp-list">${wb.suggestions.map(s => `<li>${esc(s)}</li>`).join("")}</ul>`) : ""}
+        ${close.length ? sec("Close to your usual", `<ul class="rp-list">${close.map(s => `<li><strong>${esc(s.label)}</strong>: ${esc(detailOf(s))}</li>`).join("")}</ul>`) : ""}
+        ${nodata.length ? sec("Not enough data yet", `<ul class="rp-list muted">${nodata.map(s => `<li>${esc(s.label)}</li>`).join("")}</ul>`) : ""}
+      </div>
+      <p class="muted small rp-foot">${esc(wb && wb.note ? wb.note.replace(/\s*GET \/\S+ shows[^.]*\./, "") : "Decision support only, never a diagnosis.")}</p>`;
+    // Called every 15 s (loadReleased): only touch the page when something
+    // changed, so a tooltip someone is reading stays put.
+    const key = JSON.stringify([html, showTrend ? wb.trend.timeline : null]);
+    if (key === rpChartKey) return;
+    rpChartKey = key;
+    out.innerHTML = html;
+    if (showTrend) drawReportChart(wb.trend.timeline, sent.at);
+    else dropReportChart();
+  }
+  function dropReportChart() { if (rpChart) { rpChart.destroy(); rpChart = null; } }
+  // One line, 0-100 % per day (100 - that day's score), up to the report's day.
+  function drawReportChart(timeline, at) {
+    if (!window.Chart || !$("rpChart")) return;
+    const upTo = String(at).slice(0, 10);
+    const days = timeline.filter(d => d.day <= upTo).slice(-14);
+    dropReportChart();
+    const css = getComputedStyle(document.documentElement);
+    const tok = name => css.getPropertyValue(name).trim();
+    const lvColor = { steady: tok("--ok"), watch: tok("--sev-watch"), concern: tok("--sev-alert"), urgent: tok("--sev-critical") };
+    const label = d => new Date(`${d.day}T12:00:00Z`).toLocaleDateString([], { day: "numeric", month: "short" });
+    rpChart = new window.Chart($("rpChart"), {
+      type: "line",
+      data: {
+        labels: days.map(label),
+        datasets: [{ label: "Wellbeing", data: days.map(d => Math.max(0, Math.min(100, 100 - d.score))),
+          borderColor: tok("--accent"), borderWidth: 2, tension: 0.25,
+          pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: days.map(d => lvColor[d.level] || tok("--accent")),
+          pointBorderColor: tok("--panel"), pointBorderWidth: 2 }],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          title: items => { const d = days[items[0].dataIndex]; return `${label(d)} · mission day ${d.mission_day}`; },
+          label: item => { const d = days[item.dataIndex]; return ` ${item.parsed.y}% · ${WB_NAMES[d.level] || d.level}`; },
+        } } },
+        scales: {
+          x: { ticks: { color: tok("--muted"), maxTicksLimit: 7 }, grid: { display: false } },
+          y: { min: 0, max: 100, ticks: { color: tok("--muted"), stepSize: 25, callback: v => `${v}%` }, grid: { color: tok("--line") } },
+        },
+      },
+    });
+  }
+  function markReportRead(r) {
+    const read = readJSON(READ_KEY);
+    if (!sameAt(read[cfg.aid], r.sent.at)) { read[cfg.aid] = r.sent.at; writeJSON(READ_KEY, read); }
+    if ($("reportNew")) $("reportNew").hidden = true;
+  }
+  function renderReports() { renderWhy(); renderReport(); }
+
   // A send from the Commander's page in another tab or pane of this browser.
   window.addEventListener("storage", e => {
     if (e.key !== A.SENT_KEY) return;
     renderHealth();
+    renderReports();
     if (!PATTERN) loadReleased();   // fetch: the send may have released an alert too
+    else loadReport();
   });
 
   // ---- health bar beside the body -------------------------------------------
@@ -850,6 +1023,11 @@
       else a.removeAttribute("aria-current");
     });
     if (tab === "health" && chart) chart.resize();   // canvas was hidden; refit it
+    if (tab === "report") {          // opened: no longer "New"
+      if (rpChart) rpChart.resize();
+      const r = reportOf();
+      if (r) markReportRead(r);
+    }
   }
 
   window.addEventListener("hashchange", showTab);
@@ -930,6 +1108,8 @@
         <span class="hb-pct"></span>
       </div>
       </div>
+      <!-- Why the bar moved with the last report (renderWhy); all of it on My report. -->
+      <div id="wbWhy" class="wb-why" role="status" hidden></div>
       <div id="regionInfo" class="region-info"></div>
       <dialog id="cycleDlg" class="cycle-dlg" aria-labelledby="cycleTitle">
         <form method="dialog" id="cycleForm">
@@ -1028,6 +1208,13 @@
         <p id="ciDoneAt" class="muted">Saved. Thank you.</p>
         <button type="button" id="ciAgain">New check-in</button>
       </div>
+    </section>
+
+    <!-- My report: everything that came with the last "Send to <name>" (renderReport).
+         Only pages with a #report menu entry show it (not the Commander's own). -->
+    <section class="card report-card solo" data-tab="report">
+      <h2>My report <span class="muted" id="reportSub"></span></h2>
+      <div id="reportBody"></div>
     </section>
 
     <!-- Light & sleep: suggestion from our mentor/judge (events/2026-11-14-mentor-judges.md).
