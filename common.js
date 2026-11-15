@@ -486,6 +486,16 @@
              inRange: levels.filter(l => l === "ok").length, total: levels.length };
   }
 
+  // Wellbeing for the bar beside the body figure (Stefan, 2026-11-15): the backend's wellbeing
+  // check, a score of 0-100 where 0 is just like your usual, shown as how close to usual
+  // (100 - score). Colour follows the level: steady, watch, concern, urgent.
+  const WB_BAR = { steady: "ok", watch: "watch", concern: "alert", urgent: "critical" };
+  function wellbeingBar(wb) {
+    if (!wb || !wb.level || typeof wb.score !== "number") return null;
+    return { pct: Math.max(0, Math.min(100, Math.round(100 - wb.score))), level: WB_BAR[wb.level] || "ok",
+             wellbeing: wb.level, score: wb.score };
+  }
+
   // ---- what the Commander sent to a crew member (owner, 2026-11-15) ----------
   // A crew member's health bar and "From your commander" box change only when
   // the Commander presses "Send to <name>" on Crew wellbeing (captain.js):
@@ -589,7 +599,7 @@
   }
 
   window.AHM = {
-    FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES, vitalIcon, vitalColor,
+    FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES, vitalIcon, vitalColor, wellbeingBar,
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
