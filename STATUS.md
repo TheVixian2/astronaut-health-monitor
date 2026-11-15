@@ -251,7 +251,7 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 Branch: `web`
 
 - **Commander's "Send to <name>"; crew health bar only changes when sent** (NotKaemy,
-  2026-11-15; on `web`, not on `main` yet). Each crew member's Crew wellbeing card has
+  2026-11-15; on `main` and live on the site, gh-pages 79f109e). Each crew member's Crew wellbeing card has
   "Send to <name>": it releases their psychological alerts through the backend
   (`PUT .../alerts/{id}/release`) and sends their health % plus the card's warnings to
   their console. Their health bar shows only what was sent ("—" before), never live
