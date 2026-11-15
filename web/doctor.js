@@ -22,8 +22,8 @@
   const suggestions = new Map(); // "aid|profile" -> { alert, med } (newest alert only)
 
   // ---- "Send to <name>": a health check for their console (owner, 2026-11-15) --
-  // Like the Commander's button, but the health % only: the CMO's warnings stay
-  // here. Stored by the backend (common.js setSentTo), so their console shows it.
+  // Like the Commander's button, but the wellbeing bar only: the CMO's warnings stay
+  // here. Stored by the backend (common.js setSentTo), which fills in the value.
   const ownAid = () => ([...members.values()].find(c => c.role === "Crew Medical Officer") || {}).id || "a3";
   function sendRow(aid, name) {
     const sent = A.sentTo(aid);
@@ -36,10 +36,10 @@
     const aid = b.dataset.send, viewer = ownAid();
     b.disabled = true; b.textContent = "Sending…";
     try {
-      const v = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/vitals`, cfg.mock);
-      const health = A.healthScore(A.withScan(A.withStress(A.withCycle(v, aid), aid), aid));
+      // health: null -> the backend fills in their wellbeing check (the CMO can't read it: commander first).
       await A.setSentTo(aid, { at: new Date().toISOString(), by: viewer, by_role: "Crew Medical Officer",
-                               health, warnings: null }, cfg, viewer);
+                               health: null, warnings: null }, cfg, viewer);
+      await A.loadSentTo(cfg, aid, viewer);   // the stored copy, with the health the backend filled in
     } catch { b.textContent = "Not sent, try again"; b.disabled = false; return; }
     render();
   });

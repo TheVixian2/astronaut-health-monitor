@@ -91,6 +91,7 @@
     if (!PATTERN) {
       refreshStress(); setInterval(refreshStress, STRESS_REFRESH_MS);
       loadReleased(); setInterval(loadReleased, RELEASED_REFRESH_MS);
+      loadOwnWellbeing(); setInterval(loadOwnWellbeing, RELEASED_REFRESH_MS);
       wireBaselineUpload();
     }
     if (!PATTERN) await prefill();
@@ -238,22 +239,33 @@
   // changes ONLY when the Commander presses "Send to <name>" on Crew wellbeing,
   // and then shows what was sent; until then it is neutral ("—"). The
   // Commander's own bar stays live: the Commander sees everything.
+  // Wellbeing, not physical readings (Stefan, 2026-11-15): the backend's wellbeing check. The
+  // Commander's own bar reads their own check (null while it is with the deputy first).
+  let ownWb = null;
+  async function loadOwnWellbeing() {
+    if (ownRole !== "Commander") return;
+    try {
+      ownWb = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/wellbeing?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
+    } catch { ownWb = null; }
+    renderHealth();
+  }
   function renderHealth() {
     const bar = $("healthBar");
     const live = ownRole === "Commander";
     const sent = live ? null : A.sentTo(cfg.aid);
-    const h = live ? A.healthScore(latest) : sent && sent.health;
+    const h = live ? A.wellbeingBar(ownWb) : sent && sent.health ? sent.health : null;
     bar.hidden = false;
     if (!h) {
       bar.className = "health-bar hb-none";
-      bar.title = live ? "Waiting for readings" : "Your commander or Crew Medical Officer hasn't sent you a health check yet";
+      bar.title = live ? "Waiting for your wellbeing check" : "Your commander or Crew Medical Officer hasn't sent you a check yet";
       bar.querySelector(".hb-pct").textContent = "—";
       bar.querySelector(".hb-fill").style.height = "100%";
       bar.querySelector(".hb-track").removeAttribute("aria-valuenow");
       return;
     }
     bar.className = `health-bar hb-${h.level}`;
-    bar.title = `${h.inRange} of ${h.total} readings in your usual range` +
+    bar.title = (h.wellbeing ? `Wellbeing check: ${h.wellbeing} (score ${h.score} of 100; 0 is just like your usual)`
+                             : `${h.inRange} of ${h.total} readings in your usual range`) +
       (sent ? `, sent by your ${sentBy(sent)} ${new Date(sent.at).toLocaleString()}` : "");
     bar.querySelector(".hb-pct").textContent = `${h.pct}%`;
     bar.querySelector(".hb-fill").style.height = `${h.pct}%`;
@@ -856,8 +868,8 @@
         </g>
       </svg>
       <div class="health-bar" id="healthBar" hidden>
-        <span class="hb-label">Health</span>
-        <div class="hb-track" role="meter" aria-label="Health: readings vs your usual" aria-valuemin="0" aria-valuemax="100"><div class="hb-fill"></div></div>
+        <span class="hb-label">Wellbeing</span>
+        <div class="hb-track" role="meter" aria-label="Wellbeing: how close to your usual" aria-valuemin="0" aria-valuemax="100"><div class="hb-fill"></div></div>
         <span class="hb-pct"></span>
       </div>
       </div>

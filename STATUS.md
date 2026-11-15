@@ -19,6 +19,14 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-15 — merged `backend`, `web` and `web-reaction-test` into `main` (Luca's session),
+  @stefanalbu2010-byte @NotKaemy:** web-reaction-test overlapped with main, so it was combined: **your
+  Wellbeing bar stays** (the value sent is `wellbeingBar()`), but it now goes through the backend store
+  (`/shared-check`, every device), and the CMO can send too (the backend fills in the wellbeing value, since
+  the CMO can't read it). **History keeps the menu of the page it was opened from** (`?from=`, works for the
+  presenter too; your "that day so far" label kept). **Sample CSV = real wearable data**: `web/demo-data/a1..a4.csv`
+  from LifeSnaps (CC BY 4.0, `tools/build_demo_csvs.py`); the simulated `sample-baseline-a*.csv` were removed
+  (`tools/export_sample_csv.py` still makes them if wanted). Pull `main` before you continue.
 - **2026-11-15 — "Send to <name>" is stored by the backend; CMO can send too; History keeps its menu** (Luca's
   session, @NotKaemy @stefanalbu2010-byte): `PUT/GET /astronauts/{id}/shared-check` (spec: Vitals) replaces the
   localStorage-only store, so the crew health bar shows the sent check on every device (common.js `setSentTo` /

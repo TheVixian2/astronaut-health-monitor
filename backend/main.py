@@ -110,8 +110,10 @@ class BaselineSource(BaseModel):
 class SharedHealth(BaseModel):
     pct: int = Field(ge=0, le=100)
     level: Literal["ok", "watch", "alert", "critical"]
-    inRange: int = Field(ge=0)
-    total: int = Field(ge=0)
+    wellbeing: Optional[behavioral.Level] = None   # the wellbeing bar (web common.js wellbeingBar)
+    score: Optional[int] = None
+    inRange: Optional[int] = None                  # or: readings in their usual range (healthScore)
+    total: Optional[int] = None
 
 
 class SharedWarning(BaseModel):
@@ -1179,6 +1181,10 @@ async def put_shared_check(aid: str, viewer: str, body: SharedCheck) -> SharedCh
                                  "Crew Medical Officer can send a health check.")
     body.by = viewer
     body.by_role = crew[viewer].role
+    if body.health is None and s.profile is not None:   # the CMO's send: the server fills in the wellbeing bar
+        lv = s.profile.level
+        body.health = SharedHealth(pct=max(0, min(100, 100 - s.profile.score)), wellbeing=lv, score=s.profile.score,
+                                   level={"steady": "ok", "watch": "watch", "concern": "alert", "urgent": "critical"}[lv])
     data = json.loads(body.model_dump_json())
     shared_checks[aid] = data
     await asyncio.to_thread(store.meta_set, f"shared_check:{aid}", json.dumps(data))

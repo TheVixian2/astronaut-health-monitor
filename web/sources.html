@@ -82,6 +82,19 @@
     </section>
 
     <section class="card">
+      <h2><span class="tag t-sim">REAL + SYNTHETIC</span>Demo CSVs and our model test</h2>
+      <ul>
+        <li><strong>Sample CSV</strong> (Upload CSV on each console): 63 real days of one person's Fitbit Sense data from
+          <a href="https://zenodo.org/records/7229547" target="_blank" rel="noopener">LifeSnaps</a>
+          (Yfantidou et al., <a href="https://doi.org/10.1038/s41597-022-01764-x" target="_blank" rel="noopener">Scientific Data 2022</a>, CC BY 4.0):
+          resting heart rate, HRV, sleep, activity, SpO₂, breathing and mood. About 85-90 % of values are real; gaps and core
+          temperature are synthetic and named in the file's <code>filled</code> column.</li>
+        <li><strong>Can a watch predict mood?</strong> We trained XGBoost on 21 LifeSnaps people: it did no better than each
+          person's own average mood. That is why the score pairs watch signals with a validated questionnaire.</li>
+      </ul>
+    </section>
+
+    <section class="card">
       <h2><span class="tag t-cite">BACKGROUND</span>Cited in the pitch</h2>
       <ul>
         <li>Morale dips in the third quarter of a mission: <a href="https://ntrs.nasa.gov/citations/20100026549" target="_blank" rel="noopener">Stuster 2010, ISS astronaut journals</a>.</li>
