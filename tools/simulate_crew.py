@@ -56,47 +56,6 @@ def seed(seed_value: int = 42, end: datetime | None = None) -> datetime:
     samples, checkins, visits = [], [], []
     for aid, (_, _, b) in engine.CREW.items():
         rng = random.Random(f"vitals-{aid}-{seed_value}")
-        v = {k: float(x) for k, x in b.items()}
-        t, sleep_h, day_seen = start, b["sleep_h_last_night"], None
-        day_target: dict = {}
-        while t < end:
-            day = (t - start).days + 1
-            if day != day_seen:  # this day's own level for each signal
-                day_seen = day
-                d = engine.drift(aid, day)
-                day_target = {
-                    "hr": b["heart_rate_bpm"] * (1 + rng.gauss(0, 0.03)),
-                    "hrv": b["hrv_sdnn_ms"] * d.get("hrv_sdnn_ms", 1.0) * (1 + rng.gauss(0, 0.12)),
-                    "active": max(0.0, b["active_min"] * d.get("active_min", 1.0) * (1 + rng.gauss(0, 0.25))),
-                }
-            hour = t.hour + t.minute / 60
-            asleep = hour >= 22.5 or hour < 5.5
-            if t.hour == 6 and t.minute == 0:  # new night's sleep, logged on waking
-                sleep_h = round(min(9.0, max(4.5, rng.gauss(b["sleep_h_last_night"], 0.5))), 1)
-            # Days 1-6: space adaptation / headward fluid shift distorts vitals, which is
-            # why the baseline window starts on day 7.
-            adapt = (7 - day) / 6 if day < 7 else 0.0
-            targets = {
-                "heart_rate_bpm": day_target["hr"] * (0.88 if asleep else 1.0) * (1 + 0.08 * adapt),
-                "spo2_pct": b["spo2_pct"],
-                "temp_c": b["temp_c"] + (-0.3 if asleep else 0.1) + 0.2 * adapt,
-                "resp_rate_bpm": b["resp_rate_bpm"] * (0.9 if asleep else 1.0),
-                "hrv_sdnn_ms": day_target["hrv"] * (1.1 if asleep else 1.0),
-            }
-            steps = {"heart_rate_bpm": 1.5, "spo2_pct": 0.3, "temp_c": 0.03, "resp_rate_bpm": 0.4,
-                     "hrv_sdnn_ms": 1.5}
-            for f, target in targets.items():
-                v[f] = _walk(rng, v[f], target, steps[f])
-            v["spo2_pct"] = min(100.0, v["spo2_pct"])
-            awake = max(0.0, min(1.0, (t.hour * 60 + t.minute - 360) / (16.5 * 60)))
-            samples.append((aid, store.iso(t), round(v["heart_rate_bpm"], 1), round(v["spo2_pct"], 1),
-                            round(v["temp_c"], 2), round(v["resp_rate_bpm"], 1), sleep_h, b["mood_1to5"],
-                            round(v["hrv_sdnn_ms"], 1), round(day_target["active"] * awake, 1), "simulated"))
-            t += timedelta(minutes=STEP_MIN)
-
-        # Room stays from the Bluetooth beacons (simulated from the daily schedule in location.py).
-        visits += location.simulate_visits(aid, start, end, start.date(), seed_value)
-
         # Check-ins get their own fixed random sequence: the number of vitals samples above depends
         # on the time of day, and must not change the check-in story between demo runs.
         rng_ck = random.Random(f"checkins-{aid}-{seed_value}")
@@ -122,6 +81,52 @@ def seed(seed_value: int = 42, end: datetime | None = None) -> datetime:
                        "reaction_test": {"mean_rt_ms": round(rt), "lapses": lapses, "false_starts": 0,
                                          "duration_s": 180}}
             checkins.append((aid, store.iso(ts), payload))
+        # Each reading carries the mood from the latest check-in, as the live app does.
+        moods = [(ts, p["mood_1to5"]) for a_, ts, p in checkins if a_ == aid and "mood_1to5" in p]
+        mood_now, mi = b["mood_1to5"], 0
+        v = {k: float(x) for k, x in b.items()}
+        t, sleep_h, day_seen = start, b["sleep_h_last_night"], None
+        day_target: dict = {}
+        while t < end:
+            day = (t - start).days + 1
+            if day != day_seen:  # this day's own level for each signal
+                day_seen = day
+                d = engine.drift(aid, day)
+                day_target = {
+                    "hr": b["heart_rate_bpm"] * (1 + rng.gauss(0, 0.03)),
+                    "hrv": b["hrv_sdnn_ms"] * d.get("hrv_sdnn_ms", 1.0) * (1 + rng.gauss(0, 0.12)),
+                    "active": max(0.0, b["active_min"] * d.get("active_min", 1.0) * (1 + rng.gauss(0, 0.25))),
+                }
+            while mi < len(moods) and moods[mi][0] <= store.iso(t):
+                mood_now, mi = moods[mi][1], mi + 1
+            hour = t.hour + t.minute / 60
+            asleep = hour >= 22.5 or hour < 5.5
+            if t.hour == 6 and t.minute == 0:  # new night's sleep, logged on waking
+                sleep_h = round(min(9.0, max(4.5, rng.gauss(b["sleep_h_last_night"], 0.5))), 1)
+            # Days 1-6: space adaptation / headward fluid shift distorts vitals, which is
+            # why the baseline window starts on day 7.
+            adapt = (7 - day) / 6 if day < 7 else 0.0
+            targets = {
+                "heart_rate_bpm": day_target["hr"] * (0.88 if asleep else 1.0) * (1 + 0.08 * adapt),
+                "spo2_pct": b["spo2_pct"],
+                "temp_c": b["temp_c"] + (-0.3 if asleep else 0.1) + 0.2 * adapt + engine.temp_rise_c(day),
+                "resp_rate_bpm": b["resp_rate_bpm"] * (0.9 if asleep else 1.0),
+                "hrv_sdnn_ms": day_target["hrv"] * (1.1 if asleep else 1.0),
+            }
+            steps = {"heart_rate_bpm": 1.5, "spo2_pct": 0.3, "temp_c": 0.03, "resp_rate_bpm": 0.4,
+                     "hrv_sdnn_ms": 1.5}
+            for f, target in targets.items():
+                v[f] = _walk(rng, v[f], target, steps[f])
+            v["spo2_pct"] = min(100.0, v["spo2_pct"])
+            awake = max(0.0, min(1.0, (t.hour * 60 + t.minute - 360) / (16.5 * 60)))
+            samples.append((aid, store.iso(t), round(v["heart_rate_bpm"], 1), round(v["spo2_pct"], 1),
+                            round(v["temp_c"], 2), round(v["resp_rate_bpm"], 1), sleep_h, mood_now,
+                            round(v["hrv_sdnn_ms"], 1), round(day_target["active"] * awake, 1), "simulated"))
+            t += timedelta(minutes=STEP_MIN)
+
+        # Room stays from the Bluetooth beacons (simulated from the daily schedule in location.py).
+        visits += location.simulate_visits(aid, start, end, start.date(), seed_value)
+
 
     store.init()
     store.insert_samples(samples)
