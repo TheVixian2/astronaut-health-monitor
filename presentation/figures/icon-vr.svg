@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Dr. Galactic vr logo, team palette. Made with AI assistance (Claude Code, Anthropic). -->
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="#8f1f0f"/>
+  <path d="M112 236 C112 120 400 120 400 236" fill="none" stroke="#c0c6d4" stroke-width="26" stroke-linecap="round"/>
+  <g fill="#c0c6d4">
+    <rect x="58" y="246" width="44" height="44" rx="10"/>
+    <rect x="410" y="246" width="44" height="44" rx="10"/>
+    <path d="M140 196 H372 A48 48 0 0 1 420 244 V306 A48 48 0 0 1 372 354 H304 Q256 296 208 354 H140 A48 48 0 0 1 92 306 V244 A48 48 0 0 1 140 196 Z"/>
+  </g>
+  <g fill="#8f1f0f">
+    <rect x="128" y="232" width="256" height="10" rx="5" opacity="0.55"/>
+    <circle cx="150" cy="282" r="11"/>
+    <circle cx="362" cy="282" r="11"/>
+  </g>
+</svg>
