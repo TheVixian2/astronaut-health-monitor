@@ -267,6 +267,8 @@
     fever: "Fever / possible infection",
     sleep_debt: "Sleep debt / strain",
     spe: "Solar particle event",
+    wellbeing_concern: "Wellbeing concern",
+    wellbeing_urgent: "Wellbeing: urgent",
   };
 
   // NASA Human Research Program references, shown with every alert
@@ -467,6 +469,42 @@
   const esc = x => String(x ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const profileName = id => PROFILE_NAMES[id] || id;
 
+  // ---- health: how close readings are to the person's own usual -------------
+  // 0-100 %: each reading scores 100 in its usual range, 67 at watch, 33 at
+  // alert, 0 at critical (the scales Mission Control colours by, THRESHOLDS),
+  // then the average. Our own summary, not a clinical score. `v` is a derived
+  // reading (withCycle / withStress / withScan applied).
+  const HEALTH_POINTS = { ok: 100, watch: 67, alert: 33, critical: 0 };
+  function healthScore(v) {
+    if (!v) return null;
+    const levels = FIELDS.map(f => thresholdLevel(f.key, v[f.key], v.baseline ? v.baseline[f.key] : null,
+                                                  f.key === "stress_0to100" ? v.stress_level : null))
+      .filter(Boolean).map(x => x.level);
+    if (!levels.length) return null;
+    const pct = Math.round(levels.reduce((s, l) => s + HEALTH_POINTS[l], 0) / levels.length);
+    return { pct, level: pct >= 85 ? "ok" : pct >= 60 ? "watch" : pct >= 35 ? "alert" : "critical",
+             inRange: levels.filter(l => l === "ok").length, total: levels.length };
+  }
+
+  // ---- what the Commander sent to a crew member (owner, 2026-11-15) ----------
+  // A crew member's health bar and "From your commander" box change only when
+  // the Commander presses "Send to <name>" on Crew wellbeing (captain.js):
+  // { at, by, health: healthScore(), warnings: [{severity, title, detail, alertId}] }.
+  // PROVISIONAL: kept in this browser (localStorage) until the backend can store
+  // it (asked in STATUS.md). The psychological alerts themselves are released
+  // through the backend (PUT /astronauts/{id}/alerts/{alert_id}/release).
+  const SENT_KEY = "ahm-sent-to-crew";
+  function sentTo(aid) {
+    try { return JSON.parse(localStorage.getItem(SENT_KEY) || "{}")[aid] || null; } catch { return null; }
+  }
+  function setSentTo(aid, data) {
+    try {
+      const all = JSON.parse(localStorage.getItem(SENT_KEY) || "{}");
+      all[aid] = data;
+      localStorage.setItem(SENT_KEY, JSON.stringify(all));
+    } catch { /* private window: not kept */ }
+  }
+
   // ---- body silhouettes and crew avatars -----------------------------------
   // Male and female front-view silhouettes (viewBox 0 0 200 400) for the body
   // card on My health. Generated: the two figures have the same points per
@@ -558,6 +596,7 @@
     withStress, loadStress, recentVitals, stressBand, withScan, thresholdLevel,
     withCycle, cycleFor, cycleAt, setCycle, CYCLE_SHIFT,
     BODY_SHAPES, BODY_ORGANS, normSex, rememberSex, sexOf, bodyFigure, addHit,
+    healthScore, sentTo, setSentTo, SENT_KEY,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 

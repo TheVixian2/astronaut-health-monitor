@@ -185,44 +185,76 @@
   // the commander (the deputy for the commander's own) releases it, or after
   // 12 h. GET /alerts?viewer=<self> leaves out the unreleased ones.
   const RELEASED_REFRESH_MS = 15000;
+  let releasedList = [];
   async function loadReleased() {
-    let list;
-    try { list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/alerts?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock); }
-    catch { return; }
-    const shown = list.filter(a => a.psychological && a.released_to_crew_at);
-    const box = $("released");
-    box.hidden = !shown.length;
-    box.innerHTML = shown.length ? `<h3>From your commander</h3><ul class="alerts">${shown.map(a => {
+    try {
+      const list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/alerts?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
+      releasedList = list.filter(a => a.psychological && a.released_to_crew_at);
+    } catch { /* keep the last list */ }
+    renderReleased();
+    renderHealth();
+  }
+  // Released alerts, plus what the Commander sent with "Send to <name>"
+  // (common.js sentTo; owner, 2026-11-15). Not on the Commander's own console:
+  // the Commander sees everything on Crew wellbeing already.
+  function renderReleased() {
+    const sent = ownRole === "Commander" ? null : A.sentTo(cfg.aid);
+    const when = t => new Date(t).toLocaleString();
+    const items = releasedList.map(a => {
       const by = a.released_by === "automatic" ? "Shared automatically after 12 h" : "Shared with you";
       const next = a.insight && a.insight.recommended_action;
       return `<li class="alert sev-${esc(a.severity)}">
         <p class="verdict">${esc(a.crew_message || a.onboard_action)}</p>
         ${next && next !== a.crew_message ? `<p class="small">${esc(next)}</p>` : ""}
-        <p class="muted small">${by} · ${new Date(a.released_to_crew_at).toLocaleString()}</p></li>`;
-    }).join("")}</ul>` : "";
+        <p class="muted small">${by} · ${when(a.released_to_crew_at)}</p></li>`;
+    });
+    if (sent) {
+      const ids = new Set(releasedList.map(a => a.id));
+      const ws = (sent.warnings || []).filter(w => !w.alertId || !ids.has(w.alertId));
+      const foot = `<p class="muted small">Sent by your commander · ${when(sent.at)}</p>`;
+      for (const w of ws) {
+        items.push(`<li class="alert sev-${esc(w.severity)}"><p class="verdict">${esc(w.title)}</p>
+          ${w.detail ? `<p class="small">${esc(w.detail)}</p>` : ""}${foot}</li>`);
+      }
+      if (!items.length) items.push(`<li class="alert sev-ok"><p class="verdict">Nothing to act on</p>${foot}</li>`);
+    }
+    const box = $("released");
+    box.hidden = !items.length;
+    box.innerHTML = items.length ? `<h3>From your commander</h3><ul class="alerts">${items.join("")}</ul>` : "";
   }
+  // A send from the Commander's page in another tab or pane of this browser.
+  window.addEventListener("storage", e => {
+    if (e.key !== A.SENT_KEY) return;
+    renderHealth();
+    if (!PATTERN) loadReleased();   // fetch: the send may have released an alert too
+  });
 
   // ---- health bar beside the body -------------------------------------------
-  // How close today's readings are to this astronaut's own usual, 0-100 %: each
-  // reading scores 100 in its usual range, 67 at watch, 33 at alert, 0 at
-  // critical (the same scales Mission Control colours by, common.js THRESHOLDS),
-  // then the average. Our own summary, not a clinical score.
-  const HEALTH_POINTS = { ok: 100, watch: 67, alert: 33, critical: 0 };
+  // How close readings are to this astronaut's own usual, 0-100 % (common.js
+  // healthScore). Commander first (owner, 2026-11-15): a crew member's bar
+  // changes ONLY when the Commander presses "Send to <name>" on Crew wellbeing,
+  // and then shows what was sent; until then it is neutral ("—"). The
+  // Commander's own bar stays live: the Commander sees everything.
   function renderHealth() {
     const bar = $("healthBar");
-    const levels = FIELDS.map(f => A.thresholdLevel(f.key, latest[f.key], latest.baseline ? latest.baseline[f.key] : null,
-                                                    f.key === "stress_0to100" ? latest.stress_level : null))
-      .filter(Boolean).map(x => x.level);
-    if (!levels.length) { bar.hidden = true; return; }
-    const pct = Math.round(levels.reduce((s, l) => s + HEALTH_POINTS[l], 0) / levels.length);
-    const inRange = levels.filter(l => l === "ok").length;
-    const lv = pct >= 85 ? "ok" : pct >= 60 ? "watch" : pct >= 35 ? "alert" : "critical";
+    const live = ownRole === "Commander";
+    const sent = live ? null : A.sentTo(cfg.aid);
+    const h = live ? A.healthScore(latest) : sent && sent.health;
     bar.hidden = false;
-    bar.className = `health-bar hb-${lv}`;
-    bar.title = `${inRange} of ${levels.length} readings in your usual range`;
-    bar.querySelector(".hb-pct").textContent = `${pct}%`;
-    bar.querySelector(".hb-fill").style.height = `${pct}%`;
-    bar.querySelector(".hb-track").setAttribute("aria-valuenow", pct);
+    if (!h) {
+      bar.className = "health-bar hb-none";
+      bar.title = live ? "Waiting for readings" : "Your commander hasn't sent you a health check yet";
+      bar.querySelector(".hb-pct").textContent = "—";
+      bar.querySelector(".hb-fill").style.height = "100%";
+      bar.querySelector(".hb-track").removeAttribute("aria-valuenow");
+      return;
+    }
+    bar.className = `health-bar hb-${h.level}`;
+    bar.title = `${h.inRange} of ${h.total} readings in your usual range` +
+      (sent ? `, sent by your commander ${new Date(sent.at).toLocaleString()}` : "");
+    bar.querySelector(".hb-pct").textContent = `${h.pct}%`;
+    bar.querySelector(".hb-fill").style.height = `${h.pct}%`;
+    bar.querySelector(".hb-track").setAttribute("aria-valuenow", h.pct);
   }
 
   // ---- body figure: picks which vitals to focus on -------------------------

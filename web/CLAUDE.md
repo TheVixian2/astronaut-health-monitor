@@ -235,6 +235,20 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
     medicines are for (`region` / `area` per entry in `meds.js`): overdue
     orange, due now yellow, later today blue, given goes back to normal; alert
     suggestions light the alert's body part. The lists themselves show names.
+- **The Commander sends; only then does the crew member's console change**
+  (owner, 2026-11-15). Every crew member's card on Crew wellbeing (not the
+  Commander's own) has **"Send to <name>"**: it releases their unreleased
+  psychological alerts (`PUT /astronauts/{id}/alerts/{alert_id}/release`,
+  viewer = the Commander) and keeps their health now (`AHM.healthScore`) plus
+  the card's warnings, without the Commander's advice, via `AHM.setSentTo`.
+  On their console the **health bar shows only what was sent** (neutral "—"
+  until the first send; it never follows live readings) and "From your
+  commander" lists the sent warnings next to released alerts. The Commander's
+  own bar stays live. PROVISIONAL: the sent snapshot is in localStorage
+  (`ahm-sent-to-crew`), so it reaches other tabs / demo panes in the same
+  browser (storage event), not other devices, until the backend stores it.
+- **Chart scales:** `FIELDS[].axis` fixes the y-axis for bounded vitals:
+  mood 1-5 (reads 5 4 3 2 1), stress 0-100 (never negative).
 - **Bone density and muscle mass** (owner, 2026-11-14: the crew has a
   portable X-ray machine; replaced "skeletal mass" the same day). From a
   weekly DXA scan: `bone_density_g_cm2` (whole-body bone mineral density,
