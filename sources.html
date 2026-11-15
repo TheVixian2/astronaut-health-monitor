@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Data sources · AHM</title>
+  <title>Data sources · Dr. Galactic</title>
   <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -21,9 +21,9 @@
 </head>
 <body class="selfcheck">
   <nav class="appnav area-onboard" aria-label="Data sources">
-    <a class="brand" data-href="index.html" href="index.html" title="Home">AHM</a>
+    <a class="brand" data-href="index.html" href="index.html" title="Home">Dr. Galactic</a>
     <span class="area-tag">Data sources</span>
-    <div class="menu"><a href="javascript:history.back()">← Back</a></div>
+    <div class="menu"><a href="index.html" data-href="index.html" onclick="if (history.length > 1) { history.back(); return false; }">← Back</a></div>
     <div class="user small"><span data-user></span> · <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
@@ -36,7 +36,8 @@
       <ul>
         <li><strong>ISS cabin air</strong>: CO₂ (US Lab and Node 3), O₂, cabin pressure and temperature, live from NASA's public
           <a href="https://lightstreamer.com/customer-story/how-nasa-is-using-lightstreamer/" target="_blank" rel="noopener">ISS Live telemetry</a>.
-          It is the cabin our simulated crew lives in (Commander → Habitat).</li>
+          It is the cabin our simulated crew lives in (Commander → Habitat). On the public demo (no backend)
+          it is a recording from one real reading, labelled "recorded".</li>
         <li><strong>Earth–Mars light time</strong> for today from the
           <a href="https://ssd-api.jpl.nasa.gov/doc/horizons.html" target="_blank" rel="noopener">NASA JPL Horizons API</a>.</li>
       </ul>

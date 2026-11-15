@@ -87,7 +87,7 @@
   async function refreshLocations() {
     try {
       drawMap(await A.getJSON(cfg.base, `/crew/locations?viewer=${viewer}`, cfg.mock));
-      $("habConn").textContent = "live"; $("habConn").className = "pill pill-on";
+      $("habConn").textContent = cfg.mock ? "recorded" : "live"; $("habConn").className = "pill pill-on";
     } catch {
       $("habConn").textContent = "offline"; $("habConn").className = "pill pill-off";
     }
@@ -101,7 +101,7 @@
       const co2 = e.co2_1h_avg_mmhg ?? e.co2_mmhg;
       const cls = { ok: "nominal", elevated: "watch", above_limit: "alert" }[e.status] || "nominal";
       const when = e.updated_at ? new Date(e.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "?";
-      $("cabin").innerHTML = `<div class="cc-head"><div><strong>Cabin air · live from the International Space Station</strong>
+      $("cabin").innerHTML = `<div class="cc-head"><div><strong>Cabin air · ${cfg.mock ? "recorded" : "live"} from the International Space Station</strong>
           <div class="muted small">${A.esc(e.source)} · updated ${A.esc(when)}</div></div>
           <span class="st-${cls}"><span class="st-pill">${A.esc(e.status.replace("_", " "))}</span></span></div>
         <p class="small">CO₂ <strong>${co2} mmHg</strong> <span class="muted">(1-hour avg; NASA limit ${e.co2_limit_mmhg} mmHg)</span> ·

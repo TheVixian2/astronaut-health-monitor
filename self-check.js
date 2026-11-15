@@ -232,7 +232,7 @@
     if (sent && sent.warnings) {   // null: a health check only (the Crew Medical Officer's)
       const ids = new Set(releasedList.map(a => a.id));
       const ws = sent.warnings.filter(w => !w.alertId || !ids.has(w.alertId));
-      const foot = `<p class="muted small">Sent by your ${sentBy(sent)} · ${when(sent.at)}</p>`;
+      const foot = `<p class="muted small">Sent by your ${sentBy({ by_role: sent.warnings_by_role || sent.by_role })} · ${when(sent.warnings_at || sent.at)}</p>`;
       for (const w of ws) {
         items.push(`<li class="alert sev-${esc(w.severity)}"><p class="verdict">${esc(w.title)}</p>
           ${w.detail ? `<p class="small">${esc(w.detail)}</p>` : ""}${foot}</li>`);
