@@ -209,14 +209,19 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   moon, smiley, pulse trace (HRV), gauge (stress). Colours are the `--ic-*`
   tokens in `style.css` (`.vi-*`). Shown on the My health tiles; reuse it
   wherever a vital is labelled.
-- **HRV and stress** (owner, 2026-11-14): ten readings, five per row. HRV is
+- **HRV and stress** (owner, 2026-11-14/15): ten readings, five per row. HRV is
   `hrv_sdnn_ms` from the vitals (SDNN, as Apple Watch records it). **Stress
-  (0-100) is derived in the web** (`AHM.withStress` in `common.js`), not sent by
-  the backend: HRV at the astronaut's usual = 30, each 10 % below adds 16;
-  bands 0-25 resting, 26-50 low, 51-75 medium, 76-100 high. Apple Watch keeps
-  no stress score, so the scale is ours and the chart note says so. Fields with
-  `derived: true` are skipped where raw backend fields are listed
-  (`stream-check.js`). If the backend ever sends a stress score, show that.
+  (0-100)** comes from the backend's wellbeing score (`AHM.withStress`), with an
+  HRV-only fallback where the backend scores nothing (pattern, test feed).
+  **Its usual is 30, never 0** (owner, 2026-11-15: "it cannot be 0"): Apple
+  Watch has no stress score; Garmin's HRV-based 0-100 score (Firstbeat) averaged
+  30 across all users in its 2024 Connect data report ("low"; countries 28-33).
+  Shown = 30 + backend score × 0.7, so normal reads 30 and the worst 100; the
+  backend's levels keep their cut-offs on this scale (steady ≤ 43, watch 44-57,
+  concern 58-71, urgent 72+; `THRESHOLDS` steps 44 / 58 / 72). Fallback: 30 at
+  the usual HRV, +16 per 10 % below it, lower when HRV is above it (sleep reads
+  low, as on wearables). Fields with `derived: true` are skipped where raw
+  backend fields are listed (`stream-check.js`).
 - **Body shape** (owner, 2026-11-14): a Male | Female slider on the body card
   swaps the silhouette (`setSex` in `self-check.js`; shapes in `common.js`
   `AHM.BODY_SHAPES`, generated so both share their points and morph). Sex is

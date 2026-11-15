@@ -101,7 +101,7 @@
     sleep_h_last_night: { by: "pct",   dir: "down", steps: [15, 25, 35] },
     mood_1to5:          { by: "abs",   dir: "down", steps: [1, 2, 3] },
     hrv_sdnn_ms:        { by: "pct",   dir: "down", steps: [10, 20, 30] },
-    stress_0to100:      { by: "score", dir: "up",   steps: [20, 40, 60] },   // backend levels: watch, concern, urgent
+    stress_0to100:      { by: "score", dir: "up",   steps: [44, 58, 72] },   // backend levels watch, concern, urgent on the usual-30 scale
     bone_density_g_cm2: { by: "pct",   dir: "down", steps: [1, 2, 3] },
     muscle_mass_kg:     { by: "pct",   dir: "down", steps: [1.5, 3, 5] },
   };
@@ -183,7 +183,19 @@
   // astronaut's own view has no score (withheld) and the tile shows none.
   // Fallback ONLY where the backend scores nothing (the presenter's simulated
   // whole-mission pattern, the scripted test feed): an estimate from HRV alone.
-  const STRESS_BANDS = [[19, "Steady"], [39, "Watch"], [59, "Concern"], [100, "Urgent"]];
+  //
+  // Shown on a wearable-style stress scale whose USUAL IS 30, not 0 (owner,
+  // 2026-11-15: "it cannot be 0"). Apple Watch has no stress score of its own
+  // (it records HRV; apps such as Athlytic score 0-100 from it). The largest
+  // published data for an HRV-based 0-100 stress score is Garmin's (Firstbeat
+  // engine): the 2024 Garmin Connect data report gives a global average daily
+  // stress of 30, "categorized as low" (countries 28-33, weekdays 29-32).
+  //   shown = 30 + backend score x 0.7: their normal reads 30, the worst 100.
+  // The backend's levels keep their exact cut-offs, moved onto this scale
+  // (score 20 / 40 / 60 -> 44 / 58 / 72).
+  const STRESS_USUAL = 30;
+  const stressShown = score => (score == null ? null : Math.round(STRESS_USUAL + score * (100 - STRESS_USUAL) / 100));
+  const STRESS_BANDS = [[43, "Steady"], [57, "Watch"], [71, "Concern"], [100, "Urgent"]];
   const stressCache = {};            // aid -> { score, withheld }, filled by loadStress()
   async function loadStress(cfg, aid, viewer) {
     try {
@@ -192,24 +204,24 @@
     } catch { /* keep the last value */ }
     return stressCache[aid];
   }
-  function stressFromHrv(hrv, usual) {   // fallback: 0 at their usual HRV, +16 per 10 % below it
+  function stressFromHrv(hrv, usual) {   // fallback: 30 at their usual HRV, +16 per 10 % below it (lower above it)
     if (typeof hrv !== "number" || typeof usual !== "number" || usual <= 0) return null;
-    return Math.max(0, Math.min(100, Math.round((1 - hrv / usual) * 160)));
+    return Math.max(0, Math.min(100, Math.round(STRESS_USUAL + (1 - hrv / usual) * 160)));
   }
   function stressBand(score, backendLevel) {
     if (backendLevel) return backendLevel[0].toUpperCase() + backendLevel.slice(1);
     return score == null ? "" : STRESS_BANDS.find(([max]) => score <= max)[1];
   }
-  // A vitals snapshot with stress_0to100 added (its usual is 0: their own normal).
+  // A vitals snapshot with stress_0to100 added (its usual is STRESS_USUAL, 30).
   function withStress(v, aid) {
     if (!v) return v;
     const b = aid != null ? stressCache[aid] : undefined;
     let score, level = null, withheld = false;
-    if (b) { score = b.score; level = b.level; withheld = b.withheld; }
+    if (b) { score = stressShown(b.score); level = b.level; withheld = b.withheld; }
     else if (typeof v.hrv_sdnn_ms === "number") score = stressFromHrv(v.hrv_sdnn_ms, v.baseline ? v.baseline.hrv_sdnn_ms : null);
     else return v;
     return { ...v, stress_0to100: score, stress_level: level, stress_withheld: withheld,
-             baseline: v.baseline ? { ...v.baseline, stress_0to100: 0 } : v.baseline };
+             baseline: v.baseline ? { ...v.baseline, stress_0to100: STRESS_USUAL } : v.baseline };
   }
 
   // Flat icon per vital (24 x 24, filled shapes). Colour comes from CSS:
