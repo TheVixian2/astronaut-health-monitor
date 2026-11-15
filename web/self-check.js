@@ -584,8 +584,10 @@
   // ---- check-in ------------------------------------------------------------
 
   // One question at a time. Steps are the form's .ci-step blocks (the PHQ-2
-  // ones are added once GET /checkin/questions answers). Every answer is
-  // optional: Next reads "Skip" until the step is answered.
+  // ones are added once GET /checkin/questions answers). Every question needs
+  // an answer before Next (owner, 2026-11-15: no skipping by pressing Next);
+  // symptoms have "None of these". Only the 3-minute reaction test stays
+  // optional (Next reads "Skip" there).
   let ciAt = 0;
   const ciSteps = () => [...$("checkin").querySelectorAll(".ci-step")];
   const ciAnswered = step => [...step.querySelectorAll("input")]
@@ -599,18 +601,37 @@
     $("ciBack").hidden = ciAt === 0;
     $("ciNext").hidden = last;
     $("ciSubmit").hidden = !last;
-    $("ciNext").textContent = ciAnswered(step) ? "Next" : step.dataset.step === "symptoms" ? "None of these" : "Skip";
+    const optional = s => s.dataset.step === "reaction_test";
+    const ok = optional(step) || ciAnswered(step);
+    $("ciNext").disabled = !ok;
+    $("ciNext").title = ok ? "" : "Choose an answer first";
+    $("ciNext").textContent = optional(step) && !ciAnswered(step) ? "Skip" : "Next";
+    const allAnswered = steps.every(s => optional(s) || ciAnswered(s));
+    $("ciSubmit").disabled = !allAnswered;
+    $("ciSubmit").title = allAnswered ? "" : "Answer every question first";
     $("ciProgress").textContent = $("checkin").hidden ? "Done" : `Question ${ciAt + 1} of ${steps.length}`;
     $("ciBarFill").style.width = `${((ciAt + 1) / steps.length) * 100}%`;
   }
 
   $("ciBack").addEventListener("click", () => ciShow(ciAt - 1));
-  $("ciNext").addEventListener("click", () => ciShow(ciAt + 1));
-  $("checkin").addEventListener("change", () => ciShow(ciAt));
+  $("ciNext").addEventListener("click", () => { if (!$("ciNext").disabled) ciShow(ciAt + 1); });
+  $("checkin").addEventListener("change", e => {
+    // "None of these" and the symptoms exclude each other.
+    const t = e.target;
+    if (t.name === "symptom" && t.checked) {
+      $("checkin").querySelectorAll('input[name="symptom"]').forEach(i => {
+        if (i !== t && (t.value === "none" || i.value === "none")) i.checked = false;
+      });
+    }
+    ciShow(ciAt);
+  });
   $("checkin").addEventListener("input", () => ciShow(ciAt));
   // Enter in the hours box moves on instead of submitting early.
   $("checkin").addEventListener("keydown", e => {
-    if (e.key === "Enter" && e.target.tagName === "INPUT" && ciAt < ciSteps().length - 1) { e.preventDefault(); ciShow(ciAt + 1); }
+    if (e.key === "Enter" && e.target.tagName === "INPUT" && ciAt < ciSteps().length - 1) {
+      e.preventDefault();
+      if (!$("ciNext").disabled) ciShow(ciAt + 1);
+    }
   });
   // Sleep +/-: half-hour steps, starting from the astronaut's usual.
   document.querySelectorAll("[data-sleep]").forEach(b => b.addEventListener("click", () => {
@@ -672,7 +693,7 @@
     const mood = f.querySelector('input[name="mood"]:checked');
     if (mood) body.mood_1to5 = Number(mood.value);
     if (f.sleep.value !== "" && Number.isFinite(Number(f.sleep.value))) body.sleep_h = Math.max(0, Math.min(16, Number(f.sleep.value)));
-    const symptoms = [...f.querySelectorAll('input[name="symptom"]:checked')].map(i => i.value);
+    const symptoms = [...f.querySelectorAll('input[name="symptom"]:checked')].map(i => i.value).filter(v => v !== "none");
     if (symptoms.length) body.symptoms = symptoms;
     // PHQ-2 only when both items are answered (the API needs both).
     const li = f.querySelector('input[name="phq2_little_interest"]:checked');
@@ -877,7 +898,8 @@
     </section>
 
     <!-- Check-in: one question at a time with Back / Next (owner's call,
-         2026-11-14). Every answer is optional. No "share with ground" box:
+         2026-11-14). Every question needs an answer before Next (owner,
+         2026-11-15); only the reaction test is optional. No "share with ground" box:
          check-ins are always shared with Mission Control (owner's call). The
          PHQ-2 steps are added from GET /checkin/questions (exact wording). -->
     <section class="card checkin-card solo" data-tab="checkin">
@@ -917,6 +939,7 @@
             <label><input type="checkbox" name="symptom" value="nausea"><span>Nausea</span></label>
             <label><input type="checkbox" name="symptom" value="congestion"><span>Congestion</span></label>
             <label><input type="checkbox" name="symptom" value="fatigue"><span>Fatigue</span></label>
+            <label class="ci-none"><input type="checkbox" name="symptom" value="none"><span>None of these</span></label>
           </div>
         </div>
 
