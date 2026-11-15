@@ -277,6 +277,21 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **Why the bar changed, a My report tab, full menu on History and Data sources**
+  (NotKaemy, 2026-11-15; on `main` 6034e41 and live, gh-pages e951a89). Under the
+  wellbeing bar on My health: the value sent, how it moved since the last report
+  and the top reasons (each with the % it took off), from the crew member's own
+  `GET /wellbeing?viewer=<self>`; until the commander has talked with them it says
+  the reasons come then (commander first). New **My report** tab on the crew
+  console and the CMO's page (not the Commander's, whose bar is live): the whole
+  last report, i.e. every reason with its evidence, a 14-day chart, the warnings
+  shared, "What might help", what is still close to usual. **History and Data
+  sources have no Back link anymore**: they show every tab of the page they were
+  opened from (`AHM.pageMenu` in `web/common.js`). **TheVixian:** this replaces
+  your Data sources Back fix (d2ff238); your title and "recorded" note are kept,
+  and your `sentLoop` now also drives the report (web's own `loadReport()` was
+  dropped in the merge). Send times are compared by moment: the backend writes
+  `.740000Z` where the browser wrote `.740Z`, which made one send look like two.
 - **Commander's "Send to <name>"; crew health bar only changes when sent** (NotKaemy,
   2026-11-15; on `main` and live on the site, gh-pages 79f109e). Each crew member's Crew wellbeing card has
   "Send to <name>": it releases their psychological alerts through the backend
