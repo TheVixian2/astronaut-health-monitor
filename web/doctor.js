@@ -26,8 +26,8 @@
   // here. Stored by the backend (common.js setSentTo), which fills in the value.
   const ownAid = () => ([...members.values()].find(c => c.role === "Crew Medical Officer") || {}).id || "a3";
   function sendRow(aid, name) {
-    const sent = A.sentTo(aid);
-    return `<div class="cp-send"><button type="button" data-send="${esc(aid)}">Send to ${esc(name.replace(/^(Cmdr\.|Dr\.)\s+/, "").split(" ")[0])}</button>
+    const sent = A.sentTo(aid), flash = A.justSent(aid);
+    return `<div class="cp-send"><button type="button" data-send="${esc(aid)}"${flash ? ' class="is-sent" disabled' : ""}>${flash ? "Sent ✓" : `Send to ${esc(name.replace(/^(Cmdr\.|Dr\.)\s+/, "").split(" ")[0])}`}</button>
       <span class="muted small">${sent ? `Last sent ${esc(clock(new Date(sent.at)))}${sent.by_role ? ` by the ${esc(sent.by_role === "Commander" ? "Commander" : "CMO")}` : ""}` : "Not sent yet"}</span></div>`;
   }
   document.addEventListener("click", async e => {
@@ -41,6 +41,7 @@
                                health: null, warnings: null }, cfg, viewer);
       await A.loadSentTo(cfg, aid, viewer);   // the stored copy, with the health the backend filled in
     } catch { b.textContent = "Not sent, try again"; b.disabled = false; return; }
+    A.markJustSent(aid, render);
     render();
   });
 

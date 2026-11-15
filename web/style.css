@@ -829,11 +829,21 @@ h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radiu
 .alert.sev-ok { border-color: var(--ok); }
 /* Crew wellbeing: "Send to <name>" at the foot of each crew member's card. */
 .cp-send { display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 4px; }
+/* "Sent ✓" for a moment after a send (common.js markJustSent). */
+.cp-send button.is-sent { background: var(--ok-bg); border-color: var(--ok); color: var(--ok-ink); cursor: default; opacity: 1;
+  animation: sent-in .25s ease-out; }
+@keyframes sent-in { from { transform: scale(.94); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cp-send button.is-sent { animation: none; } }
 /* Released warnings at the top of "Your vitals". */
 .released { margin: 0 0 12px; }
 .released h3 { font-size: var(--t-sm); margin: 0 0 6px; }
 .released .verdict { margin: 0 0 4px; }
 .released p { margin: 0; }
+/* Why the wellbeing bar changed: each reason with the % it takes off. */
+.released .why-head { margin: 6px 0 2px; font-weight: 600; color: var(--text-strong); }
+.why { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 4px; font-size: var(--t-sm); }
+.why li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.why-pts { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--alert-ink); text-align: right; }
 .ci-tick { color: var(--ok-ink, currentColor); font-weight: 700; }
 /* Personal baseline from a CSV (preview branch csv-baseline) */
 .baseline-box { display: flex; flex-wrap: wrap; align-items: center; gap: .5em .8em; margin: 0 0 .6em; color: var(--muted); }

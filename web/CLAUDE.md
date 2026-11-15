@@ -252,9 +252,19 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   On their console the **health bar shows only what was sent** (neutral "—"
   until the first send; it never follows live readings) and "From your
   commander" lists the sent warnings next to released alerts. The Commander's
-  own bar stays live. PROVISIONAL: the sent snapshot is in localStorage
-  (`ahm-sent-to-crew`), so it reaches other tabs / demo panes in the same
-  browser (storage event), not other devices, until the backend stores it.
+  own bar stays live. The CMO can send too (wellbeing bar only). Stored by the
+  backend (`PUT/GET /astronauts/{id}/shared-check`); this browser keeps a copy
+  (`ahm-sent-to-crew`) only after the backend accepted it.
+  - **"Sent ✓"** on the button for 2.5 s after a send succeeds
+    (`AHM.markJustSent` / `justSent`; the pages re-render, so sendRow reads it).
+  - **Why it changed** (owner, 2026-11-15): with every report the crew member's
+    "From your commander" box starts with "Wellbeing 33%, down from 80%" and the
+    backend's reasons from their own `GET /wellbeing?viewer=<self>`: each signal
+    with the % it takes off the bar (bar = 100 − score; points scaled like the
+    backend does when a whole group has no data, so they add up to the drop).
+    While a flag still waits for the commander the backend withholds them, and
+    the box says the reasons come once the commander has talked with them. The
+    previous value is remembered per browser (`ahm-sent-seen`).
 - **Chart scales:** `FIELDS[].axis` fixes the y-axis for bounded vitals:
   mood 1-5 (reads 5 4 3 2 1), stress 0-100 (never negative).
 - **Bone density and muscle mass** (owner, 2026-11-14: the crew has a
