@@ -89,6 +89,18 @@ threshold.**
 `sleep_h_last_night` is derived from the on-board lighting log unless a check-in
 overrides it.
 
+### Personal baseline from a CSV — **PROVISIONAL**
+
+`PUT /astronauts/{id}/baseline` `{name, rows, values: {field: median}}` → `{kind, name, rows, fields}`.
+The web app parses the CSV (`web/baseline-upload.js`) and sends only the median of each
+recognised column (at least 7 rows). Fields: any vitals field above; each must be in
+`quality.PLAUSIBLE` (sleep 0-16 h, mood 1-5), else 422 with a plain message. Uploaded
+fields replace the stored usual; others keep mission days 7-14. Kept in `meta`
+(`baseline_upload:<id>`). `DELETE` goes back to the demo data. The simulated stream keeps
+running on its own usual; the wellbeing score keeps its own daily baseline.
+`GET /vitals` and the stream's `vitals` carry `baseline_source: {kind: "demo"|"upload",
+name, rows, fields}`.
+
 ### `GET /astronauts/{id}/stream?view=crew|ground`
 Server-Sent Events. Named events:
 

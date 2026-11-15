@@ -19,6 +19,13 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-15 — CSV baseline + check-in done, on `main` (Luca's session), @NotKaemy please pull `main` into `web`**
+  (it merges cleanly with your `cc27ec5`): (1) `PUT/DELETE /astronauts/{id}/baseline` (spec: Vitals),
+  `baseline_source` on vitals; the console shows "Usual values from: Demo data …" with Upload CSV /
+  Sample CSV / Back to demo data (`web/baseline-upload.js`, `web/sample-baseline.csv`, mock.js
+  `Mock.baseline`). (2) Check-in shows "Check-in completed" + time for the rest of the day, ✓ on the
+  tab. (3) Login button: "Continue as presenter/judge". @stefanalbu2010-byte: backend part is in
+  `main.py` (`apply_baseline`, `sim_baseline` = what the simulated body walks around).
 - **2026-11-15 — web changes by Luca's session, @NotKaemy please pull `main` into `web`:**
   (1) **Stress** is now the backend's wellbeing score (`GET /astronauts/{id}/wellbeing`, common.js
   `loadStress`), bands = backend levels; the HRV formula is only a fallback for the pattern/test feed.
