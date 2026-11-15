@@ -88,11 +88,23 @@ SCENARIO_SLEEP_MOOD = 2
 DECLINE_FROM_DAY = 22
 
 
+# Core body temperature climbs slowly in long-duration flight, for everyone: about +1 °C over
+# 2.5 months at rest (Stahn et al., Sci Rep 2017; ~37 -> ~38 °C, Wydotis et al. 2026). A linear
+# ramp is a simplification. The stored baseline is mission days 7-14, so the live value is
+# offset from the middle of that window.
+TEMP_RISE_C, TEMP_RISE_DAYS, BASELINE_MID_DAY = 1.0, 75, 10.5
+
+
+def temp_rise_c(mission_day: float) -> float:
+    return TEMP_RISE_C * min(1.0, max(0.0, mission_day - 1) / TEMP_RISE_DAYS)
+
+
 def drift(aid: str, mission_day: int) -> dict[str, float]:
+    out = {"temp_c": 1 + (temp_rise_c(mission_day) - temp_rise_c(BASELINE_MID_DAY)) / CREW[aid][2]["temp_c"]}
     if aid != "a2" or mission_day < DECLINE_FROM_DAY:
-        return {}
+        return out
     ramp = min(1.0, (mission_day - DECLINE_FROM_DAY + 1) / 14)  # builds up over two weeks
-    return {"hrv_sdnn_ms": 1 - 0.12 * ramp, "active_min": 1 - 0.2 * ramp}
+    return {**out, "hrv_sdnn_ms": 1 - 0.12 * ramp, "active_min": 1 - 0.2 * ramp}
 
 
 @dataclass

@@ -607,6 +607,9 @@ async def refresh_from_store() -> None:
         s.baseline = Baseline(**base)
         newest = d["checkins"][-1][0] if d["checkins"] else ""
         s.checkins = d["checkins"] + [c for c in s.checkins if c[0] > newest]  # keep any not yet read back
+        last_mood = next((p["mood_1to5"] for _, p in reversed(s.checkins) if p.get("mood_1to5") is not None), None)
+        if last_mood is not None and "mood_1to5" not in s.manual:
+            s.manual["mood_1to5"] = last_mood   # the latest check-in, also after a restart
         s.history = behavioral.History(days=d["days"], checkins=s.checkins, mission_start=mission_start.date())
     await asyncio.to_thread(compute_profiles, t)
 
