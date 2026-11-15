@@ -34,6 +34,7 @@
   // Latest check-in values per astronaut. Like the backend, a check-in's
   // sleep_h / mood_1to5 replace the simulated sleep / mood in later vitals.
   const MANUAL = {};
+  const UPLOADED = {};   // aid -> {name, rows, values}: a CSV baseline (preview branch csv-baseline)
 
   const BASELINES = {
     a1: { heart_rate_bpm: 58, spo2_pct: 98, temp_c: 36.5, resp_rate_bpm: 12, sleep_h_last_night: 7.2, mood_1to5: 4, hrv_sdnn_ms: 55 },
@@ -129,7 +130,8 @@
     snapshot() {
       const v = this.values;
       return {
-        timestamp: nowIso(), source: "simulated", baseline: this.baseline,
+        timestamp: nowIso(), source: "simulated",
+        baseline: { ...this.baseline, ...(UPLOADED[this.aid]?.values || {}) }, baseline_source: baselineSource(this.aid),
         heart_rate_bpm: Math.round(v.heart_rate_bpm), spo2_pct: Math.round(v.spo2_pct),
         temp_c: Math.round(v.temp_c * 10) / 10, resp_rate_bpm: Math.round(v.resp_rate_bpm),
         sleep_h_last_night: MANUAL[this.aid]?.sleep_h_last_night ?? v.sleep_h_last_night,
@@ -275,6 +277,17 @@
     return Promise.reject(new Error(`mock: no POST ${path}`));
   }
 
+  function baselineSource(aid) {
+    const u = UPLOADED[aid];
+    return u ? { kind: "upload", name: u.name, rows: u.rows, fields: Object.keys(u.values) }
+             : { kind: "demo", name: "Demo data: simulated stream", rows: null, fields: [] };
+  }
+  // PUT / DELETE /astronauts/{id}/baseline in mock mode: kept in this page only.
+  function baseline(aid, body) {
+    if (body) UPLOADED[aid] = body; else delete UPLOADED[aid];
+    return Promise.resolve(baselineSource(aid));
+  }
+
   function put(path, body) {
     console.info("[mock] PUT", path, body);
     let m = path.match(/^\/astronauts\/([^/]+)\/circadian\/sharing$/);
@@ -284,5 +297,5 @@
     return reject(path, 404);
   }
 
-  window.Mock = { EventSource: MockEventSource, get, post, put };
+  window.Mock = { EventSource: MockEventSource, get, post, put, baseline };
 })();
