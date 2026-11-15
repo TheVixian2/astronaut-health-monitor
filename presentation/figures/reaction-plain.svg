@@ -17,7 +17,7 @@
 
   <!-- title -->
   <text x="105" y="150" font-size="56" font-weight="700" fill="#f2f3f7" letter-spacing="-1">The reaction a long space mission sets off</text>
-  <text x="105" y="200" font-size="26" fill="#a3a6b4">Months of these together can lead to depression. Dr. Galactic spots the reaction early.</text>
+  <text x="105" y="200" font-size="26" fill="#a3a6b4">Months of these together can lead to depression, and Earth is too far away to see it coming.</text>
 
   <!-- reactant 1: environment -->
   <g transform="translate(105 380)">
