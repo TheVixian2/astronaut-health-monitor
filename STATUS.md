@@ -277,6 +277,14 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **Every wellbeing bar starts at 100 %; the Commander's and the CMO's are live**
+  (NotKaemy, 2026-11-15; on `main` c27589a and live, gh-pages f5ac1fa). Crew
+  members' bars show 100 % until a report is sent (was "—"), then what was sent.
+  The Commander's and the Crew Medical Officer's own bars follow their own check
+  (`GET /wellbeing?viewer=<self>`) every 10 s and right after their own check-in,
+  no send needed, and glide down with the % counting. While their newest check
+  waits for the commander (the deputy for the Commander's own) the backend
+  withholds it, so the bar keeps the last value until the release (commander first).
 - **Why the bar changed, a My report tab, full menu on History and Data sources**
   (NotKaemy, 2026-11-15; on `main` 6034e41 and live, gh-pages e951a89). Under the
   wellbeing bar on My health: the value sent, how it moved since the last report
