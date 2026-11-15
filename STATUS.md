@@ -250,6 +250,18 @@ Branch: **none — works on `main`** (`presentation/` is a shared path, rule 3b)
 
 Branch: `web`
 
+- **Commander's "Send to <name>"; crew health bar only changes when sent** (NotKaemy,
+  2026-11-15; on `web`, not on `main` yet). Each crew member's Crew wellbeing card has
+  "Send to <name>": it releases their psychological alerts through the backend
+  (`PUT .../alerts/{id}/release`) and sends their health % plus the card's warnings to
+  their console. Their health bar shows only what was sent ("—" before), never live
+  readings. **@stefanalbu2010-byte:** the sent health % and warnings are kept in the
+  browser for now, so they only reach the same browser (fine for the demo). An endpoint
+  to store them per astronaut (e.g. `PUT /astronauts/{id}/shared-check` `{at, by,
+  health{pct, level, in_range, total}, warnings[]}`, read with `viewer=<self>`) would
+  make it work across devices; the web will switch to it. **Note:** the public site
+  deploys from `gh-pages` (a copy of `web/`), so merging into `main` alone doesn't
+  update https://dr-galactic.github.io/.
 - **`web` merged into `main`** (NotKaemy, 2026-11-15, 057c680): main's latest web work
   (backend stress score, released warnings, health bar, reaction test) merged into
   `web` first, one conflict resolved, all pages tested, then main fast-forwarded.
