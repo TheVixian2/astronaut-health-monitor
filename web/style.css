@@ -826,3 +826,4 @@ h2 .count { display: inline-block; min-width: 18px; padding: 0 5px; border-radiu
 .released h3 { font-size: var(--t-sm); margin: 0 0 6px; }
 .released .verdict { margin: 0 0 4px; }
 .released p { margin: 0; }
+.ci-tick { color: var(--ok-ink, currentColor); font-weight: 700; }

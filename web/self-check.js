@@ -563,7 +563,7 @@
     $("ciNext").hidden = last;
     $("ciSubmit").hidden = !last;
     $("ciNext").textContent = ciAnswered(step) ? "Next" : step.dataset.step === "symptoms" ? "None of these" : "Skip";
-    $("ciProgress").textContent = `Question ${ciAt + 1} of ${steps.length}`;
+    $("ciProgress").textContent = $("checkin").hidden ? "Done" : `Question ${ciAt + 1} of ${steps.length}`;
     $("ciBarFill").style.width = `${((ciAt + 1) / steps.length) * 100}%`;
   }
 
@@ -587,6 +587,22 @@
     $("checkin").reset(); $("checkinResult").textContent = "";
     $("ciDone").hidden = true; $("checkin").hidden = false; ciShow(0);
   });
+
+  // "Check-in completed": after Submit, and again for the rest of that day
+  // (this browser only), with a tick on the Check-in tab.
+  function showCheckinDone(at) {
+    $("checkin").hidden = true;
+    $("ciDone").hidden = false;
+    $("ciProgress").textContent = "Done";
+    $("ciBarFill").style.width = "100%";
+    $("ciDoneAt").textContent = `Saved at ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Thank you.`;
+    const link = document.querySelector('[data-tab-link="checkin"]');
+    if (link && !link.querySelector(".ci-tick")) link.insertAdjacentHTML("beforeend", ' <span class="ci-tick" title="Check-in completed today">✓</span>');
+  }
+  try {
+    const last = localStorage.getItem(`ahm-checkin-done-${cfg.aid}`);
+    if (last && new Date(last).toDateString() === new Date().toDateString()) showCheckinDone(new Date(last));
+  } catch { /* no storage: start with the form */ }
 
   // PHQ-2: two more questions, wording from the backend (validated text).
   (async () => {
@@ -634,9 +650,9 @@
     try {
       await A.postJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/checkin`, body, cfg.mock);
       out.textContent = "";
-      f.hidden = true;
-      $("ciDone").hidden = false;
-      $("ciProgress").textContent = "Done";
+      const at = new Date();
+      try { localStorage.setItem(`ahm-checkin-done-${cfg.aid}`, at.toISOString()); } catch { /* shown for this visit only */ }
+      showCheckinDone(at);
     } catch (err) {
       out.className = "ci-result err";
       out.textContent = `Could not save: ${err.message}`;
@@ -869,7 +885,8 @@
       </form>
 
       <div id="ciDone" class="ci-done" hidden>
-        <p class="ci-q">Check-in saved. Thank you.</p>
+        <p class="ci-q">Check-in completed</p>
+        <p id="ciDoneAt" class="muted">Saved. Thank you.</p>
         <button type="button" id="ciAgain">New check-in</button>
       </div>
     </section>
