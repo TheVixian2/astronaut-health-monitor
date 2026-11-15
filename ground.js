@@ -63,6 +63,22 @@
     renderCrew();
     if (PATTERN) { startPattern(); return; }
 
+    // Stress tile: the backend's wellbeing score (common.js loadStress), refreshed every minute.
+    if (!TEST) {
+      const refreshStress = () => { for (const aid of crew.keys()) A.loadStress(cfg, aid, "ground"); };
+      refreshStress();
+      setInterval(refreshStress, 60000);
+    }
+
+    // Instant start: the last couple of minutes each card would already have
+    // received, i.e. stored history up to one light-time ago.
+    if (!TEST) {
+      const upTo = Date.now() - (mission ? mission.one_way_delay_s * 1000 : 0);
+      await Promise.all([...crew.keys()].map(async aid => {
+        for (const v of await A.recentVitals(cfg, aid, SPARK_POINTS * 3, upTo)) onVitals(aid, v);
+      }));
+    }
+
     let open = 0;
     for (const aid of crew.keys()) {
       const source = TEST ? new window.AHMTestFeed.EventSource() : A.openStream({ ...cfg, aid, view: "ground" }).source;
@@ -112,7 +128,7 @@
   function onVitals(aid, v) {
     const c = crew.get(aid);
     if (!c) return;
-    v = A.withScan(A.withStress(A.withCycle(v, aid)), aid);   // cycle-adjusted usual (if on); stress; simulated scan
+    v = A.withScan(A.withStress(A.withCycle(v, aid), aid), aid);   // cycle-adjusted usual (if on); stress; simulated scan
     c.latest = v;
     c.at = new Date(v.timestamp);
     c.baseHr = v.baseline ? v.baseline.heart_rate_bpm : null;
@@ -228,13 +244,13 @@
   const LEVEL_NAMES = { ok: "near usual", watch: "watch", alert: "alert", critical: "critical" };
   function thresholdRow(f, v) {
     const now = v ? v[f.key] : null, base = v?.baseline?.[f.key];
-    const t = A.thresholdLevel(f.key, now, base);
+    const t = A.thresholdLevel(f.key, now, base, f.key === "stress_0to100" ? v?.stress_level : null);
     const show = x => (typeof x === "number" && f.dp != null ? x.toFixed(f.dp) : fmt(x));
     const pc = x => `${(x * 100).toFixed(1)}%`;
     let change = "";
     if (t) {
       const sign = t.signed > 0 ? "+" : t.signed < 0 ? "−" : "±";
-      change = t.by === "score" ? A.stressBand(now)
+      change = t.by === "score" ? A.stressBand(now, v?.stress_level)
         : t.by === "pct" ? `${sign}${Math.abs(t.signed).toFixed(f.deltaDp || 0)}%`
         : `${sign}${Math.abs(t.signed).toFixed(f.key === "temp_c" ? 1 : 0)}`;
     }

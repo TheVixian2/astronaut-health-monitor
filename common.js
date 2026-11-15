@@ -13,7 +13,7 @@
     // Heart-rate variability as Apple Watch records it (SDNN, ms). From the
     // watch for a1, simulated for the others (backend).
     { key: "hrv_sdnn_ms", label: "HRV", unit: "ms", region: "heart" },
-    // Derived here from HRV (withStress below), not sent by the backend.
+    // The backend's wellbeing score (GET /astronauts/{id}/wellbeing), added by withStress below.
     { key: "stress_0to100", label: "Stress", unit: "/100", region: "head", derived: true },
     // From the weekly portable X-ray (DXA) scan (owner, 2026-11-14): whole-body
     // bone mineral density, and lean tissue of the arms and legs (the scan's
@@ -99,7 +99,7 @@
     sleep_h_last_night: { by: "pct",   dir: "down", steps: [15, 25, 35] },
     mood_1to5:          { by: "abs",   dir: "down", steps: [1, 2, 3] },
     hrv_sdnn_ms:        { by: "pct",   dir: "down", steps: [10, 20, 30] },
-    stress_0to100:      { by: "score", dir: "up",   steps: [51, 76, 90] },
+    stress_0to100:      { by: "score", dir: "up",   steps: [20, 40, 60] },   // backend levels: watch, concern, urgent
     bone_density_g_cm2: { by: "pct",   dir: "down", steps: [1, 2, 3] },
     muscle_mass_kg:     { by: "pct",   dir: "down", steps: [1.5, 3, 5] },
   };
@@ -107,7 +107,10 @@
   // -> { level, pos (0-1 along the scale), steps (0-1 positions of the three
   //    boundaries), signed (signed change from usual, in the field's terms), by }
   //    or null when there is no reading / no usual to compare with.
-  function thresholdLevel(key, now, base) {
+  // For stress, pass the backend's level (v.stress_level): its safety rules (a
+  // positive PHQ screen) can set a level above what the score alone gives.
+  const STRESS_TO_THRESHOLD = { steady: "ok", watch: "watch", concern: "alert", urgent: "critical" };
+  function thresholdLevel(key, now, base, backendLevel) {
     const t = THRESHOLDS[key];
     if (!t || typeof now !== "number") return null;
     let dev, signed;
@@ -117,7 +120,7 @@
       signed = t.by === "pct" ? ((now - base) / base) * 100 : now - base;
       dev = t.dir === "down" ? Math.max(0, -signed) : t.dir === "up" ? Math.max(0, signed) : Math.abs(signed);
     }
-    const level = LEVELS[t.steps.filter(s => dev >= s - 1e-9).length];
+    const level = STRESS_TO_THRESHOLD[backendLevel] || LEVELS[t.steps.filter(s => dev >= s - 1e-9).length];
     const end = t.steps[2] * 1.25;              // the scale runs a bit past "critical"
     return { level, pos: Math.min(1, dev / end), steps: t.steps.map(s => s / end), signed, by: t.by };
   }
@@ -134,30 +137,77 @@
     return out;
   }
 
-  // ---- stress level -----------------------------------------------------------
-  // Watches estimate stress from heart-rate variability: when the nervous system
-  // is under load, the time between beats varies less. Apple Watch records HRV
-  // as SDNN (ms) but keeps no stress score of its own, so the scale is ours
-  // (owner's request, 2026-11-14), a design choice and not a validated score:
-  //   HRV at the astronaut's own usual = 30 (low); every 10 % below it adds 16.
-  //   Bands as on other watches' 0-100 stress scales: 0-25 resting, 26-50 low,
-  //   51-75 medium, 76-100 high.
-  const STRESS_AT_USUAL = 30;
-  const STRESS_BANDS = [[25, "Resting"], [50, "Low"], [75, "Medium"], [100, "High"]];
-  function stressFromHrv(hrv, usual) {
-    if (typeof hrv !== "number" || typeof usual !== "number" || usual <= 0) return null;
-    return Math.max(0, Math.min(100, Math.round(STRESS_AT_USUAL + (1 - hrv / usual) * 160)));
+  // ---- instant start ----------------------------------------------------------
+  // Pages fill from the backend's stored history before the first live event
+  // (owner, 2026-11-15: no waiting on the stream in the demo). Rows of
+  // GET /history (3 s buckets) turned into vitals snapshots, oldest first, with
+  // the current baseline from GET /vitals. `upTo` (ms) cuts the newest rows off,
+  // for the delayed Mission Control view.
+  async function recentVitals(cfg, aid, seconds, upTo = Date.now()) {
+    const id = encodeURIComponent(aid);
+    if (cfg.mock) {                  // public demo: the recorded 24 h, hour by hour (mock-snapshot.js)
+      try {
+        const [snap, rows] = await Promise.all([getJSON(cfg.base, `/astronauts/${id}/vitals`, true),
+          getJSON(cfg.base, `/astronauts/${id}/history?hours=24&bucket_s=3600`, true)]);
+        const shift = Date.now() - Date.parse(rows[rows.length - 1].ts) - 3600e3;   // end just before "now"
+        return rows.map(({ ts, low, high, ...vals }) => ({ ...vals, timestamp: new Date(Date.parse(ts) + shift).toISOString(), baseline: snap.baseline }))
+          .filter(r => Date.parse(r.timestamp) <= upTo);
+      } catch { return []; }
+    }
+    try {
+      const [snap, recent] = await Promise.all([
+        getJSON(cfg.base, `/astronauts/${id}/vitals`, false),
+        getJSON(cfg.base, `/astronauts/${id}/history?hours=${(seconds / 3600).toFixed(4)}&bucket_s=3`, false)]);
+      let rows = recent;
+      // Just after a reset there are only a few live rows: use the seeded
+      // history instead (one point per 10 min over the last 6 h), then the live ones.
+      if (recent.length < 20) {
+        const older = await getJSON(cfg.base, `/astronauts/${id}/history?hours=6&bucket_s=600`, false);
+        const first = recent.length ? Date.parse(recent[0].ts) : Infinity;
+        rows = older.filter(r => Date.parse(r.ts) < first).concat(recent);
+      }
+      return rows.filter(r => Date.parse(r.ts) <= upTo)
+        .map(({ ts, low, high, ...vals }) => ({ ...vals, timestamp: ts, baseline: snap.baseline }));
+    } catch { return []; }
   }
-  function stressBand(score) {
+
+  // ---- stress level -----------------------------------------------------------
+  // The station computer's wellbeing score (backend/behavioral.py), so every page
+  // shows the backend's number (owner, 2026-11-15: the backend is the single
+  // source). 0-100, higher = further from the astronaut's own normal: sleep, HRV,
+  // activity, resting heart rate, time with crewmates and body clock carry 70 %,
+  // check-ins 30 %, each against their own mission days 7-14. Bands = the
+  // backend's levels. Commander first: while a flag waits for the commander, the
+  // astronaut's own view has no score (withheld) and the tile shows none.
+  // Fallback ONLY where the backend scores nothing (the presenter's simulated
+  // whole-mission pattern, the scripted test feed): an estimate from HRV alone.
+  const STRESS_BANDS = [[19, "Steady"], [39, "Watch"], [59, "Concern"], [100, "Urgent"]];
+  const stressCache = {};            // aid -> { score, withheld }, filled by loadStress()
+  async function loadStress(cfg, aid, viewer) {
+    try {
+      const w = await getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/wellbeing?viewer=${encodeURIComponent(viewer)}`, cfg.mock);
+      stressCache[aid] = { score: w.withheld ? null : w.score, level: w.withheld ? null : w.level, withheld: !!w.withheld };
+    } catch { /* keep the last value */ }
+    return stressCache[aid];
+  }
+  function stressFromHrv(hrv, usual) {   // fallback: 0 at their usual HRV, +16 per 10 % below it
+    if (typeof hrv !== "number" || typeof usual !== "number" || usual <= 0) return null;
+    return Math.max(0, Math.min(100, Math.round((1 - hrv / usual) * 160)));
+  }
+  function stressBand(score, backendLevel) {
+    if (backendLevel) return backendLevel[0].toUpperCase() + backendLevel.slice(1);
     return score == null ? "" : STRESS_BANDS.find(([max]) => score <= max)[1];
   }
-  // A vitals snapshot with stress_0to100 added (and the usual level in baseline).
-  function withStress(v) {
-    if (!v || typeof v.hrv_sdnn_ms !== "number") return v;
-    const usual = v.baseline ? v.baseline.hrv_sdnn_ms : null;
-    const score = stressFromHrv(v.hrv_sdnn_ms, usual);
-    return { ...v, stress_0to100: score,
-             baseline: v.baseline ? { ...v.baseline, stress_0to100: score == null ? null : STRESS_AT_USUAL } : v.baseline };
+  // A vitals snapshot with stress_0to100 added (its usual is 0: their own normal).
+  function withStress(v, aid) {
+    if (!v) return v;
+    const b = aid != null ? stressCache[aid] : undefined;
+    let score, level = null, withheld = false;
+    if (b) { score = b.score; level = b.level; withheld = b.withheld; }
+    else if (typeof v.hrv_sdnn_ms === "number") score = stressFromHrv(v.hrv_sdnn_ms, v.baseline ? v.baseline.hrv_sdnn_ms : null);
+    else return v;
+    return { ...v, stress_0to100: score, stress_level: level, stress_withheld: withheld,
+             baseline: v.baseline ? { ...v.baseline, stress_0to100: 0 } : v.baseline };
   }
 
   // Flat icon per vital (24 x 24, filled shapes). Colour comes from CSS:
@@ -503,7 +553,7 @@
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
-    withStress, stressBand, withScan, thresholdLevel,
+    withStress, loadStress, recentVitals, stressBand, withScan, thresholdLevel,
     withCycle, cycleFor, cycleAt, setCycle, CYCLE_SHIFT,
     BODY_SHAPES, BODY_ORGANS, normSex, rememberSex, sexOf, bodyFigure, addHit,
     HAZARDS, HRP_RISKS, nasaRefs,
