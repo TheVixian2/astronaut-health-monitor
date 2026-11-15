@@ -202,8 +202,8 @@
   // card (without the advice, which is for the Commander) are kept for their
   // console (common.js setSentTo).
   function sendRow(aid, name) {
-    const sent = A.sentTo(aid);
-    return `<div class="cp-send"><button type="button" data-send="${esc(aid)}">Send to ${esc(name)}</button>
+    const sent = A.sentTo(aid), flash = A.justSent(aid);
+    return `<div class="cp-send"><button type="button" data-send="${esc(aid)}"${flash ? ' class="is-sent" disabled' : ""}>${flash ? "Sent ✓" : `Send to ${esc(name)}`}</button>
       <span class="muted small">${sent ? `Sent at ${esc(time(sent.at))}` : "Not sent yet"}</span></div>`;
   }
   $("crewPanels").addEventListener("click", e => {
@@ -232,6 +232,7 @@
                                                          detail: x.crewText || x.detail, alertId: x.alertId || null })),
       }, cfg, viewer);
     } catch { btn.textContent = "Not sent, try again"; btn.disabled = false; return; }
+    A.markJustSent(aid, render);
     render();
   }
 

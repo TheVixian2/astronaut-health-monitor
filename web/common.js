@@ -543,6 +543,17 @@
     return sentTo(aid);
   }
 
+  // "Sent ✓" on the Send button for a moment after a send succeeds (owner,
+  // 2026-11-15). The pages re-render on every reading, so the moment is kept
+  // per crew member and their sendRow reads it back; rerender() ends it.
+  const SENT_FLASH_MS = 2500;
+  const sentAt = {};
+  function markJustSent(aid, rerender) {
+    sentAt[aid] = Date.now();
+    setTimeout(rerender, SENT_FLASH_MS + 50);
+  }
+  const justSent = aid => Date.now() - (sentAt[aid] || 0) < SENT_FLASH_MS;
+
   // ---- body silhouettes and crew avatars -----------------------------------
   // Male and female front-view silhouettes (viewBox 0 0 200 400) for the body
   // card on My health. Generated: the two figures have the same points per
@@ -634,7 +645,7 @@
     withStress, loadStress, recentVitals, stressBand, withScan, thresholdLevel,
     withCycle, cycleFor, cycleAt, setCycle, CYCLE_SHIFT,
     BODY_SHAPES, BODY_ORGANS, normSex, rememberSex, sexOf, bodyFigure, addHit,
-    healthScore, sentTo, setSentTo, loadSentTo, SENT_KEY,
+    healthScore, sentTo, setSentTo, loadSentTo, SENT_KEY, markJustSent, justSent,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 
