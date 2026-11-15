@@ -91,7 +91,7 @@
     // What the Commander / CMO sent: also in the presenter's pattern view, so a send made
     // in another browser or on another device always reaches this bar.
     if (ownRole !== "Commander") {
-      const sentLoop = async () => { await A.loadSentTo(cfg, cfg.aid, cfg.aid); renderReleased(); renderHealth(); };
+      const sentLoop = async () => { await A.loadSentTo(cfg, cfg.aid, cfg.aid); await afterSentLoad(); renderReleased(); renderHealth(); };
       sentLoop(); setInterval(sentLoop, RELEASED_REFRESH_MS);
     }
     if (!PATTERN) {
@@ -194,6 +194,19 @@
   // 12 h. GET /alerts?viewer=<self> leaves out the unreleased ones.
   const RELEASED_REFRESH_MS = 15000;
   let releasedList = [];
+  let lastSentAt;                        // the report on screen (undefined until the first load)
+  async function afterSentLoad() {
+    const sentNow = A.sentTo(cfg.aid);
+    const sentAtNow = sentNow ? sentNow.at : null;
+    // A new report may have released their flag: refresh stress now, not within the minute.
+    if (!PATTERN && lastSentAt !== undefined && sentAtNow !== lastSentAt) refreshStress();
+    lastSentAt = sentAtNow;
+    if (sentNow?.health) {
+      // Their own wellbeing check: the reasons behind the bar (healthItem).
+      try { selfWb = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/wellbeing?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock); }
+      catch { /* keep the last one */ }
+    }
+  }
   async function loadReleased() {
     try {
       const list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/alerts?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
@@ -224,17 +237,64 @@
         items.push(`<li class="alert sev-${esc(w.severity)}"><p class="verdict">${esc(w.title)}</p>
           ${w.detail ? `<p class="small">${esc(w.detail)}</p>` : ""}${foot}</li>`);
       }
-      if (!items.length) items.push(`<li class="alert sev-ok"><p class="verdict">Nothing to act on</p>${foot}</li>`);
+      if (!items.length && !sent.health) items.push(`<li class="alert sev-ok"><p class="verdict">Nothing to act on</p>${foot}</li>`);
     }
+    if (sent && sent.health) items.unshift(healthItem(sent, when));
     const box = $("released");
     box.hidden = !items.length;
     box.innerHTML = items.length ? `<h3>From your commander</h3><ul class="alerts">${items.join("")}</ul>` : "";
   }
   const sentBy = x => (x.by_role === "Crew Medical Officer" ? "Crew Medical Officer" : "commander");
+
+  // ---- why the bar changed (owner, 2026-11-15) ------------------------------
+  // With every report sent: the new value, how it moved since the last one, and
+  // the backend's own reasons. The bar is 100 - their wellbeing score, so each
+  // signal's points are the % it takes off the bar. From the astronaut's own
+  // view: while a flag still waits for the commander the backend withholds the
+  // reasons (commander first), and this says so instead.
+  let selfWb = null;
+  const SEEN_KEY = "ahm-sent-seen";      // aid -> { at, pct, prev }: the value before this report
+  function healthChange(sent) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}"); } catch { /* none */ }
+    const seen = all[cfg.aid];
+    if (!seen || seen.at !== sent.at) {
+      all[cfg.aid] = { at: sent.at, pct: sent.health.pct, prev: seen ? seen.pct : null };
+      try { localStorage.setItem(SEEN_KEY, JSON.stringify(all)); } catch { /* shown, not kept */ }
+    }
+    return all[cfg.aid].prev;
+  }
+  function healthItem(sent, when) {
+    const h = sent.health, prev = healthChange(sent);
+    const change = prev == null ? "your first report" : prev === h.pct ? "the same as last time"
+      : `${h.pct < prev ? "down" : "up"} from ${prev}%`;
+    let body = "";
+    if (h.wellbeing == null && h.inRange != null) {
+      body = `<p class="small">${h.inRange} of ${h.total} readings in your usual range.</p>`;
+    } else if (selfWb && selfWb.withheld) {
+      body = '<p class="small muted">The reasons come once your commander has talked with you.</p>';
+    } else if (selfWb) {
+      // When a whole group has no data yet the backend scales the other group up
+      // to fill the 100 (behavioral.py), so scale the points the same way: the
+      // reasons then add up to the score, i.e. to what the bar lost.
+      const sigs = selfWb.signals || [];
+      const sum = sigs.reduce((t, s) => t + (s.points || 0), 0);
+      const k = sum > 0 && typeof selfWb.score === "number" ? selfWb.score / sum : 1;
+      const why = sigs.map(s => ({ ...s, off: Math.round((s.points || 0) * k) })).filter(s => s.off >= 1)
+        .sort((a, b) => b.off - a.off).slice(0, 5);
+      body = why.length
+        ? `<p class="small why-head">Why</p><ul class="why">${why.map(s =>
+            `<li><span class="why-pts">−${s.off}%</span><span><strong>${esc(s.label)}</strong>: ${esc(s.detail)}</span></li>`).join("")}</ul>`
+        : '<p class="small">Everything is close to your own usual.</p>';
+    }
+    return `<li class="alert sev-${esc(h.level)}"><p class="verdict">Wellbeing ${h.pct}%, ${change}</p>${body}
+      <p class="muted small">Sent by your ${sentBy(sent)} · ${when(sent.at)}</p></li>`;
+  }
   // A send from the Commander's page in another tab or pane of this browser.
   window.addEventListener("storage", e => {
     if (e.key !== A.SENT_KEY) return;
     renderHealth();
+    afterSentLoad().then(() => { renderReleased(); renderHealth(); });   // the reasons behind the new bar
     if (!PATTERN) loadReleased();   // fetch: the send may have released an alert too
   });
 
