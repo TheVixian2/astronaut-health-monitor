@@ -715,11 +715,48 @@
   // ---- page chrome shared by every page (menus, user, sign-out) -------------
   // Links marked data-href keep ?mock / ?base / ?aid when moving between pages.
   document.querySelectorAll("a[data-href]").forEach(a => { a.href = linkWithSettings(a.dataset.href); });
-  // History keeps the menu of the page it was opened from (history.js reads ?from=).
+  // History and Data sources keep the menu of the page they were opened from
+  // (?from=, read by pageMenu below).
   const fromPage = location.pathname.split("/").pop().replace(/\.html$/, "");
-  document.querySelectorAll('a[data-href="history.html"]').forEach(a => {
-    if (fromPage && fromPage !== "history") a.href += `${a.href.includes("?") ? "&" : "?"}from=${encodeURIComponent(fromPage)}`;
+  const SIDE_PAGES = ["history", "sources"];
+  const fromHere = SIDE_PAGES.includes(fromPage) ? new URLSearchParams(location.search).get("from") : fromPage;
+  document.querySelectorAll('a[data-href="history.html"], a[data-href="sources.html"]').forEach(a => {
+    if (fromHere && !SIDE_PAGES.includes(fromHere)) a.href += `${a.href.includes("?") ? "&" : "?"}from=${encodeURIComponent(fromHere)}`;
   });
+
+  // ---- menu on History and Data sources (owner, 2026-11-15) -----------------
+  // All the tabs of the page they were opened from (or of the signed-in role),
+  // so every tab stays one click away. No Back link.
+  const OWN_TABS = [["My health", "#health"], ["Check-in", "#checkin"], ["Sleep & light", "#sleep"]];
+  const PAGE_MENUS = {
+    "self-check": { tag: "On board", area: "onboard", tabs: [...OWN_TABS, ["My report", "#report"]], after: [] },
+    captain: { tag: "Commander", area: "onboard", tabs: OWN_TABS, after: [["Crew wellbeing", "#crew"], ["Habitat", "#habitat"]] },
+    doctor: { tag: "Crew Medical Officer", area: "onboard", tabs: [...OWN_TABS, ["My report", "#report"]], after: [["Medications", "#meds"]] },
+    ground: { tag: "Ground", area: "ground", tabs: [["Crew overview", ""]], after: [["Raw stream (debug)", "stream-check.html"]] },
+  };
+  const ROLE_PAGE = { crew: "self-check", captain: "captain", doctor: "doctor", ground: "ground" };
+  // nav / tag / menu: the elements to fill. current: "history" or "sources".
+  // aid: the astronaut the console links follow (History's picker).
+  function pageMenu({ nav, tag, menu, current, aid }) {
+    const from = new URLSearchParams(location.search).get("from");
+    const page = PAGE_MENUS[from] ? from : (who && ROLE_PAGE[who.role]) || null;
+    const m = PAGE_MENUS[page];
+    const keep = target => {   // the side pages keep ?from= among themselves
+      const url = linkWithSettings(target);
+      return page ? `${url}${url.includes("?") ? "&" : "?"}from=${encodeURIComponent(page)}` : url;
+    };
+    const side = [["History", "history"], ["Data sources", "sources"]].map(([label, id]) =>
+      `<a href="${esc(keep(`${id}.html`))}"${id === current ? ' aria-current="page"' : ""}>${esc(label)}</a>`).join("");
+    if (!m) { menu.innerHTML = side; return; }   // the presenter: "All views" is beside Sign out
+    // The astronaut console follows the picked astronaut; the others are role pages.
+    const link = t => t.endsWith(".html") ? linkWithSettings(t)
+      : linkWithSettings(`${page}.html`, page === "self-check" && aid ? { aid } : {}) + t;
+    const a = ([label, t]) => `<a href="${esc(link(t))}">${esc(label)}</a>`;
+    if (nav) nav.className = `appnav area-${m.area}`;
+    if (tag) tag.textContent = m.tag;
+    menu.innerHTML = m.tabs.map(a).join("") + side + m.after.map(a).join("");
+  }
+  window.AHM.pageMenu = pageMenu;
   const who = window.AHMAuth && window.AHMAuth.session();
   // Just the role (the account name is the tooltip), so a seven-tab menu still
   // fits on one line at 1280 px.

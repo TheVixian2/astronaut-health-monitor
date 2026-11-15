@@ -20,11 +20,12 @@
   </style>
 </head>
 <body class="selfcheck">
-  <nav class="appnav area-onboard" aria-label="Data sources">
-    <a class="brand" data-href="index.html" href="index.html" title="Home">AHM</a>
-    <span class="area-tag">Data sources</span>
-    <div class="menu"><a href="javascript:history.back()">← Back</a></div>
-    <div class="user small"><span data-user></span> · <button type="button" class="link" data-signout>Sign out</button></div>
+  <nav class="appnav area-onboard" aria-label="Data sources" id="srcNav">
+    <a class="brand" data-href="index.html" href="index.html" title="Home">Dr. Galactic</a>
+    <span class="area-tag" id="srcTag">Data sources</span>
+    <!-- Filled by common.js pageMenu with the menu of the page this was opened from. -->
+    <div class="menu" id="srcMenu"></div>
+    <div class="user small"><span data-user></span><span data-demo-only> <a data-href="index.html" href="index.html">All views</a></span> <button type="button" class="link" data-signout>Sign out</button></div>
   </nav>
 
   <header class="bar"><div><h1>Where the data comes from</h1>
@@ -107,5 +108,9 @@
 
   <footer class="foot muted small">Decision support only, never a diagnosis.</footer>
   <script src="common.js"></script>
+  <script>
+    AHM.pageMenu({ nav: document.getElementById("srcNav"), tag: document.getElementById("srcTag"),
+                   menu: document.getElementById("srcMenu"), current: "sources" });
+  </script>
 </body>
 </html>
