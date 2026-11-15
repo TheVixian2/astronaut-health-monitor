@@ -188,10 +188,13 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
   hidden for 15 s and reopens when the tab is shown. Keep every new stream on
   `openStream`; never `new EventSource` directly.
 - `stream-check.html` / `stream-check.js` — debug page: raw SSE events.
-- **Check-in is one question at a time** (Back / Next, "Skip" when
-  unanswered, Submit on the last): mood → sleep hours (± half-hour buttons) →
-  symptoms → the two PHQ-2 items (wording from `GET /checkin/questions`;
-  skipped if that fails, and sent only when both are answered). **No
+- **Check-in is one question at a time** (Back / Next, Submit on the last):
+  mood → sleep hours (± half-hour buttons) → symptoms (with an exclusive
+  "None of these") → the two PHQ-2 items (wording from `GET /checkin/questions`;
+  left out if that fails) → the optional reaction test. **Every question needs
+  an answer: Next and Submit stay disabled until it has one** (owner,
+  2026-11-15: no skipping by pressing Next); only the reaction test can be
+  skipped. "none" is never sent as a symptom. **No
   "share with ground" box: check-ins are always sent with
   `share_with_ground: true`** (NotKaemy, 2026-11-14 — note the spec calls this
   the astronaut's control; flagged to Luca in STATUS). Form is `novalidate`:

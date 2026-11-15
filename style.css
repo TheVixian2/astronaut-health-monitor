@@ -455,6 +455,9 @@ body.selfcheck[data-tab="sleep"] #console { flex: 1; }
 .ci-nav { display: flex; gap: 12px; align-items: center; }
 .ci-nav button { min-width: 140px; padding: 12px 22px; font-size: var(--t-base); border-radius: var(--r-control); }
 .ci-nav #ciNext, .ci-nav #ciSubmit { margin-left: auto; }
+/* An unanswered question: Next / Submit wait for an answer. */
+.ci-nav button:disabled { opacity: .45; cursor: not-allowed; }
+.ci-chips .ci-none { grid-column: 1 / -1; }
 .ci-nav .ci-secondary { background: transparent; border: 1px solid var(--line-strong); color: var(--text-strong); }
 .ci-nav .ci-secondary:hover { background: var(--wash-2); }
 .ci-result { margin: 0; min-height: 1.5em; }
