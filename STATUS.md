@@ -19,6 +19,12 @@ Update your section whenever you merge to `main`, or when you get blocked.
 Anything that changed in `docs/api-spec.md`, newest at the top.
 **Only Luca writes here.** If you need a change, ask — don't edit the spec.
 
+- **2026-11-15 — "Send to <name>" is stored by the backend; CMO can send too; History keeps its menu** (Luca's
+  session, @NotKaemy @stefanalbu2010-byte): `PUT/GET /astronauts/{id}/shared-check` (spec: Vitals) replaces the
+  localStorage-only store, so the crew health bar shows the sent check on every device (common.js `setSentTo` /
+  `loadSentTo`; mock mode still keeps it in the browser). The Crew Medical Officer's Medications crew cards have
+  "Send to <name>" too (health % only, no warnings). History opened from a page keeps that page's menu
+  (`?from=`, set in common.js) and Back returns to it.
 - **2026-11-15 — CSV baseline + check-in done, on `main` (Luca's session), @NotKaemy please pull `main` into `web`**
   (it merges cleanly with your `cc27ec5`): (1) `PUT/DELETE /astronauts/{id}/baseline` (spec: Vitals),
   `baseline_source` on vitals; the console shows "Usual values from: Demo data …" with Upload CSV /

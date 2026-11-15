@@ -192,6 +192,7 @@
       const list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/alerts?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
       releasedList = list.filter(a => a.psychological && a.released_to_crew_at);
     } catch { /* keep the last list */ }
+    if (ownRole !== "Commander") await A.loadSentTo(cfg, cfg.aid, cfg.aid);   // what the Commander / CMO sent
     renderReleased();
     renderHealth();
   }
@@ -209,10 +210,10 @@
         ${next && next !== a.crew_message ? `<p class="small">${esc(next)}</p>` : ""}
         <p class="muted small">${by} · ${when(a.released_to_crew_at)}</p></li>`;
     });
-    if (sent) {
+    if (sent && sent.warnings) {   // null: a health check only (the Crew Medical Officer's)
       const ids = new Set(releasedList.map(a => a.id));
-      const ws = (sent.warnings || []).filter(w => !w.alertId || !ids.has(w.alertId));
-      const foot = `<p class="muted small">Sent by your commander · ${when(sent.at)}</p>`;
+      const ws = sent.warnings.filter(w => !w.alertId || !ids.has(w.alertId));
+      const foot = `<p class="muted small">Sent by your ${sentBy(sent)} · ${when(sent.at)}</p>`;
       for (const w of ws) {
         items.push(`<li class="alert sev-${esc(w.severity)}"><p class="verdict">${esc(w.title)}</p>
           ${w.detail ? `<p class="small">${esc(w.detail)}</p>` : ""}${foot}</li>`);
@@ -223,6 +224,7 @@
     box.hidden = !items.length;
     box.innerHTML = items.length ? `<h3>From your commander</h3><ul class="alerts">${items.join("")}</ul>` : "";
   }
+  const sentBy = x => (x.by_role === "Crew Medical Officer" ? "Crew Medical Officer" : "commander");
   // A send from the Commander's page in another tab or pane of this browser.
   window.addEventListener("storage", e => {
     if (e.key !== A.SENT_KEY) return;
@@ -244,7 +246,7 @@
     bar.hidden = false;
     if (!h) {
       bar.className = "health-bar hb-none";
-      bar.title = live ? "Waiting for readings" : "Your commander hasn't sent you a health check yet";
+      bar.title = live ? "Waiting for readings" : "Your commander or Crew Medical Officer hasn't sent you a health check yet";
       bar.querySelector(".hb-pct").textContent = "—";
       bar.querySelector(".hb-fill").style.height = "100%";
       bar.querySelector(".hb-track").removeAttribute("aria-valuenow");
@@ -252,7 +254,7 @@
     }
     bar.className = `health-bar hb-${h.level}`;
     bar.title = `${h.inRange} of ${h.total} readings in your usual range` +
-      (sent ? `, sent by your commander ${new Date(sent.at).toLocaleString()}` : "");
+      (sent ? `, sent by your ${sentBy(sent)} ${new Date(sent.at).toLocaleString()}` : "");
     bar.querySelector(".hb-pct").textContent = `${h.pct}%`;
     bar.querySelector(".hb-fill").style.height = `${h.pct}%`;
     bar.querySelector(".hb-track").setAttribute("aria-valuenow", h.pct);

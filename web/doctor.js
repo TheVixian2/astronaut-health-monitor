@@ -21,6 +21,29 @@
   const members = new Map();     // aid -> crew member (for the avatar)
   const suggestions = new Map(); // "aid|profile" -> { alert, med } (newest alert only)
 
+  // ---- "Send to <name>": a health check for their console (owner, 2026-11-15) --
+  // Like the Commander's button, but the health % only: the CMO's warnings stay
+  // here. Stored by the backend (common.js setSentTo), so their console shows it.
+  const ownAid = () => ([...members.values()].find(c => c.role === "Crew Medical Officer") || {}).id || "a3";
+  function sendRow(aid, name) {
+    const sent = A.sentTo(aid);
+    return `<div class="cp-send"><button type="button" data-send="${esc(aid)}">Send to ${esc(name.replace(/^(Cmdr\.|Dr\.)\s+/, "").split(" ")[0])}</button>
+      <span class="muted small">${sent ? `Last sent ${esc(clock(new Date(sent.at)))}${sent.by_role ? ` by the ${esc(sent.by_role === "Commander" ? "Commander" : "CMO")}` : ""}` : "Not sent yet"}</span></div>`;
+  }
+  document.addEventListener("click", async e => {
+    const b = e.target.closest("#medCrew [data-send]");
+    if (!b || b.disabled) return;
+    const aid = b.dataset.send, viewer = ownAid();
+    b.disabled = true; b.textContent = "Sending…";
+    try {
+      const v = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/vitals`, cfg.mock);
+      const health = A.healthScore(A.withScan(A.withStress(A.withCycle(v, aid), aid), aid));
+      await A.setSentTo(aid, { at: new Date().toISOString(), by: viewer, by_role: "Crew Medical Officer",
+                               health, warnings: null }, cfg, viewer);
+    } catch { b.textContent = "Not sent, try again"; b.disabled = false; return; }
+    render();
+  });
+
   // ---- marks (given / dismissed) ------------------------------------------
   function marks() { try { return JSON.parse(localStorage.getItem(STORE) || "{}"); } catch { return {}; } }
   function mark(key, what) {
@@ -54,6 +77,7 @@
         onConn: (text, cls) => { $("medsConn").textContent = text; $("medsConn").className = `pill ${cls}`; },
       });
       for (const c of list) { names.set(c.id, c.name); members.set(c.id, c); }
+      await Promise.all(list.filter(c => c.id !== ownAid()).map(c => A.loadSentTo(cfg, c.id, ownAid())));
     } catch (err) {
       $("medsConn").textContent = "offline";
       $("medsConn").className = "pill pill-off";
@@ -160,7 +184,8 @@
       return `<article class="mc-card">
         ${A.bodyFigure(m, hits)}
         <div class="mc-text"><strong>${esc(m.name || aid)}</strong><div class="muted small">${esc(m.role || "")}</div>
-          <ul class="mc-list">${rows.join("") || '<li class="muted">No medicines today</li>'}</ul></div>
+          <ul class="mc-list">${rows.join("") || '<li class="muted">No medicines today</li>'}</ul>
+          ${aid === ownAid() ? "" : sendRow(aid, m.name || aid)}</div>
       </article>`;
     }).join("");
   }
