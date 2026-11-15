@@ -498,23 +498,47 @@
              inRange: levels.filter(l => l === "ok").length, total: levels.length };
   }
 
-  // ---- what the Commander sent to a crew member (owner, 2026-11-15) ----------
+  // Wellbeing for the bar beside the body figure (Stefan, 2026-11-15): the backend's wellbeing
+  // check, a score of 0-100 where 0 is just like your usual, shown as how close to usual
+  // (100 - score). Colour follows the level: steady, watch, concern, urgent.
+  const WB_BAR = { steady: "ok", watch: "watch", concern: "alert", urgent: "critical" };
+  function wellbeingBar(wb) {
+    if (!wb || !wb.level || typeof wb.score !== "number") return null;
+    return { pct: Math.max(0, Math.min(100, Math.round(100 - wb.score))), level: WB_BAR[wb.level] || "ok",
+             wellbeing: wb.level, score: wb.score };
+  }
+
+  // ---- what the Commander or the Crew Medical Officer sent (owner, 2026-11-15) --
   // A crew member's health bar and "From your commander" box change only when
-  // the Commander presses "Send to <name>" on Crew wellbeing (captain.js):
-  // { at, by, health: healthScore(), warnings: [{severity, title, detail, alertId}] }.
-  // PROVISIONAL: kept in this browser (localStorage) until the backend can store
-  // it (asked in STATUS.md). The psychological alerts themselves are released
-  // through the backend (PUT /astronauts/{id}/alerts/{alert_id}/release).
+  // the Commander or the CMO presses "Send to <name>":
+  // { at, by, by_role, health: healthScore(), warnings: [{severity, title, detail, alertId}] | null }.
+  // Stored by the backend (PUT/GET /astronauts/{id}/shared-check), so every device
+  // shows it; this browser keeps a copy (localStorage) so the page draws at once,
+  // and mock mode (the public site) keeps it here only.
   const SENT_KEY = "ahm-sent-to-crew";
   function sentTo(aid) {
     try { return JSON.parse(localStorage.getItem(SENT_KEY) || "{}")[aid] || null; } catch { return null; }
   }
-  function setSentTo(aid, data) {
+  function keepSent(aid, data) {
     try {
       const all = JSON.parse(localStorage.getItem(SENT_KEY) || "{}");
-      all[aid] = data;
+      if (data) all[aid] = data; else delete all[aid];
       localStorage.setItem(SENT_KEY, JSON.stringify(all));
     } catch { /* private window: not kept */ }
+  }
+  async function setSentTo(aid, data, cfg, viewer) {
+    keepSent(aid, data);
+    if (cfg && !cfg.mock) {
+      await putJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/shared-check?viewer=${encodeURIComponent(viewer)}`, data, false);
+    }
+  }
+  async function loadSentTo(cfg, aid, viewer) {
+    if (cfg.mock) return sentTo(aid);
+    try {
+      const d = await getJSON(cfg.base, `/astronauts/${encodeURIComponent(aid)}/shared-check?viewer=${encodeURIComponent(viewer)}`, false);
+      keepSent(aid, d || null);
+    } catch { /* offline: keep the last copy */ }
+    return sentTo(aid);
   }
 
   // ---- body silhouettes and crew avatars -----------------------------------
@@ -601,14 +625,14 @@
   }
 
   window.AHM = {
-    FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES, vitalIcon, vitalColor,
+    FIELDS, PROFILE_NAMES, REGION_NAMES, SEVERITY_RANK, ENV_NAMES, vitalIcon, vitalColor, wellbeingBar,
     settings, linkWithSettings, openStream, getJSON, postJSON, putJSON,
     LIGHTING_NAMES, circadianCardText,
     verdict, deltaPct, dur, fmt, esc, profileName,
     withStress, loadStress, recentVitals, stressBand, withScan, thresholdLevel,
     withCycle, cycleFor, cycleAt, setCycle, CYCLE_SHIFT,
     BODY_SHAPES, BODY_ORGANS, normSex, rememberSex, sexOf, bodyFigure, addHit,
-    healthScore, sentTo, setSentTo, SENT_KEY,
+    healthScore, sentTo, setSentTo, loadSentTo, SENT_KEY,
     HAZARDS, HRP_RISKS, nasaRefs,
   };
 
@@ -678,6 +702,11 @@
   // ---- page chrome shared by every page (menus, user, sign-out) -------------
   // Links marked data-href keep ?mock / ?base / ?aid when moving between pages.
   document.querySelectorAll("a[data-href]").forEach(a => { a.href = linkWithSettings(a.dataset.href); });
+  // History keeps the menu of the page it was opened from (history.js reads ?from=).
+  const fromPage = location.pathname.split("/").pop().replace(/\.html$/, "");
+  document.querySelectorAll('a[data-href="history.html"]').forEach(a => {
+    if (fromPage && fromPage !== "history") a.href += `${a.href.includes("?") ? "&" : "?"}from=${encodeURIComponent(fromPage)}`;
+  });
   const who = window.AHMAuth && window.AHMAuth.session();
   // Just the role (the account name is the tooltip), so a seven-tab menu still
   // fits on one line at 1280 px.
