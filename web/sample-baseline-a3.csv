@@ -1,0 +1,17 @@
+# Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
+# DEMO DATA, simulated: Dr. Sara Okafor (Crew Medical Officer), mission days 7-20, one row per day, as a watch export might look. Made by tools/export_sample_csv.py from the seeded crew.
+date,resting_heart_rate,hrv_sdnn,spo2,temperature_c,resp_rate,sleep_hours,mood,active_minutes
+2026-10-11,56,53,98,36.7,13,7.5,5,33
+2026-10-12,59,64,98,36.7,13,7.4,5,41
+2026-10-13,60,54,98,36.7,13,7.5,5,41
+2026-10-14,57,48,98,36.7,13,7.9,5,52
+2026-10-15,60,55,98,36.7,13,7.5,5,41
+2026-10-16,56,44,98,36.7,13,7.7,4,77
+2026-10-17,60,48,98,36.7,13,7.1,4,76
+2026-10-18,56,52,98,36.8,13,7.5,5,45
+2026-10-19,59,54,98,36.8,13,7.2,5,64
+2026-10-20,60,49,98,36.8,13,7.5,5,49
+2026-10-21,60,49,98,36.8,13,7.4,5,48
+2026-10-22,57,47,98,36.8,13,7.7,5,66
+2026-10-23,54,65,98,36.8,13,7.0,5,39
+2026-10-24,59,48,98,36.8,13,7.6,4,56

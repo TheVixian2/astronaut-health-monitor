@@ -29,8 +29,20 @@
   const state = { aid: cfg.aid, range: "day", field: FIELDS[0], rows: [], baseline: null, crew: [] };
   let chart, sleepChart;
 
-  const back = { crew: "self-check.html", captain: "captain.html", doctor: "doctor.html", ground: "ground.html" }[role] || "index.html";
-  $("back").href = A.linkWithSettings(back);
+  // The same sections as the console you came from, so History is never a dead end (Stefan,
+  // 2026-11-15). [page, hash or null, label]; History itself is marked as the current page.
+  const SECTIONS = {
+    crew:    [["self-check.html", "health", "My health"], ["self-check.html", "checkin", "Check-in"], ["self-check.html", "sleep", "Sleep &amp; light"]],
+    captain: [["captain.html", "health", "My health"], ["captain.html", "checkin", "Check-in"], ["captain.html", "sleep", "Sleep &amp; light"],
+              ["captain.html", "crew", "Crew wellbeing"], ["captain.html", "habitat", "Habitat"]],
+    doctor:  [["doctor.html", "health", "My health"], ["doctor.html", "checkin", "Check-in"], ["doctor.html", "sleep", "Sleep &amp; light"],
+              ["doctor.html", "meds", "Medications"]],
+    ground:  [["ground.html", null, "Crew overview"]],
+  }[role] || [["index.html", null, "All views"]];
+  document.querySelector(".appnav .menu").innerHTML =
+    SECTIONS.map(([page, hash, label]) => `<a href="${A.linkWithSettings(page)}${hash ? "#" + hash : ""}">${label}</a>`).join("") +
+    `<a href="${A.linkWithSettings("history.html")}" aria-current="page">History</a>` +
+    `<a href="${A.linkWithSettings("sources.html")}">Data sources</a>`;
 
   function timeLabel(iso) {
     const d = new Date(iso);
@@ -66,7 +78,7 @@
       datasets: [
         { label: "High", data: hi, borderWidth: 0, pointRadius: 0, backgroundColor: alpha(A.vitalColor(f.key), 0.18), fill: "+1" },
         { label: "Low", data: lo, borderWidth: 0, pointRadius: 0, fill: false },
-        { label: "Average", data: avg, borderColor: A.vitalColor(f.key), borderWidth: 2, pointRadius: rows.length > 60 ? 0 : 2, tension: 0.3, fill: false },
+        { label: f.key === "active_min" ? "Active minutes (that day so far)" : "Average", data: avg, borderColor: A.vitalColor(f.key), borderWidth: 2, pointRadius: rows.length > 60 ? 0 : 2, tension: 0.3, fill: false },
         { label: "Your normal", data: rows.map(() => base), borderColor: tok("--muted"), borderDash: [5, 5], borderWidth: 1, pointRadius: 0, fill: false },
       ],
     };
