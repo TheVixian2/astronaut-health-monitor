@@ -131,6 +131,9 @@ class SharedCheck(BaseModel):
     by_role: str = ""                 # "Commander" / "Crew Medical Officer"
     health: Optional[SharedHealth] = None
     warnings: Optional[list[SharedWarning]] = Field(default=None, max_length=30)   # null: health only
+    # A health-only send (the CMO's) keeps the Commander's last warnings: who sent those, and when.
+    warnings_at: Optional[datetime] = None
+    warnings_by_role: Optional[str] = None
 
 
 class BaselineUpload(BaseModel):
@@ -282,6 +285,7 @@ class CrewMemberWellbeing(BaseModel):
     unreleased_alert: bool
     visible_because: Literal["commander_first", "shared", "ground"]  # commander_first: not shown to them yet
     areas: list[str] = []              # which areas raised the level; never the answers
+    tendencies: list[str] = []         # behaviour changes vs own usual, plain words (behavioral.tendencies)
 
 
 class CrewWellbeing(BaseModel):
@@ -1185,6 +1189,13 @@ async def put_shared_check(aid: str, viewer: str, body: SharedCheck) -> SharedCh
         lv = s.profile.level
         body.health = SharedHealth(pct=max(0, min(100, 100 - s.profile.score)), wellbeing=lv, score=s.profile.score,
                                    level={"steady": "ok", "watch": "watch", "concern": "alert", "urgent": "critical"}[lv])
+    prev = await asyncio.to_thread(_shared_check, aid)
+    if body.warnings is not None:
+        body.warnings_at, body.warnings_by_role = body.at, body.by_role
+    elif prev and prev.get("warnings") is not None:   # health only: don't wipe what the Commander sent
+        body.warnings = [SharedWarning(**w) for w in prev["warnings"]]
+        body.warnings_at = prev.get("warnings_at") or prev["at"]
+        body.warnings_by_role = prev.get("warnings_by_role") or prev["by_role"]
     data = json.loads(body.model_dump_json())
     shared_checks[aid] = data
     await asyncio.to_thread(store.meta_set, f"shared_check:{aid}", json.dumps(data))
@@ -1561,7 +1572,8 @@ async def get_crew_wellbeing(viewer: str) -> CrewWellbeing:
             trend=s.trend.direction if s.trend else "unknown", confidence=s.profile.confidence,
             unreleased_alert=withheld_for_self(s),
             visible_because="ground" if view == "ground" else "commander_first" if withheld_for_self(s) else "shared",
-            areas=_area_list(s.profile, "wellbeing") if s.profile.level != "steady" else []))
+            areas=_area_list(s.profile, "wellbeing") if s.profile.level != "steady" else [],
+            tendencies=behavioral.tendencies(s.profile)))
     crew_wide = [f"Most of the crew ({n} of {len(crew)}) {CREW_WIDE_TEXT[name]}."
                  for name, n in crew_counts.items() if n >= behavioral.CREW_WIDE_MIN and name in CREW_WIDE_TEXT]
     suggestions = []
@@ -1829,7 +1841,7 @@ def _psych_text(s: AstronautState, wb: Wellbeing, alerts: list[PsychReportAlert]
                 dq: dict[str, int], t: datetime) -> str:
     who = {"self": "the astronaut", "commander": "the commander", "deputy": "the deputy",
            "ground": "Mission Control"}[wb.view]
-    lines = [f"Psychological report: {s.name} ({s.role}), mission day {wb.mission_day}, {t:%d %b %Y}.",
+    lines = [f"Behavioural report: {s.name} ({s.role}), mission day {wb.mission_day}, {t:%d %b %Y}.",
              f"For {who}. Decision support only, never a diagnosis."]
     if wb.withheld:
         lines.append("Your numbers against your own normal (mission days 7-14):")

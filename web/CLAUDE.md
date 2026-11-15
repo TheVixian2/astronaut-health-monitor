@@ -81,7 +81,10 @@ generates fake events in the page, mirroring the backend mock: `vitals` every
     stream (debug)*.
   - Inside `demo.html` the menus are hidden (`html.embedded`).
 - **Commander** — one panel per crew member: **physical** warnings (vital-sign
-  alerts) and **psychological** ones (`sleep_debt` / hazard `isolation`
+  alerts) and **behavioural** ones (the row reads "Behavioural", never
+  "psychological": Luca, 2026-11-15; under the wellbeing check it lists the
+  backend's plain-language `tendencies`, e.g. "Sleeping 1.2 h less than usual")
+  (`sleep_debt` / hazard `isolation`
   alerts, mood ≤ 2/5, short sleep, the circadian irregular-sleep card), each
   with pre-written "How you can help" advice (`ADVICE` in `captain.js`).
   The Commander sees everything for everyone (decided 2026-11-14), their own

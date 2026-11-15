@@ -156,11 +156,13 @@
     const areas = wb.areas && wb.areas.length ? `<span class="cp-areas">${esc(wb.areas.join(", "))}</span>` : "";
     return `<p class="cp-wb" title="Level and areas only, never their answers">Wellbeing check
         <span class="st-${WB_CLASS[wb.level] || "nominal"}"><span class="st-pill">${esc(wb.level)}</span></span>${areas}</p>
-      ${wb.visible_because === "commander_first" ? '<p class="cp-note">They haven\'t been told you can see this.</p>' : ""}`;
+      ${wb.visible_because === "commander_first" ? '<p class="cp-note">They haven\'t been told you can see this.</p>' : ""}
+      ${wb.tendencies && wb.tendencies.length
+        ? `<ul class="cp-tend">${wb.tendencies.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}`;
   }
 
   // One card per crew member, 2 x 2 (owner, 2026-11-14: "make these feel
-  // better"): head, a stats strip, then a Physical and a Psychological row.
+  // better"): head, a stats strip, then a Physical and a Behavioural row.
   function panel(aid, c, { name, self, physical, psych }) {
     const all = physical.concat(psych);
     const worst = all.reduce((w, x) => (!w || SEVERITY_RANK[x.severity] > SEVERITY_RANK[w] ? x.severity : w), null);
@@ -187,7 +189,7 @@
           </div>
           <div class="cp-stats">${stats}</div>
           <div class="cp-sec"><h3>Physical</h3><div>${physical.length ? list(physical) : none}</div></div>
-          <div class="cp-sec"><h3>Psychological <span>confidential</span></h3>
+          <div class="cp-sec"><h3>Behavioural <span>confidential</span></h3>
             <div>${wellbeingLine(c.wb)}${psych.length ? list(psych) : none}</div></div>
           ${self ? "" : sendRow(aid, name)}
         </div>
@@ -204,7 +206,7 @@
   function sendRow(aid, name) {
     const sent = A.sentTo(aid), flash = A.justSent(aid);
     return `<div class="cp-send"><button type="button" data-send="${esc(aid)}"${flash ? ' class="is-sent" disabled' : ""}>${flash ? "Sent ✓" : `Send to ${esc(name)}`}</button>
-      <span class="muted small">${sent ? `Sent at ${esc(time(sent.at))}` : "Not sent yet"}</span></div>`;
+      <span class="muted small">${sent ? `Sent at ${esc(time(sent.warnings_at || sent.at))}` : "Not sent yet"}</span></div>`;
   }
   $("crewPanels").addEventListener("click", e => {
     const b = e.target.closest("[data-send]");

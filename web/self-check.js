@@ -88,15 +88,21 @@
 
     try { mission = await A.getJSON(cfg.base, "/mission", cfg.mock); } catch { mission = null; }
     renderMission();
-    renderReports();                 // what this browser already has; loadReleased() fetches the rest
+    renderReports();                 // what this browser already has; sentLoop below fetches the rest
 
     // Warnings reach this console only once released (commander first): loadReleased().
+    // What the Commander / CMO sent: also in the presenter's pattern view, so a send made
+    // in another browser or on another device always reaches this bar.
+    if (ownRole !== "Commander") {
+      const sentLoop = async () => { await A.loadSentTo(cfg, cfg.aid, cfg.aid); await afterSentLoad(); renderReleased(); renderHealth(); renderReports(); };
+      sentLoop(); setInterval(sentLoop, RELEASED_REFRESH_MS);
+    }
     if (!PATTERN) {
       refreshStress(); setInterval(refreshStress, STRESS_REFRESH_MS);
       loadReleased(); setInterval(loadReleased, RELEASED_REFRESH_MS);
       loadOwnWellbeing(); setInterval(loadOwnWellbeing, RELEASED_REFRESH_MS);
       wireBaselineUpload();
-    } else loadReport();
+    }
     if (!PATTERN) await prefill();
     if (PATTERN) startPattern();
     else if (POLL) startPolling();
@@ -192,18 +198,20 @@
   const RELEASED_REFRESH_MS = 15000;
   let releasedList = [];
   let lastSentAt;                        // the report on screen (undefined until the first load)
+  async function afterSentLoad() {
+    const sentNow = A.sentTo(cfg.aid);
+    const sentAtNow = sentNow ? sentNow.at : null;
+    // A new report may have released their flag: refresh stress now, not within the minute.
+    // sameAt: the same send can come back as ".740Z" or ".740000Z".
+    if (!PATTERN && lastSentAt !== undefined && sentAtNow !== lastSentAt && !sameAt(sentAtNow, lastSentAt)) refreshStress();
+    lastSentAt = sentAtNow;
+    if (sentNow?.health) await loadSelfWb();   // their own wellbeing check: the reasons behind the bar
+  }
   async function loadReleased() {
     try {
       const list = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/alerts?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
       releasedList = list.filter(a => a.psychological && a.released_to_crew_at);
     } catch { /* keep the last list */ }
-    if (ownRole !== "Commander") await A.loadSentTo(cfg, cfg.aid, cfg.aid);   // what the Commander / CMO sent
-    const sentNow = ownRole === "Commander" ? null : A.sentTo(cfg.aid);
-    const sentAtNow = sentNow ? sentNow.at : null;
-    // A new report may have released their flag: refresh stress now, not within the minute.
-    if (lastSentAt !== undefined && sentAtNow !== lastSentAt && !sameAt(sentAtNow, lastSentAt)) refreshStress();
-    lastSentAt = sentAtNow;
-    if (sentNow?.health) await loadSelfWb();
     renderReleased();
     renderHealth();
     renderReports();
@@ -225,7 +233,7 @@
     if (sent && sent.warnings) {   // null: a health check only (the Crew Medical Officer's)
       const ids = new Set(releasedList.map(a => a.id));
       const ws = sent.warnings.filter(w => !w.alertId || !ids.has(w.alertId));
-      const foot = `<p class="muted small">Sent by your ${sentBy(sent)} · ${when(sent.at)}</p>`;
+      const foot = `<p class="muted small">Sent by your ${sentBy({ by_role: sent.warnings_by_role || sent.by_role })} · ${when(sent.warnings_at || sent.at)}</p>`;
       for (const w of ws) {
         items.push(`<li class="alert sev-${esc(w.severity)}"><p class="verdict">${esc(w.title)}</p>
           ${w.detail ? `<p class="small">${esc(w.detail)}</p>` : ""}${foot}</li>`);
@@ -254,15 +262,6 @@
       selfWb = await A.getJSON(cfg.base, `/astronauts/${encodeURIComponent(cfg.aid)}/wellbeing?viewer=${encodeURIComponent(cfg.aid)}`, cfg.mock);
       selfWbFailed = false;
     } catch { selfWbFailed = !selfWb; /* keep the last one */ }
-  }
-  // The presenter's whole-mission view has no loadReleased(): the last report
-  // and its reasons only.
-  async function loadReport() {
-    if (ownRole === "Commander") return;
-    await A.loadSentTo(cfg, cfg.aid, cfg.aid);
-    if (A.sentTo(cfg.aid)?.health) await loadSelfWb();
-    renderHealth();
-    renderReports();
   }
   const SEEN_KEY = "ahm-sent-seen";      // aid -> { at, pct, prev, why, prevWhy }: the report before this one
   const READ_KEY = "ahm-report-read";    // aid -> the report last opened on My report
@@ -459,8 +458,8 @@
     if (e.key !== A.SENT_KEY) return;
     renderHealth();
     renderReports();
+    afterSentLoad().then(() => { renderReleased(); renderHealth(); renderReports(); });   // the reasons behind the new bar
     if (!PATTERN) loadReleased();   // fetch: the send may have released an alert too
-    else loadReport();
   });
 
   // ---- health bar beside the body -------------------------------------------

@@ -1,5 +1,5 @@
 # Written with AI assistance (Claude Code, Anthropic) and reviewed by the team. See README "Use of AI".
-"""Psychological profile: every input, weighted, against each astronaut's own normal (PROVISIONAL).
+"""Behavioural profile: every input, weighted, against each astronaut's own normal (PROVISIONAL).
 
 Focus of the project since 2026-11-14. Addresses two NASA HRP risks: "Adverse Cognitive or
 Behavioral Conditions and Psychiatric Disorders", and "Inadequate Cooperation, Coordination,
@@ -108,6 +108,7 @@ PHQ2_POSITIVE, PHQ2_HIGH = 3, 5
 PHQ9_POSITIVE, PHQ9_SEVERE = 10, 20
 CREW_WIDE_MIN = 3            # a trend is "crew-wide" (shown without names) only with >= 3 people
 TREND_DAYS = 14
+TENDENCY_Z = 1.0             # a behaviour change is named as a tendency from 1 SD off the own usual (PLACEHOLDER)
 
 PHQ2_QUESTIONS = {
     "stem": "Over the last 2 weeks, how often have you been bothered by the following problems?",
@@ -190,6 +191,7 @@ class Signal(BaseModel):
     evidence: str
     crew_wide: bool = False
     left_out_days: int = 0        # of the last 7 days, left out because of a check-in tag
+    tendency: Optional[str] = None  # plain-language behaviour change vs own usual, e.g. "Sleeping 1.2 h less than usual"
 
 
 class PhqResult(BaseModel):
@@ -375,6 +377,25 @@ def _fmt(v: Optional[float], unit: str, nd: int = 1) -> Optional[str]:
     return None if v is None else f"{v:.{nd}f} {unit}".strip()
 
 
+def _daily_tendency(name: str, recent: Optional[float], base: Optional[tuple[float, float]],
+                    z: Optional[float]) -> Optional[str]:
+    """What they are doing differently, in plain words. Behaviours only (not HRV / heart rate)."""
+    if recent is None or base is None or z is None or z < TENDENCY_Z:
+        return None
+    gap = abs(recent - base[0])
+    if name == "sleep":
+        return f"Sleeping {gap:.1f} h less than usual ({recent:.1f} h a night)"
+    if name == "activity":
+        return f"Less active: {recent:.0f} min a day, usually {base[0]:.0f}"
+    return None
+
+
+def tendencies(r: "Result") -> list[str]:
+    """Behaviour changes worth noticing, biggest first. Never questionnaire answers or mood."""
+    ordered = sorted(r.signals, key=lambda x: -(x.z or x.severity))
+    return [t for x in ordered if x.tendency for t in x.tendency.split("; ")]
+
+
 def compute(h: History, end: date, live: bool = False) -> Result:
     """The profile for the window ending on `end` (a complete day). `live` adds today's body clock."""
     b0, b1 = _baseline_window(h)
@@ -405,7 +426,8 @@ def compute(h: History, end: date, live: bool = False) -> Result:
                           f"{_fmt(base[0], unit, nd)}.{extra}")
         raw.append(dict(name=name, value=_fmt(recent, unit, nd), baseline=_fmt(base[0], unit, nd) if base else None,
                         z=z, severity=severity_from_z(z), trend=trend,
-                        enough=recent is not None and base is not None, detail=detail, left_out=n_out))
+                        enough=recent is not None and base is not None, detail=detail, left_out=n_out,
+                        tendency=_daily_tendency(name, recent, base, z)))
 
     daily("sleep", "sleep")
     daily("hrv", "hrv", 0)
@@ -430,9 +452,13 @@ def compute(h: History, end: date, live: bool = False) -> Result:
                          f"{rq:.1f} h alone in your quarters (usual {base_q[0]:.1f} h), last 7 days.")
     social_detail += _left_note(n_out_s)
     trend_s = _trend_of(h, "crew_h", end, base_c, "down", sk)
+    social_t = [t for t in (
+        f"Less time with crewmates: {rc:.1f} h a day, usually {base_c[0]:.1f} h" if zc is not None and zc >= TENDENCY_Z else None,
+        f"More time alone in quarters: {rq:.1f} h a day, usually {base_q[0]:.1f} h" if zq is not None and zq >= TENDENCY_Z else None,
+    ) if t]
     raw.append(dict(name="social_time", value=_fmt(rc, unit), baseline=_fmt(base_c[0], unit) if base_c else None,
                     z=zs, severity=severity_from_z(zs), trend=trend_s, enough=zs is not None, detail=social_detail,
-                    left_out=n_out_s))
+                    left_out=n_out_s, tendency="; ".join(social_t) or None))
 
     # Body clock: today's lighting-log assessment (circadian.py), live only.
     if live and h.body_clock_status is not None:
@@ -440,7 +466,8 @@ def compute(h: History, end: date, live: bool = False) -> Result:
         raw.append(dict(name="body_clock", value="irregular" if irregular else "steady", baseline=None,
                         z=None, severity=0.67 if irregular else 0.0, trend="unknown", enough=True,
                         detail="Bedtimes have been irregular or drifting (lighting log)." if irregular
-                        else "Bedtimes look regular (lighting log)."))
+                        else "Bedtimes look regular (lighting log).",
+                        tendency="Bedtimes irregular or drifting" if irregular else None))
     else:
         raw.append(dict(name="body_clock", value=None, baseline=None, z=None, severity=0.0, trend="unknown",
                         enough=False, detail="Body clock is only assessed for today."))
@@ -501,7 +528,7 @@ def compute(h: History, end: date, live: bool = False) -> Result:
                                   value=r["value"], baseline=r["baseline"], z=r["z"],
                                   severity=round(r["severity"], 2), points=pts, trend=r["trend"],
                                   enough_data=r["enough"], detail=r["detail"], evidence=ev,
-                                  left_out_days=r.get("left_out", 0)))
+                                  left_out_days=r.get("left_out", 0), tendency=r.get("tendency")))
     if not any(INPUTS[r["name"]][0] == "watch" and r["enough"] for r in raw):
         group_points["checkin"] *= 100 / GROUP_WEIGHT["checkin"]   # only check-ins have data
     elif not any(INPUTS[r["name"]][0] == "checkin" and r["enough"] for r in raw):
